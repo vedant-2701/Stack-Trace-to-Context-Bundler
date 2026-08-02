@@ -1,0 +1,24 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - revive
+    - gocyclo
+    - unused
+  settings:
+    gocyclo:
+      min-complexity: 15
+
+issues:
+  # Suppressions must use `//nolint:<linter> // reason` — never a bare nolint.
+  # Enforced by review, not by this config; documented here for visibility.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+# Formatting (gofumpt) runs as its own Lefthook step, not through golangci-lint,
+# to keep "is it formatted" and "does it lint clean" as separate, clearly
+# attributed pre-commit failures (see lefthook.yml fail_text on each step).

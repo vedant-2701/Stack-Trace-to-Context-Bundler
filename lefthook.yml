@@ -1,0 +1,39 @@
+pre-commit:
+  parallel: false
+  commands:
+    format:
+      glob: "*.go"
+      run: test -z "$(gofumpt -l {staged_files})"
+      fail_text: |
+        ❌ FORMAT check failed — files are not gofumpt-formatted.
+        Fix: run `gofumpt -w .`, re-stage, commit again.
+    lint:
+      glob: "*.go"
+      run: golangci-lint run ./...
+      fail_text: |
+        ❌ LINT check failed — see golangci-lint output above for exact file/line.
+        Auto-fixable issues: `golangci-lint run ./... --fix`
+    build:
+      glob: "*.go"
+      run: go build ./...
+      fail_text: |
+        ❌ BUILD failed — code does not compile. See compiler errors above.
+    test:
+      glob: "*.go"
+      run: go test ./...
+      fail_text: |
+        ❌ TEST check failed — see failures above. All tests must pass before commit.
+
+commit-msg:
+  commands:
+    lint-message:
+      run: |
+        MSG=$(head -n1 "{1}")
+        echo "$MSG" | grep -qE '^(feat|fix|chore|docs|refactor|test|build|ci|perf)(\([a-z0-9-]+\))?: .{1,}$' || {
+          echo "❌ COMMIT MESSAGE check failed."
+          echo "  Required format: <type>(<scope>): <description>   — scope optional"
+          echo "  Allowed types:   feat, fix, chore, docs, refactor, test, build, ci, perf"
+          echo "  Example:         feat(java-parser): add caused-by chain parsing"
+          echo "  Your message:    $MSG"
+          exit 1
+        }
