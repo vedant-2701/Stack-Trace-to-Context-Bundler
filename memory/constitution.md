@@ -63,14 +63,27 @@ not built preemptively because they might matter later.
 The only place `mvn`/`gradle` are invoked (Article VII) is resolving
 concrete versions for `dependency`-bucket frames in the Java parser. That
 call is always offline-only (`-o` / `--offline`) and wrapped in a hard
-timeout. Offline mode turns a missing local artifact into an immediate,
-catchable error instead of a network hang; the timeout exists separately,
-to bound JVM/daemon startup and Gradle's configuration-phase cost, both of
-which are real regardless of network or cache state. On timeout or an
-offline resolution failure, the tool does not retry online and does not
-guess — per Article VI, it records that one dependency's version as
-unresolved, with a note, and keeps going. Automatic online fallback is out
-of scope for v1 (Article VIII). See
+timeout — provisionally 30s, pending further calibration (see below).
+Offline mode turns a missing local artifact into an immediate, catchable
+error instead of a network hang for ordinary dependency resolution. It
+doesn't cover everything, though: the Gradle wrapper downloads its
+declared distribution before `--offline` is even parsed, so on a machine
+without that distribution cached, only the timeout — not the flag — bounds
+that call. The timeout also bounds JVM/daemon startup and Gradle's
+configuration-phase cost, both real regardless of network or cache state.
+On timeout or an offline resolution failure, the tool does not retry
+online and does not guess — per Article VI, it records that one
+dependency's version as unresolved, with a note, and keeps going.
+Automatic online fallback is out of scope for v1 (Article VIII).
+
+The 30s figure is provisional, based on one round of Linux-only
+benchmarking (worst clean measurement: 13.1s, cold Gradle plugin
+resolution). It has not yet been tested under a silent-network condition
+(connection dropped rather than refused, which is the case a timeout
+matters most for) or on any non-Linux platform, both open per
+`memory/decisions/0001-benchmark-protocol.md`. Revisit before 005b ships.
+
+See
 `memory/decisions/0001-offline-first-time-boxed-dependency-version-resolution.md`
 for the full reasoning. TypeScript/JavaScript dependency resolution is
 unaffected — it parses `package.json` and the lockfile directly and never
