@@ -13,7 +13,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     the bad formatting and blocked the commit, `golangci-lint version`
     resolves to v2 (config mismatch error from the v1 install is gone).
 
-- [ ] **T001** — Scaffold `internal/contract` package with `types.go`
+- [x] **T001** — Scaffold `internal/contract` package with `types.go`
   containing every struct from `plan.md`'s Data model (`Bundle`,
   `ExceptionNode`, `Frame`, `CodeContext`, `BlameEntry`, `GitMetadata`,
   `Dependencies`, `LockedDependency`, `Runtime`), with correct `json`
@@ -25,7 +25,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     both pass clean on the new files; a `Bundle{}` literal can be
     constructed and marshaled to JSON without a runtime panic.
 
-- [ ] **T002** — Add `SchemaVersion` exported constant, `"1.0.0"`.
+- [x] **T002** — Add `SchemaVersion` exported constant, `"1.0.0"`.
   - Depends on: T001
   - Acceptance: unit test asserts `contract.SchemaVersion == "1.0.0"`.
 
