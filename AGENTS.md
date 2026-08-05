@@ -81,7 +81,7 @@ mark it `[NEEDS CLARIFICATION: your question]` and ask instead of guessing.
 
 ```
 # one-time dev tool setup
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 go install mvdan.cc/gofumpt@latest
 go install github.com/evilmartians/lefthook@latest
 lefthook install
