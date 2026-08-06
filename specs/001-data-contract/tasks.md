@@ -41,7 +41,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     different fingerprints; two chains sharing an identical outer wrapper
     but differing in an inner cause produce different fingerprints.
 
-- [ ] **T004** — Add JSON marshal/unmarshal round-trip tests per struct in
+- [x] **T004** — Add JSON marshal/unmarshal round-trip tests per struct in
   `types_test.go`, specifically asserting `omitempty` behavior: a Java
   frame with no `ColumnNumber` set must not have that key appear in the
   output JSON at all; a JS/TS frame with it set must have it present. A

@@ -106,3 +106,30 @@ spec.md yet to hold it).
 during 005a/006a spec interrogation, not before.
 
 ---
+
+**Date:** 2026-08-06
+**Task(s):** T004
+**What happened:** Added tests to `internal/contract/types_test.go`: a
+generic `roundTrip[T any]` helper plus round-trip (marshal/unmarshal/
+compare) tests for every struct in the package (`Runtime`,
+`ExceptionNode`, `Frame`, `FrameRef`, `Snippet`, `CodeContext`,
+`BlameEntry`, `GitMetadata`, `Dependencies`, `LockedDependency`, plus one
+fully nested `Bundle`), and five targeted raw-JSON key-presence tests for
+the specific `omitempty` behaviors tasks.md calls out: `Frame.ColumnNumber`
+absent for a Java-shaped frame / present for a JS/TS-shaped frame;
+`LockedDependency` omits `version`/includes `note` when unresolved and the
+reverse when resolved; `Bundle.RawInputTruncated` always present (both
+`true` and `false`).
+Design note recorded in the test file's own doc comment: round-trip
+comparison alone cannot catch a missing/wrong `omitempty` (an omitted
+zero value and a present zero value decode back to the same Go zero value
+either way), so the key-presence tests inspect marshaled JSON via
+`map[string]any`, not just struct-to-struct equality.
+Verified via real command output (paste-back from user, not assumed):
+`go build ./...`, `go test ./internal/contract/... -v`,
+`golangci-lint run ./internal/contract/...`, and `gofumpt -l` on the
+changed file all clean.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
