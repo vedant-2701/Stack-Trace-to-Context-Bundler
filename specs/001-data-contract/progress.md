@@ -196,3 +196,75 @@ above.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-08-06
+**Task(s):** T006 (scoping, before implementation)
+**What happened:** Two gaps in T006's original wording, neither pinned by
+spec.md/plan.md: (1) whether "512 KB" is 1024- or 1000-based -- resolved
+as 524288 bytes (512*1024), the standard binary convention for a
+software byte cap. (2) Whether byte-exact truncation (`s[:524288]`,
+potentially cutting a multi-byte UTF-8 rune in half) or rune-safe
+truncation is correct. User raised whether exceeding input should split
+into multiple parts instead of discarding the remainder -- rejected:
+`rawInput` is parse-fallback only (chain[] is the primary payload), and
+the cap's stated purpose (spec.md non-functional requirements) is to
+bound total bundle size for clipboard/LLM-context use; keeping the
+remainder anywhere defeats that purpose and would need a schema change
+(new field, schemaVersion bump) for no identified need (Article VIII).
+Decision: keep discard-past-cap, but make the cut point UTF-8-rune-safe
+(back up at most 3 bytes to the last valid rune boundary if the exact cap
+falls mid-rune) rather than byte-exact, to eliminate the
+invalid-UTF-8/corrupted-last-character risk the user flagged. Amended
+tasks.md's T006 wording and acceptance criteria to match (byte-exact only
+guaranteed for the common case; rune-boundary backup documented as the
+correct behavior when the cap falls mid-rune).
+**Deviations from plan (if any):** Yes -- tasks.md amended in this same
+session, see diff. Original byte-exact-truncation wording was the
+deviation-worthy gap, not this correction.
+**New open questions:** None -- resolved.
+
+---
+
+**Date:** 2026-08-06
+**Task(s):** T006 (implementation)
+**What happened:** Added `internal/contract/rawinput.go` with
+`TruncateRawInput(s string) (out string, truncated bool)` and the
+`rawInputCapBytes = 512 * 1024` constant. Returns s unchanged with
+`truncated=false` if it already fits; otherwise cuts to at most
+`rawInputCapBytes`, backing up (via `unicode/utf8.RuneStart`, at most 3
+bytes) to the last valid rune boundary if the exact cap falls mid-rune,
+per the T006 scoping decision above. Added
+`internal/contract/rawinput_test.go`, covering the four boundary cases
+from the amended acceptance criteria: one byte under (unchanged, false),
+exactly at the cap (unchanged, false), one byte over with ASCII input
+(truncated to exactly 524288 bytes, true), and a multi-byte-rune input
+where the cap falls mid-rune (truncated to the nearest valid rune
+boundary, `utf8.ValidString` true, true).
+Before the user ran anything: verified both new files with a real `go
+build`/`go vet`/`go test -v` (all passing, including every prior test in
+the package) and `gofmt -l` (clean) in a sandboxed Go 1.22 toolchain
+installed via apt, using a mirrored copy of the package. This caught real
+issues twice during T005 (see that entry) and confirms these two new
+files compile and behave correctly independent of the user's own run
+-- but is not a substitute for it, since gofumpt itself couldn't be
+fetched (dependency chain requires golang.org/x/*, not on the network
+allowlist) and the sandbox's Go 1.22 differs from the project's actual Go
+1.25.0. User asked that further exploratory tool-installation attempts
+stop, since they cost tokens for marginal benefit once the user is
+willing to run commands directly -- noted for future sessions: verify
+with real tools when a quick, working path exists, then hand off to the
+user rather than iterating on installation workarounds.
+Verified via real command output (paste-back from user, not assumed):
+`go build ./...`, `go test ./internal/contract/... -v`,
+`golangci-lint run ./internal/contract/...`, `gofumpt -l
+internal/contract/rawinput.go internal/contract/rawinput_test.go` all
+clean.
+**Deviations from plan (if any):** None beyond the T006-scoping entry
+above.
+**New open questions:** None.
+
+---
+
+All tasks (T000-T006) complete. Feature 001-data-contract is functionally
+done pending the user's final review and marking `specs/INDEX.md`'s
+status from `in-progress` to `done`.

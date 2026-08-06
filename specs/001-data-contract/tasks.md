@@ -77,12 +77,23 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     reproduces it byte-for-byte, catching any future silent drift between
     struct and fixture.
 
-- [ ] **T006** — Implement `TruncateRawInput(s string) (out string, truncated bool)`
-  in `rawinput.go`, enforcing the 512 KB cap.
+- [x] **T006** — Implement `TruncateRawInput(s string) (out string, truncated bool)`
+  in `rawinput.go`, enforcing a 524288-byte (512 * 1024) cap. The cut
+  point must be UTF-8-rune-safe: if the exact cap falls mid-rune, back up
+  (at most 3 bytes) to the last valid rune boundary rather than emit an
+  invalid trailing byte sequence -- amended from the original
+  byte-exact wording during T006 scoping, see progress.md. Discarding
+  content past the cap (not splitting into multiple parts) is correct:
+  `rawInput` is parse-fallback only, not the primary payload, and the cap
+  exists specifically to bound total bundle size for clipboard/LLM-context
+  use -- keeping the remainder anywhere would defeat that purpose.
   - Depends on: T001
-  - Acceptance: unit tests cover the boundary precisely — one byte under
+  - Acceptance: unit tests cover the boundary precisely -- one byte under
     the cap (unchanged, `false`), exactly at the cap (unchanged, `false`),
-    one byte over (truncated to exactly 512 KB, `true`).
+    one byte over with ASCII input (truncated to exactly 524288 bytes,
+    `true`), and a multi-byte-rune input where the cap falls mid-rune
+    (truncated to the nearest valid rune boundary at or before 524288
+    bytes, still valid UTF-8, `true`).
 
 <!-- Keep each task small enough to implement and verify in a single sitting.
      If a task feels big, split it. -->
