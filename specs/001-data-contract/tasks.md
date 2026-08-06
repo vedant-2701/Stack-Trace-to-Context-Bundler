@@ -29,7 +29,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
   - Depends on: T001
   - Acceptance: unit test asserts `contract.SchemaVersion == "1.0.0"`.
 
-- [ ] **T003** — Implement `ComputeFingerprint(chain []ExceptionNode) string`
+- [x] **T003** — Implement `ComputeFingerprint(chain []ExceptionNode) string`
   in `fingerprint.go`: SHA-256 over, per exception node, the file+method
   identity (excluding line numbers) of every own-bucket frame plus the
   single originating frame regardless of bucket; truncated to the first 16

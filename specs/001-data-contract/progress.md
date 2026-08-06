@@ -72,3 +72,37 @@ changed files all clean.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-08-06
+**Task(s):** T003
+**What happened:** Added `internal/contract/fingerprint.go` with
+`ComputeFingerprint(chain []ExceptionNode) string`. Per node: hashes
+every own-bucket frame's file+className+methodName (excluding line
+numbers) plus the originating frame (`Frames[0]`) if not already
+own-bucket, joined with ASCII info-separator bytes to prevent field/frame
+collisions, then SHA-256 over the whole chain, truncated to 16 hex chars.
+Added `internal/contract/fingerprint_test.go`, table-driven, covering:
+dependency version bump on a non-originating frame -> same fingerprint;
+different own-bucket frame identity -> different fingerprint; identical
+outer wrapper with a different inner cause -> different fingerprint
+(proves every node is hashed, not just the outermost); plus two extra
+guards (line-number-only difference -> same fingerprint; determinism
+across repeated calls).
+Verified via real command output (paste-back from user, not assumed):
+`go build ./...`, `go test ./internal/contract/... -run
+TestComputeFingerprint -v`, `golangci-lint run ./internal/contract/...`,
+and `gofumpt -l` on both changed files all clean.
+**Deviations from plan (if any):** None to the algorithm's functional
+guarantees. One unresolved implementation assumption not pinned by
+spec.md/plan.md: "the originating frame" is implemented as `Frames[0]`
+(top-of-stack, throw-site convention) since neither doc specifies it
+explicitly. Documented in the `ComputeFingerprint` doc comment; flagged
+for the user to confirm against actual frame ordering when 005a (Java)
+and 006a (TS/JS) are specced, since those parsers are what actually
+populate `Frames[]` order (recorded outside this repo, in the user's own
+cross-session notes for this project, since neither 005a nor 006a has a
+spec.md yet to hold it).
+**New open questions:** Frame-ordering assumption above, to be resolved
+during 005a/006a spec interrogation, not before.
+
+---
