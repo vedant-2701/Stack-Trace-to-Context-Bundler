@@ -284,7 +284,8 @@ internal/contract/
   rawinput.go           # TruncateRawInput(s string) (string, bool)
   rawinput_test.go
   testdata/
-    example.json        # generated fixture, produced FROM the struct
+    example_java.json    # generated fixture, produced FROM the struct (realistic Java-shaped bundle)
+    example_ts.json      # generated fixture, produced FROM the struct (realistic TS/JS-shaped bundle)
 ```
 
 ## API / contracts (if applicable)
@@ -310,9 +311,13 @@ library consumed in-process by other features):
   genuinely different bugs -> different fingerprints; a chain with an
   identical outer wrapper but a different inner cause -> different
   fingerprints (proves every node is hashed, not just the outermost).
-- **Golden-file test** -- re-marshal the example `Bundle` and compare
-  byte-for-byte against `testdata/example.json`, so the fixture can never
-  silently drift from the struct it's supposed to be generated from.
+- **Golden-file tests** -- re-marshal each example `Bundle` (one
+  realistically Java-shaped, one realistically TS/JS-shaped -- a single
+  invocation only ever runs one language's parser, so one bundle can't
+  realistically mix both shapes) and compare byte-for-byte against
+  `testdata/example_java.json` / `testdata/example_ts.json`, so neither
+  fixture can silently drift from the struct it's supposed to be
+  generated from.
 - **Truncation boundary tests** -- exactly at 512 KB, one byte under, one
   byte over.
 

@@ -1,0 +1,132 @@
+{
+  "schemaVersion": "1.0.0",
+  "language": "java",
+  "os": "linux",
+  "rawInput": "java.lang.RuntimeException: Failed to process request\n\tat com.example.Handler.handle(Handler.java:42)\n\tat com.fasterxml.jackson.databind.ObjectMapper.readValue(ObjectMapper.java:3418)\n\tat java.lang.Thread.run(Thread.java:833)\nCaused by: java.sql.SQLException: Connection refused\n\tat com.example.Repository.query(Repository.java:88)\n\t... 3 more",
+  "rawInputTruncated": false,
+  "fingerprint": "cdc54a16d6b3734e",
+  "runtime": {
+    "name": "jvm",
+    "version": "17.0.9",
+    "versionSource": "local-environment",
+    "note": "inferred from local `java -version`; may not match the environment that produced this trace"
+  },
+  "chain": [
+    {
+      "className": "java.lang.RuntimeException",
+      "message": "Failed to process request",
+      "frames": [
+        {
+          "index": 0,
+          "filePath": "/repo/src/main/java/com/example/Handler.java",
+          "className": "com.example.Handler",
+          "methodName": "handle",
+          "lineNumber": 42,
+          "bucket": "own"
+        },
+        {
+          "index": 1,
+          "filePath": "/repo/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.16.0/ObjectMapper.java",
+          "methodName": "readValue",
+          "lineNumber": 3418,
+          "bucket": "dependency",
+          "packageName": "com.fasterxml.jackson.core:jackson-databind"
+        },
+        {
+          "index": 2,
+          "filePath": "/usr/lib/jvm/java-17-openjdk/lib/src/java.base/java/lang/Thread.java",
+          "methodName": "run",
+          "lineNumber": 833,
+          "bucket": "runtime"
+        }
+      ]
+    },
+    {
+      "className": "java.sql.SQLException",
+      "message": "Connection refused",
+      "elidedFrameCount": 3,
+      "frames": [
+        {
+          "index": 0,
+          "filePath": "/repo/src/main/java/com/example/Repository.java",
+          "className": "com.example.Repository",
+          "methodName": "query",
+          "lineNumber": 88,
+          "bucket": "own"
+        }
+      ]
+    }
+  ],
+  "codeContexts": [
+    {
+      "frameRef": {
+        "chainIndex": 0,
+        "frameIndex": 0
+      },
+      "filePath": "/repo/src/main/java/com/example/Handler.java",
+      "language": "java",
+      "status": "ok",
+      "snippet": {
+        "startLine": 40,
+        "endLine": 44,
+        "targetLine": 42,
+        "code": "    public Response handle(Request req) {\n        var payload = req.body();\n        return repository.query(payload.id());\n    }\n"
+      },
+      "blame": [
+        {
+          "startLine": 40,
+          "endLine": 44,
+          "commitHash": "0123456789abcdef0123456789abcdef01234567",
+          "author": "vedant",
+          "commitDate": "2026-07-28T09:15:00Z",
+          "summary": "handle request payload validation"
+        }
+      ]
+    },
+    {
+      "frameRef": {
+        "chainIndex": 1,
+        "frameIndex": 0
+      },
+      "filePath": "/repo/src/main/java/com/example/Repository.java",
+      "language": "java",
+      "status": "ok",
+      "snippet": {
+        "startLine": 86,
+        "endLine": 90,
+        "targetLine": 88,
+        "code": "    public Response query(String id) {\n        var conn = pool.getConnection();\n        return conn.execute(id);\n    }\n"
+      },
+      "blame": [
+        {
+          "startLine": 86,
+          "endLine": 90,
+          "commitHash": "fedcba9876543210fedcba9876543210fedcba98",
+          "author": "vedant",
+          "commitDate": "2026-07-30T14:02:00Z",
+          "summary": "add connection pooling"
+        }
+      ]
+    }
+  ],
+  "gitMetadata": {
+    "currentCommit": "fedcba9876543210fedcba9876543210fedcba98",
+    "branch": "main",
+    "uncommittedChanges": false
+  },
+  "dependencies": {
+    "manifestFile": "pom.xml",
+    "direct": {
+      "com.fasterxml.jackson.core:jackson-databind": "2.16.0",
+      "org.postgresql:postgresql": "42.7.1"
+    },
+    "locked": {
+      "com.fasterxml.jackson.core:jackson-databind": {
+        "version": "2.16.0"
+      },
+      "org.postgresql:postgresql": {
+        "note": "no local mvn cache on this checkout (Article IX, decision 0001) -- expected on a fresh clone that hasn't been built locally yet, not a bug"
+      }
+    }
+  }
+}

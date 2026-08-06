@@ -133,3 +133,66 @@ changed file all clean.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-08-06
+**Task(s):** T005 (scoping, before implementation)
+**What happened:** T005's original wording ("a fully-populated example
+`Bundle` covering both a Java-flavored and a TS/JS-flavored path" ->
+single `testdata/example.json`) was ambiguous: `Bundle.Language` is a
+single field, so one bundle can't structurally represent two languages at
+once for any real trace. Resolved with the user: since the shipped binary
+selects one parser per invocation (factory-style dispatch by
+runtime/language), a single invocation only ever produces one `Bundle` in
+one language's shape -- a chimera fixture mixing both would misrepresent
+what any real code path produces and could mislead 007/008 implementers
+reading it as a reference. Decision: two separate example bundles and two
+separate fixtures, `testdata/example_java.json` (realistic Java shape --
+no `columnNumber`, `pom.xml`/`build.gradle` manifest) and
+`testdata/example_ts.json` (realistic TS/JS shape -- `columnNumber` set,
+`package.json` manifest), each with its own golden byte-for-byte test.
+Amended `tasks.md`'s T005 wording and `plan.md`'s file layout + testing
+strategy sections to match, rather than silently implementing against a
+different shape than what those files describe.
+**Deviations from plan (if any):** Yes -- plan.md and tasks.md both
+amended in this same session, see diffs. Original single-fixture wording
+was the deviation-worthy assumption, not this correction.
+**New open questions:** None -- resolved.
+
+---
+
+**Date:** 2026-08-06
+**Task(s):** T005 (implementation)
+**What happened:** Added `exampleJavaBundle()` and `exampleTSBundle()` to
+`internal/contract/types_test.go` -- two fully-populated, realistic
+`Bundle` builders (per the scoping decision above): Java example with two
+own-bucket frames in different files (`Handler.java`, `Repository.java`),
+each with its own `codeContexts[].blame` entry, an elided-frame Java
+`Caused by` chain, no `columnNumber` anywhere, `pom.xml` manifest, and one
+unresolved `locked` dependency (`version` omitted, `note` set). TS/JS
+example: two own-bucket frames in different files (`handler.ts`,
+`service.ts`), `columnNumber` set on all frames, `Error.cause`-style
+chain, `package.json` manifest, one unresolved `locked` dependency.
+`Fingerprint` on both is computed via the real `ComputeFingerprint`, not
+hardcoded, so the fixtures can never drift from the actual algorithm.
+Added `TestGolden_ExampleJava`/`TestGolden_ExampleTS` plus a shared
+`assertGolden` helper (marshal, compare byte-for-byte against
+`testdata/example_*.json`; with `-update`, (re)writes the fixture
+instead, the only way either fixture is ever produced, per Article IV).
+Generated both fixtures via `go test ./internal/contract/... -run
+TestGolden -update`.
+Caught and fixed two hand-alignment mistakes in gofmt-style struct/map
+literal column padding before the user ran anything (verified with a real
+`gofmt` installed in a sandbox via apt, since gofumpt itself couldn't be
+fetched -- its dependencies aren't on the network allowlist). This isn't
+a substitute for the user's own `gofumpt -l`/`golangci-lint`/`go
+build`/`go test` run, which remains the actual gate.
+Verified via real command output (paste-back from user, not assumed):
+`go test ./internal/contract/... -run TestGolden -update` (fixture
+generation), then `go build ./...`, `go test ./internal/contract/... -v`,
+`golangci-lint run ./internal/contract/...`, `gofumpt -l
+internal/contract/types_test.go` all clean.
+**Deviations from plan (if any):** None beyond the T005-scoping entry
+above.
+**New open questions:** None.
+
+---

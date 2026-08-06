@@ -54,19 +54,28 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     that should have it (or adding it to `RawInputTruncated`, which
     shouldn't) causes an obvious, specific test failure.
 
-- [ ] **T005** — Build a fully-populated example `Bundle` covering both a
-  Java-flavored and a TS/JS-flavored path, including at least two
-  `own`-bucket frames from *different* files each with their own
-  `codeContexts[].blame` entries (exercises per-file blame association),
-  and at least one `dependencies.locked` entry with `version` omitted and
-  `note` set (exercises the fresh-clone unresolved case) — and generate
-  `testdata/example.json` from it (via a test or `go generate`), per
-  Article IV — the fixture must be produced from the struct, never
-  hand-written in parallel.
+- [x] **T005** — Build two fully-populated example `Bundle`s, one
+  realistically Java-shaped and one realistically TS/JS-shaped (each
+  invocation only ever runs one language's parser and produces one
+  `Bundle`, so a single bundle mixing both languages' field shapes
+  wouldn't correspond to any real code path -- amended from the original
+  single-bundle wording during T005 scoping, see progress.md). Each
+  example must include at least two `own`-bucket frames from *different*
+  files each with their own `codeContexts[].blame` entries (exercises
+  per-file blame association), and at least one `dependencies.locked`
+  entry with `version` omitted and `note` set (exercises the fresh-clone
+  unresolved case). The Java example: no `columnNumber` on any frame,
+  `manifestFile: "pom.xml"` or `"build.gradle"`. The TS/JS example:
+  `columnNumber` set on at least one frame, `manifestFile: "package.json"`.
+  Generate `testdata/example_java.json` and `testdata/example_ts.json`
+  from them (via a test or `go generate`), per Article IV -- the fixtures
+  must be produced from the structs, never hand-written in parallel.
   - Depends on: T001, T003
-  - Acceptance: `testdata/example.json` exists, is valid JSON, and a golden
-    test confirms re-marshaling the example struct reproduces the fixture
-    byte-for-byte, catching any future silent drift between the two.
+  - Acceptance: both `testdata/example_java.json` and
+    `testdata/example_ts.json` exist, are valid JSON, and a golden test
+    per fixture confirms re-marshaling the corresponding example struct
+    reproduces it byte-for-byte, catching any future silent drift between
+    struct and fixture.
 
 - [ ] **T006** — Implement `TruncateRawInput(s string) (out string, truncated bool)`
   in `rawinput.go`, enforcing the 512 KB cap.
