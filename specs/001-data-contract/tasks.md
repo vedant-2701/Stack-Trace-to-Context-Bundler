@@ -1,0 +1,99 @@
+# Tasks: Data contract
+
+Derived from `plan.md`. Work through these in order, one at a time.
+Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
+
+- [x] **T000** — Bootstrap the Go module and dev tooling. Not part of the
+  feature itself, but every other task's acceptance criteria depend on it:
+  `go mod init github.com/vedant-2701/stack-trace-bundler`, then install
+  `golangci-lint` v2, `gofumpt`, `lefthook`, and run `lefthook install`.
+  - Depends on: none
+  - Acceptance: confirmed via a real test commit (deliberately unformatted
+    file, staged, committed) — `lefthook` fired, `format` correctly caught
+    the bad formatting and blocked the commit, `golangci-lint version`
+    resolves to v2 (config mismatch error from the v1 install is gone).
+
+- [x] **T001** — Scaffold `internal/contract` package with `types.go`
+  containing every struct from `plan.md`'s Data model (`Bundle`,
+  `ExceptionNode`, `Frame`, `CodeContext`, `BlameEntry`, `GitMetadata`,
+  `Dependencies`, `LockedDependency`, `Runtime`), with correct `json`
+  struct tags —
+  `omitempty` applied per the cross-cutting omission rule, deliberately
+  withheld on `RawInputTruncated`.
+  - Depends on: T000
+  - Acceptance: package compiles; `golangci-lint run` and `gofumpt -l`
+    both pass clean on the new files; a `Bundle{}` literal can be
+    constructed and marshaled to JSON without a runtime panic.
+
+- [x] **T002** — Add `SchemaVersion` exported constant, `"1.0.0"`.
+  - Depends on: T001
+  - Acceptance: unit test asserts `contract.SchemaVersion == "1.0.0"`.
+
+- [x] **T003** — Implement `ComputeFingerprint(chain []ExceptionNode) string`
+  in `fingerprint.go`: SHA-256 over, per exception node, the file+method
+  identity (excluding line numbers) of every own-bucket frame plus the
+  single originating frame regardless of bucket; truncated to the first 16
+  hex characters.
+  - Depends on: T001
+  - Acceptance: table-driven unit tests cover spec.md's fingerprint
+    acceptance criteria directly — same bug + dependency version bump
+    produces the same fingerprint; genuinely different bugs produce
+    different fingerprints; two chains sharing an identical outer wrapper
+    but differing in an inner cause produce different fingerprints.
+
+- [x] **T004** — Add JSON marshal/unmarshal round-trip tests per struct in
+  `types_test.go`, specifically asserting `omitempty` behavior: a Java
+  frame with no `ColumnNumber` set must not have that key appear in the
+  output JSON at all; a JS/TS frame with it set must have it present. A
+  `LockedDependency` with no resolved version must omit `version` and
+  include `note`; one with a resolved version must include `version` and
+  omit `note`. `RawInputTruncated` must always appear in output, `true`
+  or `false`, never absent.
+  - Depends on: T001
+  - Acceptance: tests pass; deliberately reverting `omitempty` on a field
+    that should have it (or adding it to `RawInputTruncated`, which
+    shouldn't) causes an obvious, specific test failure.
+
+- [x] **T005** — Build two fully-populated example `Bundle`s, one
+  realistically Java-shaped and one realistically TS/JS-shaped (each
+  invocation only ever runs one language's parser and produces one
+  `Bundle`, so a single bundle mixing both languages' field shapes
+  wouldn't correspond to any real code path -- amended from the original
+  single-bundle wording during T005 scoping, see progress.md). Each
+  example must include at least two `own`-bucket frames from *different*
+  files each with their own `codeContexts[].blame` entries (exercises
+  per-file blame association), and at least one `dependencies.locked`
+  entry with `version` omitted and `note` set (exercises the fresh-clone
+  unresolved case). The Java example: no `columnNumber` on any frame,
+  `manifestFile: "pom.xml"` or `"build.gradle"`. The TS/JS example:
+  `columnNumber` set on at least one frame, `manifestFile: "package.json"`.
+  Generate `testdata/example_java.json` and `testdata/example_ts.json`
+  from them (via a test or `go generate`), per Article IV -- the fixtures
+  must be produced from the structs, never hand-written in parallel.
+  - Depends on: T001, T003
+  - Acceptance: both `testdata/example_java.json` and
+    `testdata/example_ts.json` exist, are valid JSON, and a golden test
+    per fixture confirms re-marshaling the corresponding example struct
+    reproduces it byte-for-byte, catching any future silent drift between
+    struct and fixture.
+
+- [x] **T006** — Implement `TruncateRawInput(s string) (out string, truncated bool)`
+  in `rawinput.go`, enforcing a 524288-byte (512 * 1024) cap. The cut
+  point must be UTF-8-rune-safe: if the exact cap falls mid-rune, back up
+  (at most 3 bytes) to the last valid rune boundary rather than emit an
+  invalid trailing byte sequence -- amended from the original
+  byte-exact wording during T006 scoping, see progress.md. Discarding
+  content past the cap (not splitting into multiple parts) is correct:
+  `rawInput` is parse-fallback only, not the primary payload, and the cap
+  exists specifically to bound total bundle size for clipboard/LLM-context
+  use -- keeping the remainder anywhere would defeat that purpose.
+  - Depends on: T001
+  - Acceptance: unit tests cover the boundary precisely -- one byte under
+    the cap (unchanged, `false`), exactly at the cap (unchanged, `false`),
+    one byte over with ASCII input (truncated to exactly 524288 bytes,
+    `true`), and a multi-byte-rune input where the cap falls mid-rune
+    (truncated to the nearest valid rune boundary at or before 524288
+    bytes, still valid UTF-8, `true`).
+
+<!-- Keep each task small enough to implement and verify in a single sitting.
+     If a task feels big, split it. -->
