@@ -296,8 +296,9 @@ func minimalBundle() Bundle {
 		OS:            OSLinux,
 		Runtime:       Runtime{VersionSource: VersionSourceUnknown},
 		Dependencies: Dependencies{
-			Direct: map[string]string{},
-			Locked: map[string]LockedDependency{},
+			ManifestFile: ManifestFilePomXML,
+			Direct:       map[string]string{},
+			Locked:       map[string]LockedDependency{},
 		},
 	}
 }

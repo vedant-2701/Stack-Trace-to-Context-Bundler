@@ -20,8 +20,11 @@ hand-maintained mirror anywhere else in the repo.
   alongside the types it operates on.
 - `rawinput.go` -- the 512 KB truncation helper, same reasoning: a pure
   function of contract-level constraints, not parser-specific logic.
-- `testdata/example.json` -- generated from a fully-populated example
-  `Bundle`, never hand-written (Article IV).
+- `testdata/example_java.json` / `testdata/example_ts.json` -- generated
+  from two fully-populated example `Bundle`s (one Java-shaped, one
+  TS/JS-shaped -- a single invocation only ever produces one language's
+  bundle, so one fixture mixing both would misrepresent any real code
+  path), never hand-written (Article IV).
 
 005a/006a (parsers) and 004 (own-code context extraction) populate these
 structs; they do not define or modify the shape. 007/008 (renderers) read

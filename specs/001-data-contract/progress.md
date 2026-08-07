@@ -305,3 +305,32 @@ but are now tracked, not silently dropped -- see
 Feature 001-data-contract is complete: all tasks done, all satisfiable
 acceptance criteria checked off, remaining criteria tracked for the
 features that own them. `specs/INDEX.md` status: done.
+
+---
+
+**Date:** 2026-08-07
+**Task(s):** PR review fixes (Copilot automated review, post-close-out)
+**What happened:** Three findings from an automated PR review, all
+confirmed valid and fixed:
+1. `rawinput.go`'s doc comment claimed 3 bytes is "the longest a UTF-8
+   rune can be" -- wrong, UTF-8 runes are up to 4 bytes. The code's
+   "back up at most 3 bytes" was already correct (a 4-byte rune has 3
+   continuation bytes), only the rationale text was wrong. Fixed wording,
+   no behavior change.
+2. `plan.md`'s "Architecture / approach" section still had a stale
+   `testdata/example.json` (singular) reference -- missed during the
+   T005 scoping amendment, which only caught the file-layout and
+   testing-strategy sections, not this one. Fixed to match the actual
+   two-fixture design.
+3. `types_test.go`'s `minimalBundle()` didn't set `Dependencies.ManifestFile`,
+   so it marshaled `"manifestFile":""` -- not a valid enum value per the
+   contract. Low-stakes today (only used for a single-field
+   `rawInputTruncated` assertion) but a real correctness gap that would
+   bite anyone reusing the helper. Fixed to set `ManifestFilePomXML`.
+Verified via real command output (paste-back from user, not assumed):
+`go build ./...`, `go test ./internal/contract/... -v`,
+`golangci-lint run ./internal/contract/...`, `gofumpt -l` on all three
+changed files, all clean.
+**Deviations from plan (if any):** None -- corrections to existing work,
+not new scope.
+**New open questions:** None.
