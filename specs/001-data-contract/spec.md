@@ -1,6 +1,10 @@
 # Spec: Data contract
 
-**Status:** Planned (spec.md + plan.md + tasks.md done; implementation not started)
+**Status:** Implemented (`internal/contract`, T000-T006 all complete). Five
+of ten acceptance criteria below are satisfied by this feature alone;
+five depend on features that don't exist yet (005a, 006a, 004, 005b,
+006b) and are tracked in `memory/deferred-acceptance-criteria.md`, not
+left silently unchecked.
 **Folder:** specs/001-data-contract
 
 ## Overview
@@ -171,34 +175,59 @@ generated, tested JSON fixture — the single source of truth for what a
 
 ## Acceptance criteria
 
+See `memory/deferred-acceptance-criteria.md` for criteria deferred to
+future features (on disk, not just session memory, so it survives an
+account change or a memory reset).
+
 - [ ] Given a Java stack trace with a `Caused by:` chain, when parsed into
       the contract, then `chain` contains one node per exception with the
-      correct `elidedFrameCount` for any `"... N more"` line.
+      correct `elidedFrameCount` for any `"... N more"` line. **Deferred
+      to 005a** -- 001 defines the shape `elidedFrameCount` lives in, but
+      has no parser to produce it from real input.
 - [ ] Given a TS/JS stack trace with an `Error.cause` chain, when parsed,
       then `chain` contains one node per cause, with `elidedFrameCount`
-      omitted or `0`.
+      omitted or `0`. **Deferred to 006a**, same reason as above.
 - [ ] Given a bundle built for a file that has uncommitted local changes,
       when `codeContexts` is built for a frame in that file, then `status`
-      is `"stale"`.
+      is `"stale"`. **Deferred to 004** -- "stale/not-found handling" is
+      explicitly that feature's scope; 001 only defines the `status` enum.
 - [ ] Given a bundle built for a file not present in the current checkout,
       when `codeContexts` is built for a frame referencing it, then
-      `status` is `"not_found"`.
-- [ ] Given a pasted trace exceeding 512 KB, when the bundle is built,
+      `status` is `"not_found"`. **Deferred to 004**, same reason.
+- [x] Given a pasted trace exceeding 512 KB, when the bundle is built,
       then `rawInput` is truncated to the cap and `rawInputTruncated` is
-      `true`.
-- [ ] Given a pasted trace under 512 KB, when the bundle is built, then
-      `rawInputTruncated` is present and `false` (not omitted).
-- [ ] Given two bundles for the same bug that differ only by a dependency
-      version bump, when their fingerprints are compared, then they match.
-- [ ] Given two bundles for genuinely different bugs, when their
-      fingerprints are compared, then they differ.
-- [ ] Given the generated JSON fixture, when compared against the Go
+      `true`. Satisfied by `TruncateRawInput` (T006); see
+      `TestTruncateRawInput_OneByteOverCap_ASCII` and
+      `TestTruncateRawInput_CapFallsMidRune`.
+- [x] Given a pasted trace under 512 KB, when the bundle is built, then
+      `rawInputTruncated` is present and `false` (not omitted). Satisfied
+      by `TruncateRawInput` (T006) and `Bundle.RawInputTruncated`'s
+      non-`omitempty` tag; see `TestTruncateRawInput_OneByteUnderCap`/
+      `ExactlyAtCap` and `TestBundle_RawInputTruncated_AlwaysPresent`.
+- [x] Given two bundles for the same bug that differ only by a dependency
+      version bump, when their fingerprints are compared, then they
+      match. Satisfied by `ComputeFingerprint` (T003); see
+      `TestComputeFingerprint/dependency_version_bump_does_not_change_fingerprint`.
+- [x] Given two bundles for genuinely different bugs, when their
+      fingerprints are compared, then they differ. Satisfied by
+      `ComputeFingerprint` (T003); see the other `TestComputeFingerprint`
+      subtests.
+- [x] Given the generated JSON fixture, when compared against the Go
       struct's marshaled output, then they match exactly (fixture is
-      produced from the struct, never hand-written).
+      produced from the struct, never hand-written). Satisfied by T005;
+      see `TestGolden_ExampleJava`/`TestGolden_ExampleTS`. Note: this
+      feature ended up with two fixtures (Java-shaped, TS/JS-shaped), not
+      the single fixture originally envisioned here -- see plan.md's file
+      layout and progress.md's T005 scoping entry for why.
 - [ ] Given a package with no locally resolvable version (no local
       mvn/gradle/npm cache for it), when `dependencies.locked` is built
       for that package, then its `version` is omitted and `note` explains
-      why.
+      why. **Partially satisfied, not fully deferred**: the struct/JSON-level
+      behavior (correct `omitempty`/`note` shape) is satisfied by T004 --
+      see `TestLockedDependency_Unresolved_OmitsVersionIncludesNote` --
+      but the actual resolution process that would produce this case from
+      a real package is 005b/006b's scope, not yet written. **Deferred to
+      005b, 006b** for the end-to-end behavior.
 
 ## Open questions
 

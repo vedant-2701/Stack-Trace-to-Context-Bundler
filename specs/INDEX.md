@@ -15,7 +15,7 @@ you're already in, or that chat's context balloons.
 -->
 | ID | Feature | One-line description | Depends on | Status |
 |----|---------|----------------------|------------| ------ |
-| 001 | Data contract | Canonical bundle shape — `internal/contract` structs, generated+tested JSON fixture | — | in-progress |
+| 001 | Data contract | Canonical bundle shape — `internal/contract` structs, generated+tested JSON fixture | — | done |
 | 002a | CLI input handling | Entrypoints, stdin/file-arg reading, flags (`--lang`, output format) | 001 | idea |
 | 002b | Pipeline wiring | Wires 003–009 together into the full detect → parse → render → clipboard flow | 002a, 003, 004, 005a, 006a, 007, 008, 009 | idea |
 | 003 | Language auto-detection | Tries each registered parser's `Detect()` against the raw trace; defines "no match"/ambiguous behavior | 001; needs ≥1 real parser (005a or 006a) to test against | idea |
