@@ -21,3 +21,11 @@ losing context.
 **New open questions:** none. `go build ./...`, `go vet ./internal/cli/...`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean (Vedant-confirmed). T001 marked done.
 
 ---
+
+**Date:** 2026-08-09
+**Task(s):** T002
+**What happened:** Implemented `readTrace` in `read.go` (file-arg vs. stdin source selection, both-present precedence with `stdinIgnored`, TTY-no-input fast-fail, `io.LimitReader` bounded read at a provisional 1MB cap, empty/whitespace-only rejection, `contract.TruncateRawInput` for the final 512KB cap) plus table-driven tests in `read_test.go` covering all cases tasks.md's acceptance criteria lists.
+**Deviations from plan (if any):** One extra wrapped error not named in plan.md's three examples: an I/O error reading from stdin itself (`"reading trace from stdin: %w"`), added for symmetry with the file-read error path; not currently covered by a test case since it's hard to trigger with a `strings.Reader`. Also: both `read.go` and `read_test.go` initially had a `// internal/cli/read.go`-style file-path comment directly above `package cli`, which failed `golangci-lint`'s `revive` `package-comments` check (it treats any comment immediately preceding `package X` as an attempted package doc, and fails it unless it's `"Package X ..."`). Fixed by removing those header comments (only `input.go` should carry the real package doc). Documented in `CONVENTIONS.md`'s Formatting & linting section and in Claude's own memory so this isn't repeated on later files/tasks.
+**New open questions:** none. `go build ./...`, `go test ./internal/cli/... -run TestReadTrace -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean after the fix (Vedant-confirmed). T002 marked done.
+
+---

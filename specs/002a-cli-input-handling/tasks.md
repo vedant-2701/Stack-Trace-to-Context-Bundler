@@ -12,7 +12,7 @@ standing rules.
     `RawInputTruncated`, `LangHint`, `Format` fields, `omitempty`-style
     doc comments explaining `LangHint == ""` semantics per Article VI.
 
-- [ ] **T002** — Implement `readTrace` (`read.go`): file-arg vs. stdin
+- [x] **T002** — Implement `readTrace` (`read.go`): file-arg vs. stdin
   source selection, both-present precedence (file wins, returns
   `stdinIgnored=true` — `readTrace` itself does not log, per plan.md),
   no-input TTY fast-fail, bounded read (`io.LimitReader` ~1MB), calls
