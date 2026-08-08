@@ -5,7 +5,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
 Do not start a task without explicit authorization, per the project's
 standing rules.
 
-- [ ] **T001** — Scaffold `internal/cli` package: `Input` struct in
+- [x] **T001** — Scaffold `internal/cli` package: `Input` struct in
   `input.go`, package doc comment.
   - Depends on: none
   - Acceptance: package compiles; `Input` has `RawText`,

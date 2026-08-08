@@ -62,16 +62,26 @@ package cli
 // Input holds everything read/parsed from the command line before any
 // detection, parsing, or rendering happens (002b's job once it exists).
 type Input struct {
-    RawText           string // rune-safe, <=512KB (contract.TruncateRawInput)
-    RawInputTruncated bool
-    LangHint          string // "", "java", or "typescript"
-    Format            string // "json" or "markdown"
+    RawText           string `json:"rawText"`           // rune-safe, <=512KB (contract.TruncateRawInput)
+    RawInputTruncated bool   `json:"rawInputTruncated"`
+    LangHint          string `json:"langHint"`          // "", "java", or "typescript"
+    Format            string `json:"format"`            // "json" or "markdown"
 }
 ```
 
+Tagged for JSON, no field `omitempty`: spec requirement 13's Debug-level
+full struct dump uses `json.MarshalIndent(Input)` for readability instead
+of `%+v`. Applying `internal/contract`'s own cross-cutting rule correctly
+(`omitempty` for "not applicable", never for "empty-but-meaningful")
+means every field here stays present at its zero value — none of the four
+represent a "not applicable" case.
+
 `LangHint == ""` is the explicit "defer to 003 auto-detection" signal —
 never a zero-value stand-in for "unset" being confused with a real value,
-consistent with constitution Article VI.
+consistent with constitution Article VI. This is why `LangHint` is not
+`omitempty` either: omitting it from the JSON dump when empty would hide
+the deliberate defer-to-auto-detect signal, making it indistinguishable
+from a field that was never captured.
 
 ## File / module layout
 
