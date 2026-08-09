@@ -186,6 +186,130 @@ func TestParseAll_StdinIgnoredLogging(t *testing.T) {
 	})
 }
 
+func TestParseFixedLang(t *testing.T) {
+	tests := []struct {
+		name string
+
+		lang         string
+		args         []string
+		fileContent  *string
+		stdinContent string
+		stdinIsPiped bool
+
+		wantErrSubstr string
+		wantLangHint  string
+		wantFormat    string
+	}{
+		{
+			name:         "java, defaults",
+			lang:         "java",
+			stdinContent: "java.lang.NullPointerException\n",
+			stdinIsPiped: true,
+			wantLangHint: "java",
+			wantFormat:   "markdown",
+		},
+		{
+			name:         "typescript, explicit format",
+			lang:         "typescript",
+			args:         []string{"--format=json"},
+			fileContent:  strPtr("TypeError: x is not a function\n"),
+			wantLangHint: "typescript",
+			wantFormat:   "json",
+		},
+		{
+			name:          "invalid format",
+			lang:          "java",
+			args:          []string{"--format=yaml"},
+			stdinContent:  "trace\n",
+			stdinIsPiped:  true,
+			wantErrSubstr: `invalid --format value "yaml"`,
+		},
+		{
+			name:          "--lang rejected: not registered on this FlagSet",
+			lang:          "java",
+			args:          []string{"--lang=java"},
+			stdinContent:  "trace\n",
+			stdinIsPiped:  true,
+			wantErrSubstr: "parsing flags",
+		},
+		{
+			name:          "no input surfaces readTrace's error",
+			lang:          "typescript",
+			stdinIsPiped:  false,
+			wantErrSubstr: "no input",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			args := append([]string{}, tc.args...)
+			if tc.fileContent != nil {
+				dir := t.TempDir()
+				path := filepath.Join(dir, "trace.txt")
+				if err := os.WriteFile(path, []byte(*tc.fileContent), 0o600); err != nil {
+					t.Fatalf("writing test fixture file: %v", err)
+				}
+				args = append(args, path)
+			}
+
+			stdin := strings.NewReader(tc.stdinContent)
+
+			got, err := ParseFixedLang(args, stdin, tc.stdinIsPiped, tc.lang)
+
+			if tc.wantErrSubstr != "" {
+				if err == nil {
+					t.Fatalf("err = nil, want error containing %q", tc.wantErrSubstr)
+				}
+				if !strings.Contains(err.Error(), tc.wantErrSubstr) {
+					t.Errorf("err = %q, want it to contain %q", err.Error(), tc.wantErrSubstr)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("err = %v, want nil", err)
+			}
+			if got.LangHint != tc.wantLangHint {
+				t.Errorf("LangHint = %q, want %q", got.LangHint, tc.wantLangHint)
+			}
+			if got.Format != tc.wantFormat {
+				t.Errorf("Format = %q, want %q", got.Format, tc.wantFormat)
+			}
+		})
+	}
+}
+
+func TestParseFixedLang_InvalidLangPanics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("ParseFixedLang did not panic on an invalid lang argument")
+		}
+	}()
+
+	_, _ = ParseFixedLang(nil, strings.NewReader("trace\n"), true, "cobol")
+}
+
+func TestParseFixedLang_StdinIgnoredLogging(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "trace.txt")
+	if err := os.WriteFile(path, []byte("from file\n"), 0o600); err != nil {
+		t.Fatalf("writing test fixture file: %v", err)
+	}
+
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(prev)
+
+	_, err := ParseFixedLang([]string{path}, strings.NewReader("from stdin\n"), true, "java")
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if !strings.Contains(buf.String(), "stdin ignored") {
+		t.Errorf("log output = %q, want it to contain %q", buf.String(), "stdin ignored")
+	}
+}
+
 func TestValidateLang(t *testing.T) {
 	tests := []struct {
 		name          string

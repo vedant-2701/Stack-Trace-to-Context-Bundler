@@ -104,3 +104,62 @@ func ParseAll(args []string, stdin io.Reader, stdinIsPiped bool) (Input, error) 
 		Format:            format,
 	}, nil
 }
+
+// ParseFixedLang registers only --format for cmd/java and cmd/typescript
+// -- --lang is never registered on this FlagSet, so passing it produces
+// the flag package's own "flag provided but not defined" error (spec
+// requirement 2), with no special-case handling needed here.
+//
+// lang must be "java" or "typescript" and is only ever supplied
+// internally, as a hardcoded literal in cmd/java/main.go and
+// cmd/typescript/main.go -- never from user input. An invalid lang here
+// is therefore a genuine programmer-error invariant, not a runtime
+// condition, so this panics rather than returning an error, per
+// CONVENTIONS.md's error-handling section. validateLang is deliberately
+// not reused here: it treats "" as a valid "defer to auto-detection"
+// value for ParseAll's user-facing --lang flag, which is the wrong
+// semantics for a caller-fixed language.
+//
+// Otherwise mirrors ParseAll: fixed validation order (flag.Parse ->
+// validateFormat -> readTrace), output discarded via io.Discard for the
+// same single-formatting-channel reason (see ParseAll's doc comment for
+// the -h/--help caveat), stdin-ignored logged at Debug, no logging or
+// os.Exit beyond that -- those stay in main.go.
+func ParseFixedLang(args []string, stdin io.Reader, stdinIsPiped bool, lang string) (Input, error) {
+	if lang != "java" && lang != "typescript" {
+		panic(fmt.Sprintf("cli.ParseFixedLang: invalid lang %q, want \"java\" or \"typescript\" -- this is a caller bug, not a runtime condition", lang))
+	}
+
+	fs := flag.NewFlagSet("stack-trace-bundler", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	var formatFlag string
+	fs.StringVar(&formatFlag, "format", "markdown", `output format: "json" or "markdown"`)
+
+	if err := fs.Parse(args); err != nil {
+		return Input{}, fmt.Errorf("parsing flags: %w", err)
+	}
+
+	format, err := validateFormat(formatFlag)
+	if err != nil {
+		return Input{}, err
+	}
+
+	fileArg := fs.Arg(0)
+
+	raw, truncated, stdinIgnored, err := readTrace(fileArg, stdin, stdinIsPiped)
+	if err != nil {
+		return Input{}, err
+	}
+
+	if stdinIgnored {
+		slog.Debug("stdin ignored: file argument took precedence", "file", fileArg)
+	}
+
+	return Input{
+		RawText:           raw,
+		RawInputTruncated: truncated,
+		LangHint:          lang,
+		Format:            format,
+	}, nil
+}

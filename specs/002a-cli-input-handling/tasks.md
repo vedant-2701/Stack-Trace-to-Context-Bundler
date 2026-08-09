@@ -46,7 +46,7 @@ standing rules.
     and a combined-failure case (invalid flag + no input available)
     confirming the flag error wins.
 
-- [ ] **T005** — Implement `ParseFixedLang` (`parse.go`): registers only
+- [x] **T005** — Implement `ParseFixedLang` (`parse.go`): registers only
   `--format`, validates it **before** calling `readTrace` (fixed order,
   per plan.md), fixes `LangHint` to the given language, rejects a passed
   `--lang` via the flag package's "not defined" error, logs `Debug`

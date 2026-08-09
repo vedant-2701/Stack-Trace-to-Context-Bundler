@@ -45,3 +45,11 @@ losing context.
 **New open questions:** Should `-h`/`--help` get real usage-text support as a follow-up task? Not blocking, parked for whenever it comes up. `go build ./...`, `go test ./internal/cli/... -run TestParseAll -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean (Vedant-confirmed). T004 marked done.
 
 ---
+
+**Date:** 2026-08-09
+**Task(s):** T005
+**What happened:** Implemented `ParseFixedLang` in `parse.go`, mirroring `ParseAll` but registering only `--format` (`--lang` never registered on this FlagSet, so passing it is automatically rejected via the flag package's own "not defined" error, satisfying spec requirement 2 with no special-case code). Tests: `TestParseFixedLang` (java/typescript, valid/invalid format, `--lang` rejection, no-input), `TestParseFixedLang_InvalidLangPanics`, `TestParseFixedLang_StdinIgnoredLogging`.
+**Deviations from plan (if any):** One explicit design call, not in plan.md's API contract text but consistent with `CONVENTIONS.md`'s error-handling section: an invalid `lang` argument (anything other than `"java"`/`"typescript"`) causes `ParseFixedLang` to **panic**, not return an error. Rationale: `lang` is only ever supplied internally as a hardcoded literal by `cmd/java`/`cmd/typescript`, never from user input -- an invalid value here is a genuine programmer-error invariant ("panics are reserved for genuine programmer-error invariants, not runtime conditions" per CONVENTIONS.md), not a usage error. Also deliberately did not reuse `validateLang` for this check: it treats `""` as valid (defer-to-detection), which is the wrong semantics for a caller-fixed language. Minor formatting slip during editing (broken indentation in `parse_test.go` from a str_replace-style edit) caught and fixed before running the gates, not by `gofumpt` itself.
+**New open questions:** none new (the `-h`/`--help` question from T004 still stands, same reasoning applies here). `go build ./...`, `go test ./internal/cli/... -run TestParseFixedLang -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean (Vedant-confirmed). T005 marked done.
+
+---
