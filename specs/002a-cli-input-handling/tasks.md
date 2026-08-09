@@ -24,7 +24,7 @@ standing rules.
     neither-present (TTY=false), file-not-found, empty content,
     whitespace-only content, input > 512KB (truncated + flag set).
 
-- [ ] **T003** — Implement `validateFormat` and `validateLang`
+- [x] **T003** — Implement `validateFormat` and `validateLang`
   (`parse.go`), each returning a wrapped, specific error on invalid
   input. Unit tests.
   - Depends on: T001

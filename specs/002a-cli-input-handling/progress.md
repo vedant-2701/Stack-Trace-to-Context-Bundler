@@ -29,3 +29,11 @@ losing context.
 **New open questions:** none. `go build ./...`, `go test ./internal/cli/... -run TestReadTrace -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean after the fix (Vedant-confirmed). T002 marked done.
 
 ---
+
+**Date:** 2026-08-09
+**Task(s):** T003
+**What happened:** Implemented `validateFormat` and `validateLang` in `parse.go`, plus table-driven tests in `parse_test.go` covering valid and invalid values for each.
+**Deviations from plan (if any):** None from plan.md's API contract. One explicit design call, consistent with (not a deviation from) `input.go`'s T001 doc comment: `validateFormat("")` returns `("markdown", nil)` rather than an error — empty is treated as omitted/defaulted, matching what `Input.Format`'s doc comment already committed to. `validateLang("")` returns `("", nil)` unchanged — empty stays the meaningful defer-to-auto-detection signal, never defaulted.
+**New open questions:** none. `go build ./...`, `go test ./internal/cli/... -run 'TestValidateFormat|TestValidateLang' -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean (Vedant-confirmed). T003 marked done.
+
+---
