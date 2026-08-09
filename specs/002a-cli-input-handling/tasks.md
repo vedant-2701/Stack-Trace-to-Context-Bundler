@@ -32,7 +32,7 @@ standing rules.
     return an error whose message names the bad value and the accepted
     set.
 
-- [ ] **T004** — Implement `ParseAll` (`parse.go`): registers `--lang`
+- [x] **T004** — Implement `ParseAll` (`parse.go`): registers `--lang`
   and `--format` in `flag.ContinueOnError` mode, validates flags **before**
   calling `readTrace` (fixed order, per plan.md), wires in `readTrace` +
   both validators, logs `Debug` "stdin ignored" when `readTrace` returns

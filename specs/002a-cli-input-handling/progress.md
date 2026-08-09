@@ -37,3 +37,11 @@ losing context.
 **New open questions:** none. `go build ./...`, `go test ./internal/cli/... -run 'TestValidateFormat|TestValidateLang' -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean (Vedant-confirmed). T003 marked done.
 
 ---
+
+**Date:** 2026-08-09
+**Task(s):** T004
+**What happened:** Implemented `ParseAll` in `parse.go`: `flag.ContinueOnError` FlagSet registering `--lang`/`--format`, output discarded via `io.Discard` so `main.go`'s future `slog.Error` call is the single formatting path, fixed validation order (`flag.Parse` -> `validateLang` -> `validateFormat` -> `readTrace`), `stdinIgnored` logged at `Debug` via `slog.Debug`. Tests: `TestParseAll` (valid combos, invalid lang/format, no-input, combined-failure ordering, unknown-flag rejection) and `TestParseAll_StdinIgnoredLogging` (captures `slog` output via a temporary `slog.SetDefault` swap to confirm the Debug line fires exactly when `stdinIgnored=true`, and doesn't otherwise).
+**Deviations from plan (if any):** None from plan.md's API contract or validation-order requirement. One flagged-and-accepted design call: `fs.SetOutput(io.Discard)` (needed to keep error formatting single-channel per spec requirement 12) means `-h`/`--help` now produces no usage listing, just a generic "help requested" error through `slog.Error`. `spec.md` doesn't mention `-h`/`--help` at all, so this is minimal-scope-per-what's-specified rather than an oversight — flagged to Vedant, no objection raised. Also undocumented in spec.md: extra positional args beyond the first are silently ignored (`fs.Arg(0)` semantics) — same minimal-scope reasoning, noted inline in the code comment.
+**New open questions:** Should `-h`/`--help` get real usage-text support as a follow-up task? Not blocking, parked for whenever it comes up. `go build ./...`, `go test ./internal/cli/... -run TestParseAll -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean (Vedant-confirmed). T004 marked done.
+
+---
