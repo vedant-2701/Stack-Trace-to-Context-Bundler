@@ -85,3 +85,11 @@ losing context.
 **New open questions:** none. This is a docs-only commit; T006c's implementation is a separate task/commit to follow, same two-phase pattern as T006b.
 
 ---
+
+**Date:** 2026-08-09
+**Task(s):** T006c (implementation)
+**What happened:** Added `Input.StdinIgnored bool` (`input.go`). Removed the internal `slog.Debug("stdin ignored...")` calls from `ParseAll`/`ParseFixedLang`; both now set `StdinIgnored` on the returned `Input` instead. Dropped the now-unused `log/slog` import from `parse.go` entirely -- `internal/cli` calls `slog` nowhere in the package as of this task. Rewrote `parse_test.go`: removed `TestParseAll_StdinIgnoredLogging`/`TestParseFixedLang_StdinIgnoredLogging` (both asserted on captured `slog` output, no longer applicable), folded `StdinIgnored` checks into `TestParseAll`/`TestParseFixedLang`'s existing tables via a `wantStdinIgnored` field, and added a both-file-and-stdin-present case to `TestParseAll`'s table (previously only exercised at the `readTrace` level in T002, never through `ParseAll` itself, per the acceptance-criteria gap noted in T006c's docs entry).
+**Deviations from plan (if any):** None -- this is the implementation of the design already fully recorded in `plan.md` and `tasks.md` from the prior docs-only commit, nothing further deviated during actual coding. One incidental hiccup: an early edit attempt on `parse.go` (`edit_file` with multiple chained edits) failed outright because one of the chained edits referenced a bad placeholder string, so none of the edits applied (the tool is atomic across all edits in one call) -- caught immediately since the tool errored rather than silently partially applying, no bad state resulted. Rewrote `parse.go` and `parse_test.go` in full instead, given how much of both files was changing.
+**New open questions:** none. `go build ./...`, `go test ./internal/cli/... -v` (full package, not just changed files, to confirm nothing else broke given the scope of the `parse.go` rewrite), `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean (Vedant-confirmed). T006c marked done. **T007 is now unblocked with no further pre-work identified.**
+
+---

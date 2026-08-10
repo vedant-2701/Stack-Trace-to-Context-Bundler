@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"bytes"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,10 +55,11 @@ func TestParseAll(t *testing.T) {
 		stdinContent string
 		stdinIsPiped bool
 
-		wantErrSubstr string
-		wantLangHint  string
-		wantFormat    string
-		wantVerbosity int
+		wantErrSubstr    string
+		wantLangHint     string
+		wantFormat       string
+		wantVerbosity    int
+		wantStdinIgnored bool
 	}{
 		{
 			name:         "valid stdin, defaults",
@@ -75,6 +74,13 @@ func TestParseAll(t *testing.T) {
 			fileContent:  strPtr("java.lang.NullPointerException\n"),
 			wantLangHint: "java",
 			wantFormat:   "json",
+		},
+		{
+			name:             "both present: file wins, StdinIgnored propagates",
+			fileContent:      strPtr("from file\n"),
+			stdinContent:     "from stdin\n",
+			stdinIsPiped:     true,
+			wantStdinIgnored: true,
 		},
 		{
 			name:          "invalid lang",
@@ -194,46 +200,11 @@ func TestParseAll(t *testing.T) {
 			if verbosity != tc.wantVerbosity {
 				t.Errorf("verbosity = %d, want %d", verbosity, tc.wantVerbosity)
 			}
+			if got.StdinIgnored != tc.wantStdinIgnored {
+				t.Errorf("StdinIgnored = %v, want %v", got.StdinIgnored, tc.wantStdinIgnored)
+			}
 		})
 	}
-}
-
-func TestParseAll_StdinIgnoredLogging(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "trace.txt")
-	if err := os.WriteFile(path, []byte("from file\n"), 0o600); err != nil {
-		t.Fatalf("writing test fixture file: %v", err)
-	}
-
-	t.Run("logs Debug when stdin is ignored", func(t *testing.T) {
-		var buf bytes.Buffer
-		prev := slog.Default()
-		slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-		defer slog.SetDefault(prev)
-
-		_, _, err := ParseAll([]string{path}, strings.NewReader("from stdin\n"), true)
-		if err != nil {
-			t.Fatalf("err = %v, want nil", err)
-		}
-		if !strings.Contains(buf.String(), "stdin ignored") {
-			t.Errorf("log output = %q, want it to contain %q", buf.String(), "stdin ignored")
-		}
-	})
-
-	t.Run("does not log when stdin is not piped", func(t *testing.T) {
-		var buf bytes.Buffer
-		prev := slog.Default()
-		slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-		defer slog.SetDefault(prev)
-
-		_, _, err := ParseAll([]string{path}, strings.NewReader(""), false)
-		if err != nil {
-			t.Fatalf("err = %v, want nil", err)
-		}
-		if strings.Contains(buf.String(), "stdin ignored") {
-			t.Errorf("log output = %q, want no \"stdin ignored\" message", buf.String())
-		}
-	})
 }
 
 func TestParseFixedLang(t *testing.T) {
@@ -246,10 +217,11 @@ func TestParseFixedLang(t *testing.T) {
 		stdinContent string
 		stdinIsPiped bool
 
-		wantErrSubstr string
-		wantLangHint  string
-		wantFormat    string
-		wantVerbosity int
+		wantErrSubstr    string
+		wantLangHint     string
+		wantFormat       string
+		wantVerbosity    int
+		wantStdinIgnored bool
 	}{
 		{
 			name:         "java, defaults",
@@ -266,6 +238,15 @@ func TestParseFixedLang(t *testing.T) {
 			fileContent:  strPtr("TypeError: x is not a function\n"),
 			wantLangHint: "typescript",
 			wantFormat:   "json",
+		},
+		{
+			name:             "both present: file wins, StdinIgnored propagates",
+			lang:             "java",
+			fileContent:      strPtr("from file\n"),
+			stdinContent:     "from stdin\n",
+			stdinIsPiped:     true,
+			wantLangHint:     "java",
+			wantStdinIgnored: true,
 		},
 		{
 			name:          "invalid format",
@@ -369,6 +350,9 @@ func TestParseFixedLang(t *testing.T) {
 			if verbosity != tc.wantVerbosity {
 				t.Errorf("verbosity = %d, want %d", verbosity, tc.wantVerbosity)
 			}
+			if got.StdinIgnored != tc.wantStdinIgnored {
+				t.Errorf("StdinIgnored = %v, want %v", got.StdinIgnored, tc.wantStdinIgnored)
+			}
 		})
 	}
 }
@@ -381,27 +365,6 @@ func TestParseFixedLang_InvalidLangPanics(t *testing.T) {
 	}()
 
 	_, _, _ = ParseFixedLang(nil, strings.NewReader("trace\n"), true, "cobol")
-}
-
-func TestParseFixedLang_StdinIgnoredLogging(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "trace.txt")
-	if err := os.WriteFile(path, []byte("from file\n"), 0o600); err != nil {
-		t.Fatalf("writing test fixture file: %v", err)
-	}
-
-	var buf bytes.Buffer
-	prev := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	defer slog.SetDefault(prev)
-
-	_, _, err := ParseFixedLang([]string{path}, strings.NewReader("from stdin\n"), true, "java")
-	if err != nil {
-		t.Fatalf("err = %v, want nil", err)
-	}
-	if !strings.Contains(buf.String(), "stdin ignored") {
-		t.Errorf("log output = %q, want it to contain %q", buf.String(), "stdin ignored")
-	}
 }
 
 func TestValidateLang(t *testing.T) {

@@ -86,7 +86,7 @@ standing rules.
     change the result; `-- -v` as a positional arg is not treated as the
     verbosity flag.
 
-- [ ] **T006c** — Fix a logging-ordering bug found while designing T007:
+- [x] **T006c** — Fix a logging-ordering bug found while designing T007:
   `ParseAll`/`ParseFixedLang` no longer call `slog.Debug` internally for
   the "stdin ignored" case (their internal call happened before `main.go`
   could configure `slog`'s level from the returned verbosity, so the

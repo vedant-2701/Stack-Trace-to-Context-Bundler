@@ -42,4 +42,15 @@ type Input struct {
 	// Always present -- validateFormat rejects any other value and
 	// defaults it to "markdown" when omitted from the command line.
 	Format string `json:"format"`
+
+	// StdinIgnored is true if a file-path argument was given while stdin
+	// was also piped -- the file wins (spec requirement 5) and stdin is
+	// ignored. main.go logs this at Debug level itself, after configuring
+	// slog's default handler from the returned verbosity -- ParseAll and
+	// ParseFixedLang deliberately do not log it internally, since that
+	// call happens before the level is known and Go's default
+	// (unconfigured) slog handler sits at Info, silently and permanently
+	// dropping any Debug call made before configuration. See plan.md's
+	// Architecture section for the full trace of this (T006c).
+	StdinIgnored bool `json:"stdinIgnored"`
 }

@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log/slog"
 )
 
 // validateFormat checks the --format flag value. An empty string (the
@@ -73,9 +72,12 @@ func validateLang(v string) (string, error) {
 // API/contracts section for why a flag.Parse failure specifically can't
 // reliably report a real value.
 //
-// ParseAll never logs anything itself except the stdin-ignored Debug
-// line -- error logging and os.Exit are main.go's job, per plan.md's
-// Architecture section.
+// ParseAll never calls slog itself, not even for the stdin-ignored case:
+// it surfaces that via Input.StdinIgnored instead, for main.go to log
+// after configuring slog's level from the returned verbosity (see
+// Input.StdinIgnored's doc comment and plan.md's Architecture section
+// for why logging it here, before the level is known, doesn't work --
+// T006c). Error logging and os.Exit are also main.go's job.
 func ParseAll(args []string, stdin io.Reader, stdinIsPiped bool) (Input, int, error) {
 	fs := flag.NewFlagSet("stack-trace-bundler", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -113,15 +115,12 @@ func ParseAll(args []string, stdin io.Reader, stdinIsPiped bool) (Input, int, er
 		return Input{}, 0, err
 	}
 
-	if stdinIgnored {
-		slog.Debug("stdin ignored: file argument took precedence", "file", fileArg)
-	}
-
 	return Input{
 		RawText:           raw,
 		RawInputTruncated: truncated,
 		LangHint:          lang,
 		Format:            format,
+		StdinIgnored:      stdinIgnored,
 	}, verbosity, nil
 }
 
@@ -147,8 +146,10 @@ func ParseAll(args []string, stdin io.Reader, stdinIsPiped bool) (Input, int, er
 // output discarded via io.Discard for the same single-formatting-channel
 // reason (see ParseAll's doc comment for the -h/--help caveat), the
 // returned int is a verbosity count with the same 0/1/2 semantics and
-// the same always-0-on-error rule as ParseAll, stdin-ignored logged at
-// Debug, no logging or os.Exit beyond that -- those stay in main.go.
+// the same always-0-on-error rule as ParseAll. Like ParseAll, it never
+// calls slog itself -- Input.StdinIgnored carries the stdin-ignored
+// signal for main.go to log post-configuration; see ParseAll's doc
+// comment for why (T006c).
 func ParseFixedLang(args []string, stdin io.Reader, stdinIsPiped bool, lang string) (Input, int, error) {
 	if lang != "java" && lang != "typescript" {
 		panic(fmt.Sprintf("cli.ParseFixedLang: invalid lang %q, want \"java\" or \"typescript\" -- this is a caller bug, not a runtime condition", lang))
@@ -181,14 +182,11 @@ func ParseFixedLang(args []string, stdin io.Reader, stdinIsPiped bool, lang stri
 		return Input{}, 0, err
 	}
 
-	if stdinIgnored {
-		slog.Debug("stdin ignored: file argument took precedence", "file", fileArg)
-	}
-
 	return Input{
 		RawText:           raw,
 		RawInputTruncated: truncated,
 		LangHint:          lang,
 		Format:            format,
+		StdinIgnored:      stdinIgnored,
 	}, verbosity, nil
 }
