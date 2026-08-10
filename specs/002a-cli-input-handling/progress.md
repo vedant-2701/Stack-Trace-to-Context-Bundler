@@ -53,3 +53,11 @@ losing context.
 **New open questions:** none new (the `-h`/`--help` question from T004 still stands, same reasoning applies here). `go build ./...`, `go test ./internal/cli/... -run TestParseFixedLang -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean (Vedant-confirmed). T005 marked done.
 
 ---
+
+**Date:** 2026-08-09
+**Task(s):** T006
+**What happened:** Implemented `LogLevel(verbosity int) slog.Level` in a new `internal/cli/log.go` (0 -> `Warn`, 1 -> `Info`, 2+ -> `Debug`, capped), a pure function per tasks.md's acceptance criteria wording -- it does not touch `slog`'s default logger; wiring the returned level into an actual handler is `main.go`'s job in T007/T008. Table-driven tests in `log_test.go`.
+**Deviations from plan (if any):** `plan.md`'s File/module layout didn't list a home for this helper (it predates the idea of a dedicated file). Added `log.go`/`log_test.go` and updated `plan.md`'s layout section to match, same sync approach as T001's Data model update.
+**New open questions:** none. `go build ./...`, `go test ./internal/cli/... -run TestLogLevel -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean (Vedant-confirmed). T006 marked done.
+
+---

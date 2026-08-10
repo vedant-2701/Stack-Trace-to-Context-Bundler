@@ -58,7 +58,7 @@ standing rules.
     `--format`, `--lang` being rejected, and the "stdin ignored" Debug
     log firing on `stdinIgnored=true`.
 
-- [ ] **T006** — Implement log-level helper: maps `-v`/`-vv` occurrence
+- [x] **T006** — Implement log-level helper: maps `-v`/`-vv` occurrence
   count to `Warn`/`Info`/`Debug`, shared by all three `main.go` files.
   Unit tests on the pure mapping function.
   - Depends on: T001

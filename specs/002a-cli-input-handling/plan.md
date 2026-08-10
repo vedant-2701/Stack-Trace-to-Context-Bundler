@@ -95,8 +95,10 @@ internal/
     ├── input.go          -- Input struct
     ├── parse.go          -- ParseAll, ParseFixedLang, flag registration/validation
     ├── read.go            -- source selection (file vs stdin), bounded read, truncation call
+    ├── log.go             -- LogLevel: verbosity count -> slog.Level, shared by all three main.go
     ├── parse_test.go
-    └── read_test.go
+    ├── read_test.go
+    └── log_test.go
 ```
 
 ## API / contracts
