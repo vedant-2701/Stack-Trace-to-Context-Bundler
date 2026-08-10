@@ -29,10 +29,31 @@ TTY state rather than a subprocess).
 
 `readTrace` itself never logs — it stays a pure function, consistent with
 the testability goal above. When the file argument wins over piped stdin
-(spec requirement 5), it signals this via a returned `stdinIgnored bool`
-rather than calling `slog.Debug` directly; `ParseAll`/`ParseFixedLang` are
-what actually log it, keeping every logging decision at the same layer as
-validation and error wrapping, not split across the package.
+(spec requirement 5), it signals this via a returned `stdinIgnored bool`,
+which `ParseAll`/`ParseFixedLang` copy onto `Input.StdinIgnored` rather
+than logging directly (see the ordering-bug paragraph below for why
+`ParseAll`/`ParseFixedLang` no longer log anything themselves, as of
+T006c). `internal/cli` never calls `slog` for output emission anywhere in
+the package — all logging lives in `main.go`.
+
+**`ParseAll`/`ParseFixedLang` no longer log "stdin ignored" internally**
+(a T006c revision, discovered while designing T007). The original design
+had them call `slog.Debug` directly during the same `FlagSet.Parse` call
+that determines verbosity — but `main.go` can't configure `slog`'s
+handler level from that verbosity until *after* the call returns, and
+Go's default (unconfigured) `slog` handler sits at `Info`, which silently
+and permanently drops any `Debug` call made before configuration. That
+made the "stdin ignored" Debug log unobservable under any verbosity
+setting, failing spec.md's own acceptance criterion for it. Fix:
+`stdinIgnored` is surfaced as `Input.StdinIgnored` (see Data model below)
+instead of being logged internally; `main.go` logs it itself, after
+configuring `slog` from the real returned verbosity, alongside the Info
+summary and Debug dump it already logs post-`ParseAll`. The
+previously-logged `"file", fileArg` attribute is dropped rather than
+preserved via an extra field — spec.md doesn't require that level of
+detail in a Debug-only message that spec.md's own scaffolding note
+already marks as temporary, and the person invoking with `-vv` already
+knows which file they passed.
 
 Both entry points return `(Input, int, error)` — the `int` is a verbosity
 count (0/1/2, see `LogLevel` in `log.go`) for `main.go` to pass straight
@@ -83,6 +104,7 @@ type Input struct {
     RawInputTruncated bool   `json:"rawInputTruncated"`
     LangHint          string `json:"langHint"`          // "", "java", or "typescript"
     Format            string `json:"format"`            // "json" or "markdown"
+    StdinIgnored      bool   `json:"stdinIgnored"`      // true if a file arg was given while stdin was also piped (spec req. 5)
 }
 ```
 
@@ -90,8 +112,10 @@ Tagged for JSON, no field `omitempty`: spec requirement 13's Debug-level
 full struct dump uses `json.MarshalIndent(Input)` for readability instead
 of `%+v`. Applying `internal/contract`'s own cross-cutting rule correctly
 (`omitempty` for "not applicable", never for "empty-but-meaningful")
-means every field here stays present at its zero value — none of the four
-represent a "not applicable" case.
+means every field here stays present at its zero value — none of the five
+represent a "not applicable" case, including `StdinIgnored` (added in
+T006c): `false` is exactly as meaningful as `true`, same reasoning as
+`RawInputTruncated`.
 
 `LangHint == ""` is the explicit "defer to 003 auto-detection" signal —
 never a zero-value stand-in for "unset" being confused with a real value,
@@ -170,15 +194,18 @@ needed:
   invalid flag and no available input — the flag error must be what's
   returned), and the `Debug`-level "stdin ignored" log firing exactly when
   `readTrace` returns `stdinIgnored=true`.
-- Log output assertions: redirect `slog`'s output to a buffer in tests to
-  assert Info-summary/Debug-dump content and level gating. `-v`/`-vv`
-  parsing and the verbosity-count return value are tested directly in
-  `parse_test.go` (T006b); the pure count->`slog.Level` mapping is
-  `LogLevel` in `log.go` (T006, already tested in `log_test.go`).
-  Actually configuring `slog`'s default handler with that level, and the
-  Info-summary/Debug-dump content itself, is `main.go`'s job (T007/T008)
-  and tested at that level via a real subprocess run, per those tasks'
-  acceptance criteria.
+- No log output assertions happen inside `internal/cli` at all, as of
+  T006c: the package never calls `slog` for output emission (`log.go`
+  only references `slog.Level` as a type). `-v`/`-vv` parsing and the
+  verbosity-count return value are tested directly in `parse_test.go`
+  (T006b); the pure count->`slog.Level` mapping is `LogLevel` in `log.go`
+  (T006, already tested in `log_test.go`); `stdinIgnored` propagation is
+  tested as a plain field check on the returned `Input` (T006c), no
+  `slog` buffer capture needed anywhere in the package. All actual log
+  emission -- configuring `slog`'s default handler from the verbosity,
+  the "stdin ignored" Debug line, the Info summary, and the Debug dump --
+  is `main.go`'s job (T007/T008), tested via a real subprocess run per
+  those tasks' acceptance criteria.
 - No table-driven requirement here is mandated by CONVENTIONS.md (that's
   specifically called out for `internal/parser/*`), but used anyway since
   the error-path enumeration maps naturally to table entries.
@@ -227,3 +254,15 @@ needed:
   had to pick an interpretation silently). Registering `-v`/`-vv`
   directly on the existing `FlagSet` avoids all three by construction —
   see Architecture / approach above.
+- A "peek" at `argv` for `-v`/`-vv` before calling `ParseAll`, purely to
+  provisionally configure `slog`'s level early enough for `ParseAll`'s
+  internal "stdin ignored" log to respect it — rejected: it reintroduces
+  the same dual-parsing fragility the `-v`/`-vv` `FlagSet`-registration
+  fix (above) was chosen specifically to eliminate, just scoped to
+  logging instead of flag semantics. Concretely, a positional arg
+  literally named `-v` after a `--` terminator would make a naive peek
+  provisionally enable Debug output for a run that should be silent by
+  default — a real, visible bug, not just an internal inconsistency.
+  Surfacing `stdinIgnored` on `Input` and logging it from `main.go` after
+  the authoritative verbosity is known avoids this: exactly one parse,
+  exactly one source of truth.

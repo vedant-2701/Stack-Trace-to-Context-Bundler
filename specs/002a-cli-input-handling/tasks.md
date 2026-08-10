@@ -86,23 +86,50 @@ standing rules.
     change the result; `-- -v` as a positional arg is not treated as the
     verbosity flag.
 
+- [ ] **T006c** — Fix a logging-ordering bug found while designing T007:
+  `ParseAll`/`ParseFixedLang` no longer call `slog.Debug` internally for
+  the "stdin ignored" case (their internal call happened before `main.go`
+  could configure `slog`'s level from the returned verbosity, so the
+  message could never actually be observed under any `-v`/`-vv` setting
+  — see plan.md's Architecture section for the full trace). Add
+  `Input.StdinIgnored bool` (`input.go`); `ParseAll`/`ParseFixedLang` set
+  it instead of logging; drop the now-unused `log/slog` import from
+  `parse.go`. Replace `TestParseAll_StdinIgnoredLogging` and
+  `TestParseFixedLang_StdinIgnoredLogging` (which asserted on captured
+  `slog` output) with plain `StdinIgnored` field checks folded into
+  `TestParseAll`/`TestParseFixedLang`'s existing tables; add a
+  both-file-and-stdin-present case to `TestParseAll`'s table (previously
+  only exercised at the `readTrace` level in T002, never through
+  `ParseAll` itself).
+  - Depends on: T004, T005, T006b
+  - Acceptance: `go test ./internal/cli/...` passes with no test in the
+    package touching `slog.SetDefault`/buffer capture anywhere;
+    `Input.StdinIgnored` is `true` exactly when a file arg was given
+    while stdin was also piped, `false` otherwise, verified via both
+    `ParseAll` and `ParseFixedLang`'s tables.
+
 - [ ] **T007** — Wire `cmd/all/main.go`: TTY-detection one-liner
   (`os.Stdin.Stat()`), call `cli.ParseAll` (now returning
   `(Input, int, error)` per T006b), on error `slog.Error` + `os.Exit(2)`,
   on success call `cli.LogLevel(verbosity)` to configure `slog`'s default
-  handler, log Info summary / Debug dump per the resulting level, confirm
+  handler, then (in that order) log the "stdin ignored" Debug line if
+  `input.StdinIgnored` (per T006c — this only works now that the handler
+  is configured before this call, not during `ParseAll`), the Info
+  summary, and the Debug dump gated by the configured level. Confirm
   nothing is written to stdout.
-  - Depends on: T004, T006, T006b
+  - Depends on: T004, T006, T006b, T006c
   - Acceptance: manual run-through — paste back terminal output for: a
     valid file, valid piped stdin, `--lang=cobol`, no input on a real
-    terminal (Ctrl+D / no pipe), a file > 512KB, and `-v`/`-vv` actually
-    changing what's logged. Confirm stdout is empty in every case except
-    normal shell prompt return.
+    terminal (Ctrl+D / no pipe), a file > 512KB, `-v`/`-vv` actually
+    changing what's logged, and both a file arg + piped stdin together
+    with `-vv` (confirming the "stdin ignored" Debug line actually
+    appears now — this was unobservable before the T006c fix). Confirm
+    stdout is empty in every case except normal shell prompt return.
 
 - [ ] **T008** — Wire `cmd/java/main.go` and `cmd/typescript/main.go`
   the same way, calling `cli.ParseFixedLang` (now returning
-  `(Input, int, error)` per T006b).
-  - Depends on: T005, T006, T006b
+  `(Input, int, error)` per T006b, `Input.StdinIgnored` per T006c).
+  - Depends on: T005, T006, T006b, T006c
   - Acceptance: manual run-through — paste back terminal output for a
     valid run on each binary, and `--lang` being rejected on each.
 
