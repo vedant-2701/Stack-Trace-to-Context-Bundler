@@ -65,19 +65,44 @@ standing rules.
   - Acceptance: 0 occurrences → `Warn` (default), 1 → `Info`, 2+ →
     `Debug`.
 
+- [ ] **T006b** — Register `-v`/`-vv` directly on `ParseAll`/
+  `ParseFixedLang`'s existing `flag.FlagSet` (alongside `--lang`/
+  `--format`), replacing the originally-assumed "main.go parses `-v`/`-vv`
+  separately" approach discovered to be ambiguous once T007 design started
+  (see plan.md's Architecture / approach and Alternatives considered for
+  the full rationale). Change both signatures to
+  `(Input, int, error)`; add `verbosityFromFlags(v, vv bool) int` in
+  `log.go`. Scope is `internal/cli` only — no `cmd/*/main.go` changes
+  here, those stay T007/T008's job. Update `TestParseAll` and
+  `TestParseFixedLang` call sites for the new signature; add cases for
+  `-v`/`-vv`/both/neither, order-independence relative to `--lang`/
+  `--format`, and a positional arg literally named `-v` after a `--`
+  terminator not being misread as the flag.
+  - Depends on: T004, T005
+  - Acceptance: `go test ./internal/cli/... -run 'TestParseAll|TestParseFixedLang'`
+    passes with the updated signatures; verbosity is `0`/`1`/`2` per
+    plan.md's API/contracts section on every success case, always `0` on
+    every error case; flag order relative to `--lang`/`--format` doesn't
+    change the result; `-- -v` as a positional arg is not treated as the
+    verbosity flag.
+
 - [ ] **T007** — Wire `cmd/all/main.go`: TTY-detection one-liner
-  (`os.Stdin.Stat()`), call `cli.ParseAll`, on error `slog.Error` +
-  `os.Exit(2)`, on success log Info summary / Debug dump per `-v`/`-vv`,
-  confirm nothing is written to stdout.
-  - Depends on: T004, T006
+  (`os.Stdin.Stat()`), call `cli.ParseAll` (now returning
+  `(Input, int, error)` per T006b), on error `slog.Error` + `os.Exit(2)`,
+  on success call `cli.LogLevel(verbosity)` to configure `slog`'s default
+  handler, log Info summary / Debug dump per the resulting level, confirm
+  nothing is written to stdout.
+  - Depends on: T004, T006, T006b
   - Acceptance: manual run-through — paste back terminal output for: a
     valid file, valid piped stdin, `--lang=cobol`, no input on a real
-    terminal (Ctrl+D / no pipe), a file > 512KB. Confirm stdout is empty
-    in every case except normal shell prompt return.
+    terminal (Ctrl+D / no pipe), a file > 512KB, and `-v`/`-vv` actually
+    changing what's logged. Confirm stdout is empty in every case except
+    normal shell prompt return.
 
 - [ ] **T008** — Wire `cmd/java/main.go` and `cmd/typescript/main.go`
-  the same way, calling `cli.ParseFixedLang`.
-  - Depends on: T005, T006
+  the same way, calling `cli.ParseFixedLang` (now returning
+  `(Input, int, error)` per T006b).
+  - Depends on: T005, T006, T006b
   - Acceptance: manual run-through — paste back terminal output for a
     valid run on each binary, and `--lang` being rejected on each.
 
