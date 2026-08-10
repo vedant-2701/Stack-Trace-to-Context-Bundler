@@ -69,3 +69,11 @@ losing context.
 **New open questions:** none -- both open forks (verbosity value on error paths; whether T006b should also touch main.go) were resolved before editing: always `0` on error (flat, unambiguous, and the only case that could reliably differ -- a `flag.Parse` failure -- can't reliably report a real value anyway since `-v`/`-vv` may not have been reached depending on argument order); T006b stays `internal/cli`-only since `cmd/*/main.go` don't exist as files yet and creating them early would blur into T007/T008's scope. This is a docs-only commit; T006b's implementation is a separate task/commit to follow.
 
 ---
+
+**Date:** 2026-08-09
+**Task(s):** T006b (implementation)
+**What happened:** Registered `-v`/`-vv` as `bool` flags directly on `ParseAll`/`ParseFixedLang`'s existing `FlagSet`s (`fs.BoolVar`), added `verbosityFromFlags(v, vv bool) int` in `log.go`, changed both signatures to `(Input, int, error)` per the design already recorded in `plan.md`. Rewrote `parse_test.go` in full (every call site needed updating for the new signature) with new cases: `-v`/`-vv`/both-together, order-independence relative to `--lang`/`--format` (both directions), and a positional arg literally named `-v` after a `--` terminator to confirm the stdlib `flag` package's terminator handling isn't broken by the new registration.
+**Deviations from plan (if any):** None -- this is the implementation of the design already fully recorded in `plan.md` and `tasks.md` from the prior docs-only commit, nothing further deviated during actual coding.
+**New open questions:** none. `go build ./...`, `go test ./internal/cli/... -run 'TestParseAll|TestParseFixedLang' -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean (Vedant-confirmed). T006b marked done.
+
+---

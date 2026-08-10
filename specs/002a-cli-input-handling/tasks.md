@@ -65,7 +65,7 @@ standing rules.
   - Acceptance: 0 occurrences → `Warn` (default), 1 → `Info`, 2+ →
     `Debug`.
 
-- [ ] **T006b** — Register `-v`/`-vv` directly on `ParseAll`/
+- [x] **T006b** — Register `-v`/`-vv` directly on `ParseAll`/
   `ParseFixedLang`'s existing `flag.FlagSet` (alongside `--lang`/
   `--format`), replacing the originally-assumed "main.go parses `-v`/`-vv`
   separately" approach discovered to be ambiguous once T007 design started

@@ -60,6 +60,7 @@ func TestParseAll(t *testing.T) {
 		wantErrSubstr string
 		wantLangHint  string
 		wantFormat    string
+		wantVerbosity int
 	}{
 		{
 			name:         "valid stdin, defaults",
@@ -107,6 +108,49 @@ func TestParseAll(t *testing.T) {
 			stdinIsPiped:  true,
 			wantErrSubstr: "parsing flags",
 		},
+		{
+			name:          "-v sets verbosity 1",
+			args:          []string{"-v"},
+			stdinContent:  "trace\n",
+			stdinIsPiped:  true,
+			wantVerbosity: 1,
+		},
+		{
+			name:          "-vv sets verbosity 2",
+			args:          []string{"-vv"},
+			stdinContent:  "trace\n",
+			stdinIsPiped:  true,
+			wantVerbosity: 2,
+		},
+		{
+			name:          "-v and -vv together: max wins, not sum",
+			args:          []string{"-v", "-vv"},
+			stdinContent:  "trace\n",
+			stdinIsPiped:  true,
+			wantVerbosity: 2,
+		},
+		{
+			name:          "-v after --lang: order independent",
+			args:          []string{"--lang=java", "-v"},
+			stdinContent:  "trace\n",
+			stdinIsPiped:  true,
+			wantLangHint:  "java",
+			wantVerbosity: 1,
+		},
+		{
+			name:          "-v before --lang: order independent",
+			args:          []string{"-v", "--lang=java"},
+			stdinContent:  "trace\n",
+			stdinIsPiped:  true,
+			wantLangHint:  "java",
+			wantVerbosity: 1,
+		},
+		{
+			name:          "positional arg named -v after -- terminator is not read as the flag",
+			args:          []string{"--", "-v"},
+			stdinIsPiped:  false,
+			wantErrSubstr: "reading trace file -v",
+		},
 	}
 
 	for _, tc := range tests {
@@ -123,7 +167,7 @@ func TestParseAll(t *testing.T) {
 
 			stdin := strings.NewReader(tc.stdinContent)
 
-			got, err := ParseAll(args, stdin, tc.stdinIsPiped)
+			got, verbosity, err := ParseAll(args, stdin, tc.stdinIsPiped)
 
 			if tc.wantErrSubstr != "" {
 				if err == nil {
@@ -131,6 +175,9 @@ func TestParseAll(t *testing.T) {
 				}
 				if !strings.Contains(err.Error(), tc.wantErrSubstr) {
 					t.Errorf("err = %q, want it to contain %q", err.Error(), tc.wantErrSubstr)
+				}
+				if verbosity != 0 {
+					t.Errorf("verbosity = %d, want 0 on any error return", verbosity)
 				}
 				return
 			}
@@ -141,8 +188,11 @@ func TestParseAll(t *testing.T) {
 			if got.LangHint != tc.wantLangHint {
 				t.Errorf("LangHint = %q, want %q", got.LangHint, tc.wantLangHint)
 			}
-			if got.Format != tc.wantFormat {
+			if tc.wantFormat != "" && got.Format != tc.wantFormat {
 				t.Errorf("Format = %q, want %q", got.Format, tc.wantFormat)
+			}
+			if verbosity != tc.wantVerbosity {
+				t.Errorf("verbosity = %d, want %d", verbosity, tc.wantVerbosity)
 			}
 		})
 	}
@@ -161,7 +211,7 @@ func TestParseAll_StdinIgnoredLogging(t *testing.T) {
 		slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 		defer slog.SetDefault(prev)
 
-		_, err := ParseAll([]string{path}, strings.NewReader("from stdin\n"), true)
+		_, _, err := ParseAll([]string{path}, strings.NewReader("from stdin\n"), true)
 		if err != nil {
 			t.Fatalf("err = %v, want nil", err)
 		}
@@ -176,7 +226,7 @@ func TestParseAll_StdinIgnoredLogging(t *testing.T) {
 		slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 		defer slog.SetDefault(prev)
 
-		_, err := ParseAll([]string{path}, strings.NewReader(""), false)
+		_, _, err := ParseAll([]string{path}, strings.NewReader(""), false)
 		if err != nil {
 			t.Fatalf("err = %v, want nil", err)
 		}
@@ -199,6 +249,7 @@ func TestParseFixedLang(t *testing.T) {
 		wantErrSubstr string
 		wantLangHint  string
 		wantFormat    string
+		wantVerbosity int
 	}{
 		{
 			name:         "java, defaults",
@@ -238,6 +289,43 @@ func TestParseFixedLang(t *testing.T) {
 			stdinIsPiped:  false,
 			wantErrSubstr: "no input",
 		},
+		{
+			name:          "-v sets verbosity 1",
+			lang:          "java",
+			args:          []string{"-v"},
+			stdinContent:  "trace\n",
+			stdinIsPiped:  true,
+			wantLangHint:  "java",
+			wantVerbosity: 1,
+		},
+		{
+			name:          "-vv sets verbosity 2",
+			lang:          "java",
+			args:          []string{"-vv"},
+			stdinContent:  "trace\n",
+			stdinIsPiped:  true,
+			wantLangHint:  "java",
+			wantVerbosity: 2,
+		},
+		{
+			name:          "-v and -vv together: max wins, not sum",
+			lang:          "java",
+			args:          []string{"-v", "-vv"},
+			stdinContent:  "trace\n",
+			stdinIsPiped:  true,
+			wantLangHint:  "java",
+			wantVerbosity: 2,
+		},
+		{
+			name:          "-v after --format: order independent",
+			lang:          "java",
+			args:          []string{"--format=json", "-v"},
+			stdinContent:  "trace\n",
+			stdinIsPiped:  true,
+			wantLangHint:  "java",
+			wantFormat:    "json",
+			wantVerbosity: 1,
+		},
 	}
 
 	for _, tc := range tests {
@@ -254,7 +342,7 @@ func TestParseFixedLang(t *testing.T) {
 
 			stdin := strings.NewReader(tc.stdinContent)
 
-			got, err := ParseFixedLang(args, stdin, tc.stdinIsPiped, tc.lang)
+			got, verbosity, err := ParseFixedLang(args, stdin, tc.stdinIsPiped, tc.lang)
 
 			if tc.wantErrSubstr != "" {
 				if err == nil {
@@ -262,6 +350,9 @@ func TestParseFixedLang(t *testing.T) {
 				}
 				if !strings.Contains(err.Error(), tc.wantErrSubstr) {
 					t.Errorf("err = %q, want it to contain %q", err.Error(), tc.wantErrSubstr)
+				}
+				if verbosity != 0 {
+					t.Errorf("verbosity = %d, want 0 on any error return", verbosity)
 				}
 				return
 			}
@@ -272,8 +363,11 @@ func TestParseFixedLang(t *testing.T) {
 			if got.LangHint != tc.wantLangHint {
 				t.Errorf("LangHint = %q, want %q", got.LangHint, tc.wantLangHint)
 			}
-			if got.Format != tc.wantFormat {
+			if tc.wantFormat != "" && got.Format != tc.wantFormat {
 				t.Errorf("Format = %q, want %q", got.Format, tc.wantFormat)
+			}
+			if verbosity != tc.wantVerbosity {
+				t.Errorf("verbosity = %d, want %d", verbosity, tc.wantVerbosity)
 			}
 		})
 	}
@@ -286,7 +380,7 @@ func TestParseFixedLang_InvalidLangPanics(t *testing.T) {
 		}
 	}()
 
-	_, _ = ParseFixedLang(nil, strings.NewReader("trace\n"), true, "cobol")
+	_, _, _ = ParseFixedLang(nil, strings.NewReader("trace\n"), true, "cobol")
 }
 
 func TestParseFixedLang_StdinIgnoredLogging(t *testing.T) {
@@ -301,7 +395,7 @@ func TestParseFixedLang_StdinIgnoredLogging(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	defer slog.SetDefault(prev)
 
-	_, err := ParseFixedLang([]string{path}, strings.NewReader("from stdin\n"), true, "java")
+	_, _, err := ParseFixedLang([]string{path}, strings.NewReader("from stdin\n"), true, "java")
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
