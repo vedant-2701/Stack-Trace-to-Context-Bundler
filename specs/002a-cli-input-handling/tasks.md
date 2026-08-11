@@ -160,7 +160,7 @@ standing rules.
   - Acceptance: manual run-through — paste back terminal output for a
     valid run on each binary, and `--lang` being rejected on each.
 
-- [ ] **T009** — Full acceptance pass: walk every checkbox in
+- [x] **T009** — Full acceptance pass: walk every checkbox in
   `spec.md`'s Acceptance Criteria section against the real binaries,
   check them off, append a `progress.md` entry summarizing the session
   and any deviations from `plan.md`.

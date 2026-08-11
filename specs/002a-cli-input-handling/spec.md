@@ -115,44 +115,44 @@ happens here.
 
 ## Acceptance criteria
 
-- [ ] Given a valid file-path arg pointing to a readable file with
+- [x] Given a valid file-path arg pointing to a readable file with
       trace-shaped text, when `cmd/all` runs with no flags, then the raw
       text is read, bounded-read via `LimitReader`, truncated via
       `contract.TruncateRawInput` if needed, format defaults to
       `markdown`, lang hint is empty, and an Info summary + Debug dump are
       available via `-v`/`-vv`, with nothing written to stdout.
-- [ ] Given both a file-path arg and piped stdin, when the binary runs,
+- [x] Given both a file-path arg and piped stdin, when the binary runs,
       then the file's content is used, stdin is ignored, and a
       `Debug`-level log records that stdin was ignored.
-- [ ] Given no file-path arg and stdin is not piped (TTY), when the binary
+- [x] Given no file-path arg and stdin is not piped (TTY), when the binary
       runs, then it exits immediately with code 2 and a specific "no
       input" `Error`-level message, without blocking.
-- [ ] Given a file-path arg pointing to a nonexistent file, when the binary
+- [x] Given a file-path arg pointing to a nonexistent file, when the binary
       runs, then it exits with code 2 and a specific "file not
       found"-style `Error`-level message including the path.
-- [ ] Given input (from either source) that is empty or whitespace-only,
+- [x] Given input (from either source) that is empty or whitespace-only,
       when the binary runs, then it exits with code 2 and a specific
       "input is empty" `Error`-level message.
-- [ ] Given `--lang=cobol` on `cmd/all`, when the binary runs, then it
+- [x] Given `--lang=cobol` on `cmd/all`, when the binary runs, then it
       exits with code 2 and a specific `Error`-level message naming the
       invalid value and the accepted values.
-- [ ] Given `--lang` passed to `cmd/java` or `cmd/typescript`, when the
+- [x] Given `--lang` passed to `cmd/java` or `cmd/typescript`, when the
       binary runs, then it exits with code 2 and a specific `Error`-level
       message noting the flag isn't valid for this binary.
-- [ ] Given `--format=yaml` on any binary, when the binary runs, then it
+- [x] Given `--format=yaml` on any binary, when the binary runs, then it
       exits with code 2 and a specific `Error`-level message naming the
       invalid value and the accepted values.
-- [ ] Given input larger than 512KB, when read from either stdin or a
+- [x] Given input larger than 512KB, when read from either stdin or a
       file, then the read itself does not buffer unbounded data, and the
       resulting raw text is exactly rune-safe-truncated to 512KB with
       `RawInputTruncated` set to `true`.
-- [ ] Given a successful run with `-v`, then exactly one `Info`-level
+- [x] Given a successful run with `-v`, then exactly one `Info`-level
       one-line summary is logged to stderr and nothing is logged to
       stdout.
-- [ ] Given a successful run with `-vv`, then both the Info summary and a
+- [x] Given a successful run with `-vv`, then both the Info summary and a
       `Debug`-level full struct dump are logged to stderr, and nothing is
       logged to stdout.
-- [ ] Given a successful run with no `-v`/`-vv`, then nothing is logged at
+- [x] Given a successful run with no `-v`/`-vv`, then nothing is logged at
       all (default `Warn` level), consistent with CONVENTIONS.md's "quiet
       by default."
 
