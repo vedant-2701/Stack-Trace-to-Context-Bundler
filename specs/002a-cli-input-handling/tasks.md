@@ -153,7 +153,7 @@ standing rules.
     produced no output for `-v`/`-vv` (e.g. `stba file.txt -vv`),
     confirmed passing this time.
 
-- [ ] **T008** — Wire `cmd/java/main.go` and `cmd/typescript/main.go`
+- [x] **T008** — Wire `cmd/java/main.go` and `cmd/typescript/main.go`
   the same way, calling `cli.ParseFixedLang` (now returning
   `(Input, int, error)` per T006b, `Input.StdinIgnored` per T006c).
   - Depends on: T005, T006, T006b, T006c, T007a

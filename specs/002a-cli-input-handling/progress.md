@@ -117,3 +117,11 @@ losing context.
 **New open questions:** none. `cmd/all/main.go` and `specs/002a-cli-input-handling/verify-t007.sh` committed now that verification passed (previously withheld pending a passing run, per Vedant). T007 marked done.
 
 ---
+
+**Date:** 2026-08-11
+**Task(s):** T008
+**What happened:** Wrote `cmd/java/main.go` and `cmd/typescript/main.go`, mirroring `cmd/all/main.go`'s structure exactly (same `stdinIsPiped`/`slog.SetDefault`/`StdinIgnored`-then-Info-then-Debug-dump ordering) with `cli.ParseFixedLang(..., "java")` / `(..., "typescript")` swapped in for `cli.ParseAll`. Wrote `verify-t008.sh`, deliberately narrower than `verify-t007.sh`: T008's acceptance criteria only asks for a valid run + `--lang` rejection on each binary, since the `-v`/`-vv`, >512KB, and TTY-no-input cases all exercise shared `internal/cli` logic already thoroughly verified end-to-end in T007 -- re-running all of it again per binary would be redundant, not more rigorous. All four cases passed on the first run: `langHint` correctly fixed per binary (not flag-derived), `--lang` rejected with `pflag`'s "unknown flag" error on both, stdout empty throughout.
+**Deviations from plan (if any):** None. One neutral observation, not a problem: the TypeScript dump's `<anonymous>` renders as `\u003canonymous\u003e` -- Go's `encoding/json` default HTML-escaping, standard library behavior for a stderr-only debug dump, not something to configure around.
+**New open questions:** none. `cmd/java/main.go`, `cmd/typescript/main.go`, and `verify-t008.sh` committed. T008 marked done. **Only T009 (full acceptance pass) remains for 002a.**
+
+---
