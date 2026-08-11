@@ -72,24 +72,36 @@ what the person sees in that case, deterministically, not whichever check
 happened to run first in an unspecified order.
 
 **Verbosity flags (`-v`/`-vv`) are registered directly on the same
-`flag.FlagSet` already inside `ParseAll`/`ParseFixedLang`**, alongside
+`FlagSet` already inside `ParseAll`/`ParseFixedLang`**, alongside
 `--lang`/`--format`, rather than parsed in a separate pass in `main.go`.
 This was a mid-implementation revision (pre-T007, see task T006b) after a
 proposed alternative — a hand-rolled pre-pass over `argv` to strip
 `-v`/`-vv` before handing the rest to `ParseAll` — turned out to have
 real correctness gaps; see Alternatives considered below. Registering on
-the single existing `FlagSet` inherits the stdlib `flag` package's
-correct `--` terminator handling and single/double-dash equivalence for
-free, and removes the ordering problem (`-v --lang=java trace.txt` vs.
+the single existing `FlagSet` removes the ordering problem (`-v --lang=java trace.txt` vs.
 `--lang=java -v trace.txt` both working identically) by construction,
 since there's only one `Parse` call instead of two racing against each
 other's assumptions about argument order.
 
+**The `FlagSet` itself is `pflag.FlagSet`, not stdlib `flag.FlagSet`, as
+of task T007a.** Stdlib `flag.Parse` stops recognizing flags after the
+first positional argument — `stba trace.txt -vv` silently dropped `-vv`
+entirely, undetected until T007's manual run-through against the real
+binary because every prior unit test happened to place the file path
+after the flags. `pflag` permutes arguments by default (flags and the
+positional argument can appear in any order) and correctly honors a `--`
+terminator. Full rationale, including why `-v`/`-vv` became a
+`CountVarP`-based POSIX-clustering shorthand rather than two separate
+bool flags, is in `memory/decisions/0002-adopt-pflag-for-flag-parsing.md`
+— not duplicated here.
+
 ## Stack & versions
 
-No new dependencies. Stdlib only: `flag` (in `ContinueOnError` mode, per
-spec requirement 12), `os`, `io`, `strings`, `log/slog`. Reuses
-`internal/contract.TruncateRawInput` from 001.
+`github.com/spf13/pflag` for CLI flag parsing (`ContinueOnError` mode,
+per spec requirement 12) -- replaces stdlib `flag` as of task T007a; see
+`memory/decisions/0002-adopt-pflag-for-flag-parsing.md` for the full
+rationale. Otherwise stdlib only: `os`, `io`, `strings`, `log/slog`,
+`encoding/json`. Reuses `internal/contract.TruncateRawInput` from 001.
 
 ## Data model
 
@@ -150,9 +162,10 @@ func ParseFixedLang(args []string, stdin io.Reader, stdinIsPiped bool, lang stri
 ```
 
 The `int` is a verbosity count for `main.go` to pass into `cli.LogLevel`
-(`log.go`, T006): `0` if neither `-v` nor `-vv` was passed, `1` for `-v`,
-`2` for `-vv` (or both together — max, not sum, since nothing beyond
-`Debug` is defined). Always `0` on any error return: `-v`/`-vv` only gate
+(`log.go`, T006): `0` if `-v` wasn't passed at all, `1` for `-v`, `2` for
+`-vv` (or more `v`s -- `pflag.CountVarP`'s POSIX clustering means `-vvv`
+counts 3, still mapped to `Debug` by `LogLevel`'s existing `default` case,
+see ADR 0002). Always `0` on any error return: `-v`/`-vv` only gate
 the success-path Info summary / Debug dump (spec requirement 13), and
 specifically for a `flag.Parse` failure the verbosity flags may not have
 been reached yet depending on argument order, so a real value there would
@@ -165,7 +178,6 @@ Internal (unexported) helpers:
 func readTrace(fileArg string, stdin io.Reader, stdinIsPiped bool) (raw string, truncated bool, stdinIgnored bool, err error)
 func validateFormat(v string) (string, error)
 func validateLang(v string) (string, error) // ParseAll only
-func verbosityFromFlags(v, vv bool) int // max(1 if v, 2 if vv, else 0)
 ```
 
 Every returned `error` is wrapped with context per CONVENTIONS.md
@@ -188,12 +200,16 @@ needed:
   `RawInputTruncated=true`).
 - `parse_test.go`: covers `--lang`/`--format` valid values, invalid
   values, `--lang` on `ParseFixedLang` paths (should never be registered,
-  so passing it must produce flag package's "not defined" error, still
-  routed through `slog.Error`), default `--format=markdown`, flag
-  validation running before `readTrace` (assert via a case with both an
-  invalid flag and no available input — the flag error must be what's
-  returned), and the `Debug`-level "stdin ignored" log firing exactly when
-  `readTrace` returns `stdinIgnored=true`.
+  so passing it must produce `pflag`'s "unknown flag" error, still routed
+  through our own `"parsing flags: %w"` wrapper and `slog.Error`),
+  default `--format=markdown`, flag validation running before `readTrace`
+  (assert via a case with both an invalid flag and no available input --
+  the flag error must be what's returned), `StdinIgnored` propagation as
+  a plain field check, and -- as of T007a, replacing the assumption that
+  flags must precede the positional argument -- a case placing `-v`/`-vv`
+  *after* the file-path argument, the exact ordering that was silently
+  broken under stdlib `flag` and went undetected until T007's manual
+  run-through.
 - No log output assertions happen inside `internal/cli` at all, as of
   T006c: the package never calls `slog` for output emission (`log.go`
   only references `slog.Level` as a type). `-v`/`-vv` parsing and the
@@ -266,3 +282,9 @@ needed:
   Surfacing `stdinIgnored` on `Input` and logging it from `main.go` after
   the authoritative verbosity is known avoids this: exactly one parse,
   exactly one source of truth.
+- Adopting `pflag` (T007a) vs. keeping stdlib `flag` and documenting a
+  flags-before-positional-argument constraint, vs. hand-rolling an `argv`
+  permutation pass ourselves — full analysis, including why a hand-rolled
+  pass is rejected for the same category of reason as the two entries
+  above, is in `memory/decisions/0002-adopt-pflag-for-flag-parsing.md`,
+  not duplicated here.

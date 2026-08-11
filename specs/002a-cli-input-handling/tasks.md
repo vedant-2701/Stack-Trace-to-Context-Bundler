@@ -108,7 +108,7 @@ standing rules.
     while stdin was also piped, `false` otherwise, verified via both
     `ParseAll` and `ParseFixedLang`'s tables.
 
-- [ ] **T007** — Wire `cmd/all/main.go`: TTY-detection one-liner
+- [~] **T007** — Wire `cmd/all/main.go`: TTY-detection one-liner
   (`os.Stdin.Stat()`), call `cli.ParseAll` (now returning
   `(Input, int, error)` per T006b), on error `slog.Error` + `os.Exit(2)`,
   on success call `cli.LogLevel(verbosity)` to configure `slog`'s default
@@ -117,7 +117,13 @@ standing rules.
   is configured before this call, not during `ParseAll`), the Info
   summary, and the Debug dump gated by the configured level. Confirm
   nothing is written to stdout.
-  - Depends on: T004, T006, T006b, T006c
+
+  **In progress, blocked on T007a.** `main.go` itself is written; the
+  manual run-through it depends on surfaced a real bug in `ParseAll`
+  (below T007a), not in `main.go`'s own wiring. Re-run the run-through
+  once T007a lands before marking this done — `main.go` may not need any
+  further changes itself, but that needs confirming, not assuming.
+  - Depends on: T004, T006, T006b, T006c, T007a
   - Acceptance: manual run-through — paste back terminal output for: a
     valid file, valid piped stdin, `--lang=cobol`, no input on a real
     terminal (Ctrl+D / no pipe), a file > 512KB, `-v`/`-vv` actually
@@ -126,10 +132,37 @@ standing rules.
     appears now — this was unobservable before the T006c fix). Confirm
     stdout is empty in every case except normal shell prompt return.
 
+- [ ] **T007a** — Fix a flag/positional-argument ordering bug found
+  during T007's manual run-through: stdlib `flag.Parse` stops
+  recognizing flags once it hits the first positional argument, so
+  `stba trace.txt -vv` silently dropped `-vv` entirely — exactly the
+  natural way most people type a command, and exactly what T007's own
+  acceptance criteria exercises. Full analysis and decision in
+  `memory/decisions/0002-adopt-pflag-for-flag-parsing.md`. Replace
+  stdlib `flag` with `github.com/spf13/pflag` in `ParseAll`/
+  `ParseFixedLang` (`parse.go`): `pflag.FlagSet` permutes flags and the
+  positional argument in any order and correctly honors `--`. `-v`/`-vv`
+  become a single `pflag.CountVarP` shorthand (POSIX clustering: `-v`=1,
+  `-vv`=2) instead of two separate bool flags — `verbosityFromFlags`
+  (T006b) is removed as dead code; `LogLevel` (`log.go`) needs no change,
+  its existing `default` case already treats any count `>= 2` as `Debug`.
+  Re-verify all of `parse_test.go` against the new library's actual
+  behavior (error message text, `--` handling, order-independence), and
+  add a new case placing `-v`/`-vv`/`--lang`/`--format` *after* the
+  positional file-path argument — the exact case that was silently
+  broken and went undetected until T007's manual run-through caught it.
+  - Depends on: T004, T005, T006b, T006c
+  - Acceptance: `go get github.com/spf13/pflag` run, `go.mod`/`go.sum`
+    updated; `go test ./internal/cli/...` passes, including the new
+    flag-after-positional-argument case; `specs/002a-cli-input-handling/verify-t007.sh`
+    re-run end to end using the same command shapes that previously
+    produced no output for `-v`/`-vv` (e.g. `stba file.txt -vv`),
+    confirmed passing this time.
+
 - [ ] **T008** — Wire `cmd/java/main.go` and `cmd/typescript/main.go`
   the same way, calling `cli.ParseFixedLang` (now returning
   `(Input, int, error)` per T006b, `Input.StdinIgnored` per T006c).
-  - Depends on: T005, T006, T006b, T006c
+  - Depends on: T005, T006, T006b, T006c, T007a
   - Acceptance: manual run-through — paste back terminal output for a
     valid run on each binary, and `--lang` being rejected on each.
 
