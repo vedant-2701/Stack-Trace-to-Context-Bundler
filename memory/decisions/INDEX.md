@@ -9,6 +9,7 @@ Status values: `Proposed` -> `Accepted` -> `Superseded by 000X`
 | ID | Title | Depends on | Status | Date |
 |----|-------|------------|--------|------|
 | 0001 | Offline-first, time-boxed dependency version resolution | none | Accepted | 2026-08-02 |
+| 0002 | Adopt spf13/pflag for CLI flag parsing | none | Accepted | 2026-08-11 |
 
 
 <!--

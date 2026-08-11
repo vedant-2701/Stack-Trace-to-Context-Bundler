@@ -82,6 +82,16 @@ equivalent, the bundle's JSON/Markdown output, is governed entirely by
 - Enforced pre-commit via Lefthook (`format` → `lint` → `build` → `test`,
   sequential — see `lefthook.yml`), and the identical set re-run in CI so a
   skipped or bypassed local hook can't slip a violation through.
+- Never put a file-path label comment (e.g. `// internal/cli/read.go`)
+  directly above a `package X` clause, in any file — `revive`'s
+  `package-comments` check treats any comment immediately preceding the
+  package clause as an attempted package doc comment and fails it unless
+  it starts with `"Package X ..."`. Only the one file that carries the
+  real `// Package X ...` doc comment (per Go convention, usually the
+  file most central to the package, e.g. `input.go` for `internal/cli`)
+  should have anything directly above `package X`. Every other file in
+  the package starts with a bare `package X` line, no comment, no
+  exceptions — including `_test.go` files.
 
 ## File / folder layout
 

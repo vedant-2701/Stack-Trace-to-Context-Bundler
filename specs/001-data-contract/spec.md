@@ -3,7 +3,7 @@
 **Status:** Implemented (`internal/contract`, T000-T006 all complete). Five
 of ten acceptance criteria below are satisfied by this feature alone;
 five depend on features that don't exist yet (005a, 006a, 004, 005b,
-006b) and are tracked in `memory/deferred-acceptance-criteria.md`, not
+006b) and are tracked in `memory/known-gaps.md`, not
 left silently unchecked.
 **Folder:** specs/001-data-contract
 
@@ -175,9 +175,9 @@ generated, tested JSON fixture — the single source of truth for what a
 
 ## Acceptance criteria
 
-See `memory/deferred-acceptance-criteria.md` for criteria deferred to
-future features (on disk, not just session memory, so it survives an
-account change or a memory reset).
+See `memory/known-gaps.md` ("Deferred acceptance criteria" table) for
+criteria deferred to future features (on disk, not just session memory,
+so it survives an account change or a memory reset).
 
 - [ ] Given a Java stack trace with a `Caused by:` chain, when parsed into
       the contract, then `chain` contains one node per exception with the

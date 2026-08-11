@@ -57,11 +57,14 @@ This project follows spec-driven development. Before writing or changing code:
 
 1. Read `memory/constitution.md` — these rules are non-negotiable.
 2. Read `specs/INDEX.md` for the full feature list, dependencies, and status
-   — don't read every feature's full spec just to get oriented. Also check
-   `memory/deferred-acceptance-criteria.md` for any criterion deferred to
-   the feature you're about to start; fold it into that feature's own
-   acceptance criteria during spec interrogation rather than treating it
-   as separate extra work.
+   — don't read every feature's full spec just to get oriented. Also read
+   both tables in `memory/known-gaps.md`: the "Deferred acceptance
+   criteria" table for any criterion owed to the feature you're about to
+   start (fold it into that feature's own acceptance criteria during spec
+   interrogation rather than treating it as separate extra work), and the
+   "Accepted v1 limitations" table for anything the feature touches that
+   was previously scoped out — flag it if real usage now suggests
+   revisiting, rather than assuming the old call still holds.
 3. Find the relevant feature folder under `specs/NNN-feature-name/`.
 4. Read `spec.md` (what/why) and `plan.md` (how) for that feature.
 5. Work from `tasks.md`. Implement **one task at a time**, in order, unless told
