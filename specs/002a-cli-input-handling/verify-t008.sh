@@ -49,8 +49,8 @@ run_case() {
 }
 
 section "Build"
-go build -o "$JAVA_BIN" ./cmd/java
-go build -o "$TS_BIN" ./cmd/typescript
+go build -o "$JAVA_BIN" ./cmd/java || exit 1
+go build -o "$TS_BIN" ./cmd/typescript || exit 1
 echo "built: $JAVA_BIN"
 echo "built: $TS_BIN"
 

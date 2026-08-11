@@ -23,9 +23,10 @@ const boundedReadCapBytes = 1024 * 1024 // 1MB
 // contract.TruncateRawInput for the final rune-safe 512KB cap.
 //
 // readTrace is a pure function: it never logs and never calls os.Exit.
-// stdinIgnored signals the both-present case so the caller (ParseAll /
-// ParseFixedLang) can log it at Debug level -- logging decisions live one
-// layer up, per plan.md's Architecture section.
+// stdinIgnored signals the both-present case so callers can surface it
+// (via Input.StdinIgnored) for main.go to log at Debug level after slog
+// is configured -- logging decisions live one layer up, per plan.md's
+// Architecture section.
 func readTrace(fileArg string, stdin io.Reader, stdinIsPiped bool) (raw string, truncated bool, stdinIgnored bool, err error) {
 	var source io.Reader
 
@@ -33,7 +34,7 @@ func readTrace(fileArg string, stdin io.Reader, stdinIsPiped bool) (raw string, 
 	case fileArg != "":
 		f, openErr := os.Open(fileArg)
 		if openErr != nil {
-			return "", false, false, fmt.Errorf("reading trace file %s: %w", fileArg, openErr)
+			return "", false, false, fmt.Errorf("reading trace file %q: %w", fileArg, openErr)
 		}
 		defer func() {
 			// Read-only file; nothing actionable if Close fails here.
@@ -56,15 +57,16 @@ func readTrace(fileArg string, stdin io.Reader, stdinIsPiped bool) (raw string, 
 	buf, readErr := io.ReadAll(io.LimitReader(source, boundedReadCapBytes))
 	if readErr != nil {
 		if fileArg != "" {
-			return "", false, false, fmt.Errorf("reading trace file %s: %w", fileArg, readErr)
+			return "", false, false, fmt.Errorf("reading trace file %q: %w", fileArg, readErr)
 		}
 		return "", false, false, fmt.Errorf("reading trace from stdin: %w", readErr)
 	}
 
-	if strings.TrimSpace(string(buf)) == "" {
+	s := string(buf)
+	if strings.TrimSpace(s) == "" {
 		return "", false, stdinIgnored, fmt.Errorf("input is empty after reading")
 	}
 
-	out, wasTruncated := contract.TruncateRawInput(string(buf))
+	out, wasTruncated := contract.TruncateRawInput(s)
 	return out, wasTruncated, stdinIgnored, nil
 }

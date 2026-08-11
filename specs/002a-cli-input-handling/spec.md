@@ -1,6 +1,6 @@
 # Spec: CLI Input Handling
 
-**Status:** Spec'd
+**Status:** Implemented (`internal/cli`, T001-T009 all complete).
 **Folder:** specs/002a-cli-input-handling
 
 ## Overview

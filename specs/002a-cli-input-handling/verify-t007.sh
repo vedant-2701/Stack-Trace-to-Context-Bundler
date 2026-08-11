@@ -57,7 +57,7 @@ run_case() {
 }
 
 section "Build"
-go build -o "$BIN" ./cmd/all
+go build -o "$BIN" ./cmd/all || exit 1
 echo "built: $BIN"
 
 printf 'java.lang.NullPointerException\n\tat com.example.Foo.bar(Foo.java:10)\n' >"$WORKDIR/valid.txt"

@@ -49,7 +49,7 @@ run_case() {
 }
 
 section "Build"
-go build -o "$BIN" ./cmd/all
+go build -o "$BIN" ./cmd/all || exit 1
 echo "built: $BIN"
 
 run_case "1. Nonexistent file" "$BIN" "$WORKDIR/does-not-exist.txt"

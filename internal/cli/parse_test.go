@@ -161,7 +161,7 @@ func TestParseAll(t *testing.T) {
 			name:          "positional arg named -v after -- terminator is not read as the flag",
 			args:          []string{"--", "-v"},
 			stdinIsPiped:  false,
-			wantErrSubstr: "reading trace file -v",
+			wantErrSubstr: `reading trace file "-v"`,
 		},
 		{
 			name:            "T007a: flags AFTER the positional file argument (silently broken under stdlib flag)",
