@@ -108,7 +108,7 @@ standing rules.
     while stdin was also piped, `false` otherwise, verified via both
     `ParseAll` and `ParseFixedLang`'s tables.
 
-- [~] **T007** — Wire `cmd/all/main.go`: TTY-detection one-liner
+- [x] **T007** — Wire `cmd/all/main.go`: TTY-detection one-liner
   (`os.Stdin.Stat()`), call `cli.ParseAll` (now returning
   `(Input, int, error)` per T006b), on error `slog.Error` + `os.Exit(2)`,
   on success call `cli.LogLevel(verbosity)` to configure `slog`'s default
@@ -117,12 +117,6 @@ standing rules.
   is configured before this call, not during `ParseAll`), the Info
   summary, and the Debug dump gated by the configured level. Confirm
   nothing is written to stdout.
-
-  **In progress, blocked on T007a.** `main.go` itself is written; the
-  manual run-through it depends on surfaced a real bug in `ParseAll`
-  (below T007a), not in `main.go`'s own wiring. Re-run the run-through
-  once T007a lands before marking this done — `main.go` may not need any
-  further changes itself, but that needs confirming, not assuming.
   - Depends on: T004, T006, T006b, T006c, T007a
   - Acceptance: manual run-through — paste back terminal output for: a
     valid file, valid piped stdin, `--lang=cobol`, no input on a real

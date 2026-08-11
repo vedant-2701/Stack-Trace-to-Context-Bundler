@@ -109,3 +109,11 @@ losing context.
 **New open questions:** none. `go mod tidy`, `go build ./...`, `go test ./internal/cli/... -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean, and `go.mod`'s diff confirmed directly (Vedant-confirmed both). T007a marked done. **T007's manual run-through needs to be fully re-executed next** (both `verify-t007.sh` and the interactive no-input case) -- not assumed to pass.
 
 ---
+
+**Date:** 2026-08-11
+**Task(s):** T007 (closed out)
+**What happened:** Re-ran `verify-t007.sh` and the interactive no-input case against the `pflag`-based `ParseAll`. Every case in the script's original ordering -- the exact `file.txt -vv` (flag-after-positional) shape that silently failed before T007a -- now passes: cases 1-2 (valid file/stdin) exit 0 with empty stdout; case 3 (`--lang=cobol`) exits 2 with the specific message; case 4 (>512KB) exits 0 with `"rawInputTruncated": true` confirmed in the raw dump, content visibly cut mid-word at the 512KB rune-safe boundary; case 5a (no flags) produces nothing on either stream; 5b (`-v`) produces exactly one Info line; 5c (`-vv`) produces the Info line plus the full 5-field JSON dump; case 6 (file + stdin + `-vv`) produces, in the exact order `main.go` codes it, the Debug "stdin ignored" line first, then the Info summary, then the Debug dump showing `"stdinIgnored": true` -- confirming the T006c fix actually works end to end now, not just in unit tests. The interactive no-input case exits immediately with the "no input" error, no hang.
+**Deviations from plan (if any):** None. One process note: `output.txt` (case 4's `-vv` dump, containing the full ~524KB `rawText`) exceeded the 1MB file-read tool limit: read the file in parts (`head`/`tail`) for everything else, and had Vedant grep the one oversized line for the specific field rather than pasting it whole -- my first two `grep` patterns missed due to not accounting for backslash-escaped quotes inside the log line's string value, caught by asking for the raw snippet directly instead of trusting a zero-match grep result at face value.
+**New open questions:** none. `cmd/all/main.go` and `specs/002a-cli-input-handling/verify-t007.sh` committed now that verification passed (previously withheld pending a passing run, per Vedant). T007 marked done.
+
+---
