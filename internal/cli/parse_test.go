@@ -49,11 +49,17 @@ func TestParseAll(t *testing.T) {
 		name string
 
 		args []string
-		// fileContent, if non-nil, creates a temp file with this content
-		// and appends its path as the positional arg.
-		fileContent  *string
-		stdinContent string
-		stdinIsPiped bool
+		// fileContent, if non-nil, creates a temp file with this content.
+		fileContent *string
+		// fileBeforeFlags controls append order when fileContent is set:
+		// false (default) appends the file path after tc.args (flags
+		// first, the historical/always-worked ordering); true puts the
+		// file path first and tc.args after it (T007a: the ordering that
+		// was silently broken under stdlib flag.Parse until the switch
+		// to pflag).
+		fileBeforeFlags bool
+		stdinContent    string
+		stdinIsPiped    bool
 
 		wantErrSubstr    string
 		wantLangHint     string
@@ -122,18 +128,18 @@ func TestParseAll(t *testing.T) {
 			wantVerbosity: 1,
 		},
 		{
-			name:          "-vv sets verbosity 2",
+			name:          "-vv sets verbosity 2 (pflag POSIX clustering)",
 			args:          []string{"-vv"},
 			stdinContent:  "trace\n",
 			stdinIsPiped:  true,
 			wantVerbosity: 2,
 		},
 		{
-			name:          "-v and -vv together: max wins, not sum",
+			name:          "-v and -vv as separate tokens: counts accumulate (1+2=3), still Debug via LogLevel",
 			args:          []string{"-v", "-vv"},
 			stdinContent:  "trace\n",
 			stdinIsPiped:  true,
-			wantVerbosity: 2,
+			wantVerbosity: 3,
 		},
 		{
 			name:          "-v after --lang: order independent",
@@ -157,6 +163,14 @@ func TestParseAll(t *testing.T) {
 			stdinIsPiped:  false,
 			wantErrSubstr: "reading trace file -v",
 		},
+		{
+			name:            "T007a: flags AFTER the positional file argument (silently broken under stdlib flag)",
+			fileContent:     strPtr("java.lang.NullPointerException\n"),
+			args:            []string{"--lang=java", "-vv"},
+			fileBeforeFlags: true,
+			wantLangHint:    "java",
+			wantVerbosity:   2,
+		},
 	}
 
 	for _, tc := range tests {
@@ -168,7 +182,11 @@ func TestParseAll(t *testing.T) {
 				if err := os.WriteFile(path, []byte(*tc.fileContent), 0o600); err != nil {
 					t.Fatalf("writing test fixture file: %v", err)
 				}
-				args = append(args, path)
+				if tc.fileBeforeFlags {
+					args = append([]string{path}, tc.args...)
+				} else {
+					args = append(args, path)
+				}
 			}
 
 			stdin := strings.NewReader(tc.stdinContent)
@@ -211,11 +229,12 @@ func TestParseFixedLang(t *testing.T) {
 	tests := []struct {
 		name string
 
-		lang         string
-		args         []string
-		fileContent  *string
-		stdinContent string
-		stdinIsPiped bool
+		lang            string
+		args            []string
+		fileContent     *string
+		fileBeforeFlags bool
+		stdinContent    string
+		stdinIsPiped    bool
 
 		wantErrSubstr    string
 		wantLangHint     string
@@ -280,7 +299,7 @@ func TestParseFixedLang(t *testing.T) {
 			wantVerbosity: 1,
 		},
 		{
-			name:          "-vv sets verbosity 2",
+			name:          "-vv sets verbosity 2 (pflag POSIX clustering)",
 			lang:          "java",
 			args:          []string{"-vv"},
 			stdinContent:  "trace\n",
@@ -289,13 +308,13 @@ func TestParseFixedLang(t *testing.T) {
 			wantVerbosity: 2,
 		},
 		{
-			name:          "-v and -vv together: max wins, not sum",
+			name:          "-v and -vv as separate tokens: counts accumulate (1+2=3)",
 			lang:          "java",
 			args:          []string{"-v", "-vv"},
 			stdinContent:  "trace\n",
 			stdinIsPiped:  true,
 			wantLangHint:  "java",
-			wantVerbosity: 2,
+			wantVerbosity: 3,
 		},
 		{
 			name:          "-v after --format: order independent",
@@ -306,6 +325,16 @@ func TestParseFixedLang(t *testing.T) {
 			wantLangHint:  "java",
 			wantFormat:    "json",
 			wantVerbosity: 1,
+		},
+		{
+			name:            "T007a: flags AFTER the positional file argument (silently broken under stdlib flag)",
+			lang:            "java",
+			fileContent:     strPtr("java.lang.NullPointerException\n"),
+			args:            []string{"--format=json", "-vv"},
+			fileBeforeFlags: true,
+			wantLangHint:    "java",
+			wantFormat:      "json",
+			wantVerbosity:   2,
 		},
 	}
 
@@ -318,7 +347,11 @@ func TestParseFixedLang(t *testing.T) {
 				if err := os.WriteFile(path, []byte(*tc.fileContent), 0o600); err != nil {
 					t.Fatalf("writing test fixture file: %v", err)
 				}
-				args = append(args, path)
+				if tc.fileBeforeFlags {
+					args = append([]string{path}, tc.args...)
+				} else {
+					args = append(args, path)
+				}
 			}
 
 			stdin := strings.NewReader(tc.stdinContent)

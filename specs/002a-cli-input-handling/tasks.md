@@ -132,7 +132,7 @@ standing rules.
     appears now — this was unobservable before the T006c fix). Confirm
     stdout is empty in every case except normal shell prompt return.
 
-- [ ] **T007a** — Fix a flag/positional-argument ordering bug found
+- [x] **T007a** — Fix a flag/positional-argument ordering bug found
   during T007's manual run-through: stdlib `flag.Parse` stops
   recognizing flags once it hits the first positional argument, so
   `stba trace.txt -vv` silently dropped `-vv` entirely — exactly the

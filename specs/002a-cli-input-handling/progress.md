@@ -101,3 +101,11 @@ losing context.
 **New open questions:** none new. T007a is next; T007's own manual run-through will be re-executed against `verify-t007.sh` once T007a lands, not assumed to pass just because the underlying bug is understood.
 
 ---
+
+**Date:** 2026-08-11
+**Task(s):** T007a (implementation)
+**What happened:** Vedant ran `go get github.com/spf13/pflag` (added to `go.mod` as `// indirect` initially, since no code imported it yet at that point). Rewrote `parse.go`'s `ParseAll`/`ParseFixedLang` against `pflag.FlagSet`: `-v` registered via `CountVarP` (POSIX-clustering shorthand) instead of two separate `BoolVar` flags for `v`/`vv`. Removed `verbosityFromFlags` from `log.go` as dead code -- `LogLevel` itself needed no change. Updated `parse_test.go`: the "-v and -vv together" case's expected verbosity changed from `2` (old max-based `verbosityFromFlags` logic) to `3` (pflag's `CountVarP` accumulates per token: `-v`=1 + `-vv`=2 = 3 -- still correctly resolves to `Debug` via `LogLevel`'s unchanged `default` case, so no user-visible behavior difference), and added the flag-after-positional-argument case to both `TestParseAll` and `TestParseFixedLang`'s tables (via a new `fileBeforeFlags` field controlling append order) -- the exact ordering that was silently broken under stdlib `flag` and prompted this whole task.
+**Deviations from plan (if any):** None from what was recorded in ADR 0002 and `plan.md` in the prior docs-only commit -- implementation matched the plan. Confirmed `go.mod`'s `pflag` entry correctly dropped its `// indirect` marker after `go mod tidy` once `parse.go` actually imported it, rather than just assuming the build/test/lint gates passing implied that (they wouldn't have caught a stale `// indirect` marker either way -- asked Vedant to paste the actual diff to confirm rather than inferring it).
+**New open questions:** none. `go mod tidy`, `go build ./...`, `go test ./internal/cli/... -v`, `gofumpt -l`, and `golangci-lint run ./internal/cli/...` all passed clean, and `go.mod`'s diff confirmed directly (Vedant-confirmed both). T007a marked done. **T007's manual run-through needs to be fully re-executed next** (both `verify-t007.sh` and the interactive no-input case) -- not assumed to pass.
+
+---
