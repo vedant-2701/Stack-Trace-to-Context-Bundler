@@ -11,8 +11,8 @@ import (
 )
 
 func TestSchemaVersion(t *testing.T) {
-	if SchemaVersion != "1.0.0" {
-		t.Errorf("SchemaVersion = %q, want %q", SchemaVersion, "1.0.0")
+	if SchemaVersion != "2.0.0" {
+		t.Errorf("SchemaVersion = %q, want %q", SchemaVersion, "2.0.0")
 	}
 }
 
@@ -188,7 +188,7 @@ func TestRoundTrip_Bundle(t *testing.T) {
 				Snippet:  Snippet{StartLine: 8, EndLine: 12, TargetLine: 10, Code: "..."},
 			},
 		},
-		GitMetadata: GitMetadata{CurrentCommit: "abc123", Branch: "main"},
+		GitMetadata: &GitMetadata{CurrentCommit: "abc123", Branch: "main"},
 		Dependencies: Dependencies{
 			ManifestFile: ManifestFilePomXML,
 			Direct:       map[string]string{},
@@ -387,7 +387,7 @@ Caused by: java.sql.SQLException: Connection refused
 				},
 			},
 		},
-		GitMetadata: GitMetadata{
+		GitMetadata: &GitMetadata{
 			CurrentCommit:      "fedcba9876543210fedcba9876543210fedcba98",
 			Branch:             "main",
 			UncommittedChanges: false,
@@ -463,7 +463,7 @@ Node.js v20.11.0`
 				},
 			},
 		},
-		GitMetadata: GitMetadata{
+		GitMetadata: &GitMetadata{
 			CurrentCommit:      "76543210fedcba9876543210fedcba9876543210",
 			Branch:             "feature/query-fix",
 			UncommittedChanges: true,

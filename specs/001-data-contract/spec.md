@@ -108,10 +108,18 @@ generated, tested JSON fixture — the single source of truth for what a
     doesn't exist in the current checkout; `"stale"` when that specific
     file has uncommitted local changes (a per-file check, distinct from
     the repo-wide `gitMetadata.uncommittedChanges` flag); `"ok"` otherwise.
-12. `gitMetadata` must carry `currentCommit`, `branch`, and
+12. `gitMetadata` is optional at the bundle level: `Bundle.GitMetadata`
+    is `*GitMetadata` (`json:"gitMetadata,omitempty"`), nil and omitted
+    entirely from the JSON when no git repository is found for the
+    bundle (004's scope — see `004-own-code-context-extraction/spec.md`).
+    When non-nil, it must carry `currentCommit`, `branch`, and
     `uncommittedChanges` (repo-wide boolean) — genuinely global facts
     about repo state, distinct from the per-file `blame` data on
-    `codeContexts`.
+    `codeContexts` — all three always populated once a repo is
+    confirmed to exist. This pointer change is a MAJOR breaking change
+    under functional requirement 6's own bump policy (a field changing
+    from always-required to sometimes-absent); it bumped `schemaVersion`
+    from `"1.0.0"` to `"2.0.0"`, landed as part of 004.
 13. `dependencies` must carry `manifestFile`
     (`"package.json"|"pom.xml"|"build.gradle"`, single manifest per
     bundle — no monorepo/workspace support in v1) and `direct` (declared

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "language": "java",
   "os": "linux",
   "rawInput": "java.lang.RuntimeException: Failed to process request\n\tat com.example.Handler.handle(Handler.java:42)\n\tat com.fasterxml.jackson.databind.ObjectMapper.readValue(ObjectMapper.java:3418)\n\tat java.lang.Thread.run(Thread.java:833)\nCaused by: java.sql.SQLException: Connection refused\n\tat com.example.Repository.query(Repository.java:88)\n\t... 3 more",

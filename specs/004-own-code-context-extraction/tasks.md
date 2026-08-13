@@ -5,7 +5,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
 Do not start a task without explicit authorization, per the project's
 standing rules.
 
-- [ ] **T001** — Patch `internal/contract` (prerequisite for everything
+- [x] **T001** — Patch `internal/contract` (prerequisite for everything
   else in this feature): change `Bundle.GitMetadata` from `GitMetadata` to
   `*GitMetadata` with `json:"gitMetadata,omitempty"`; bump
   `contract.SchemaVersion` from `"1.0.0"` to `"2.0.0"`. Regenerate

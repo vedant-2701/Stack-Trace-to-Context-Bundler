@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "language": "typescript",
   "os": "darwin",
   "rawInput": "TypeError: Cannot read properties of undefined (reading 'id')\n    at handleRequest (/repo/src/handler.ts:27:14)\n    at Object.get (/repo/node_modules/lodash/lodash.js:11812:3)\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)\nCaused by: Error: ECONNREFUSED\n    at queryDatabase (/repo/src/service.ts:63:9)\nNode.js v20.11.0",
