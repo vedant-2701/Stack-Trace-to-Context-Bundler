@@ -66,3 +66,43 @@ comment since it's the only real (non-test) file so far. `CONVENTIONS.md`'s
 `plan.md`'s layout), consider moving the doc comment there.
 
 ---
+
+**Date:** 2026-08-13
+**Task(s):** T003
+**What happened:** Added `internal/codecontext/gitmeta.go`: exported
+`BuildGitMetadata(ctx, workDir)` wrapping unexported, runner-injectable
+`buildGitMetadata(ctx, workDir, runner)`. Two decisions made and recorded
+in code comments (both flagged to Vedant before implementing, per this
+session's process):
+1. Per `plan.md`'s own "flagged for recheck at T003" note, dropped the
+   `git rev-parse --show-toplevel` call — confirmed nothing in this
+   feature consumes a repo-root path (`contract.GitMetadata` has no such
+   field; per-file git commands rely on git's own upward `.git` discovery
+   per spec.md requirement 9). Detection is now a single
+   `--is-inside-work-tree` call.
+2. spec.md requirement 8 only names the *detection* call's timeout as
+   mapping to "no repo." It's silent on a follow-up call
+   (`rev-parse HEAD`/`--abbrev-ref HEAD`/repo-wide `status`) failing
+   *after* a repo is confirmed to exist (e.g. a freshly-initialized repo
+   with zero commits, where `HEAD` doesn't resolve). Decided: any such
+   failure collapses to the same `nil` result as "no repo found," rather
+   than a partially-populated `GitMetadata`, since requirement 4 requires
+   all three fields always populated once a repo is confirmed, and a
+   partial struct would violate that plus Article VI.
+Also resolved a naming inconsistency between plan.md's Architecture
+section (which names the function `BuildGitMetadata` with an exposed
+`runner` param) and its API/contracts section (public entry point takes
+no `runner`, interface stays unexported) — implemented per the
+API/contracts section, via the exported/unexported function split above.
+Added `gitmeta_test.go`: six table-driven-style tests via `fakeGitRunner`
+— repo found clean, repo found dirty, detached HEAD, no repo found,
+detection timeout, and repo-found-but-HEAD-unresolvable (covering the
+second decision above). `go build ./...`, `go test
+./internal/codecontext/... -run TestBuildGitMetadata`, `gofumpt -l`, and
+`golangci-lint run` all passed clean (Vedant-run/confirmed).
+**Deviations from plan (if any):** The two decisions above; both are
+spec/plan gaps filled in during implementation, not deviations from an
+existing explicit instruction.
+**New open questions:** None.
+
+---

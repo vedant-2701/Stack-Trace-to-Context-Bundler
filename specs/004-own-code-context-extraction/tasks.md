@@ -30,7 +30,7 @@ standing rules.
   - Acceptance: `go test ./internal/codecontext/...` passes using only the
     fake; no test in the package invokes the real implementation.
 
-- [ ] **T003** — Implement `BuildGitMetadata` (`gitmeta.go`): repo
+- [x] **T003** — Implement `BuildGitMetadata` (`gitmeta.go`): repo
   detection (`git rev-parse --is-inside-work-tree` /
   `--show-toplevel`), then `currentCommit`/`branch`/`uncommittedChanges`
   when a repo is found. Returns `nil` for no-repo and rev-parse-timeout
