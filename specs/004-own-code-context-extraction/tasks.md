@@ -21,7 +21,7 @@ standing rules.
     and `plan.md` both show `*GitMetadata` and `"2.0.0"`, not the old
     shape.
 
-- [ ] **T002** — Implement the `gitRunner` interface (`runner.go`): the
+- [x] **T002** — Implement the `gitRunner` interface (`runner.go`): the
   real `os/exec`-backed implementation (10s timeout via
   `context.WithTimeout`, spec.md requirement 8) plus a hand-written fake
   (`runner_fake_test.go`) that the rest of this feature's tests share —

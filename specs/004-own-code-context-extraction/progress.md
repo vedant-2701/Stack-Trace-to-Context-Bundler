@@ -36,3 +36,33 @@ additive, no scope change.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-08-13
+**Task(s):** T002
+**What happened:** Created `internal/codecontext/` (new package). Added
+`runner.go`: the unexported `gitRunner` interface (`Run(ctx, dir, args...)
+(stdout string, err error)`), and `execGitRunner`, the production
+`os/exec`-backed implementation. The 10s hard per-call timeout (spec.md
+requirement 8) is applied *internally* by `execGitRunner.Run` via
+`context.WithTimeout` on the passed-in `ctx` — flagged and decided
+explicitly, since `plan.md`'s interface comment didn't pin down whether the
+caller or `Run` itself owns the timeout, and T003/T007's production entry
+points don't take a `runner` param they could use to manage it externally.
+A real timeout is distinguished from an ordinary git error via `callCtx.Err()`
+and surfaced wrapped so `errors.Is(err, context.DeadlineExceeded)` matches.
+Added `runner_fake_test.go`: hand-written `fakeGitRunner` (a `fn` field,
+no mocking framework, per `CONVENTIONS.md`) for T003/T005/T006's
+table-driven tests to configure per case, plus three tests covering the
+fake itself (arg/dir forwarding, error propagation, `DeadlineExceeded`
+propagation). No test in the package invokes `execGitRunner`.
+`go build ./...`, `go test ./internal/codecontext/...`, `gofumpt -l`, and
+`golangci-lint run` all passed clean (Vedant-run/confirmed).
+**Deviations from plan (if any):** None beyond the timeout-ownership
+decision noted above.
+**New open questions:** `runner.go` currently carries this package's doc
+comment since it's the only real (non-test) file so far. `CONVENTIONS.md`'s
+`package-comments` rule allows only one file to have it. When T007 adds
+`context.go` (the orchestrator — arguably the more "central" file per
+`plan.md`'s layout), consider moving the doc comment there.
+
+---
