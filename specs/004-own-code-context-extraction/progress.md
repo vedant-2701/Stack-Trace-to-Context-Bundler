@@ -136,3 +136,29 @@ export-vs-unexported resolution above.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-08-13
+**Task(s):** T005
+**What happened:** Added `internal/codecontext/status.go`: the `gitStatus`
+type from `plan.md`'s Data model section (`gitStatusClean`,
+`gitStatusModified`, `gitStatusUntracked`, `gitStatusUnknown`), and
+`checkFileStatus(ctx, filePath, runner)`, running `git status --porcelain
+<basename>` with cwd set to the file's own directory. Empty output ->
+clean; `??` prefix -> untracked; anything else non-empty -> modified.
+Decision made and flagged to Vedant before implementing: extended the
+cautious `gitStatusUnknown` collapse (spec.md requirement 8 names this
+explicitly only for a timeout) to *any* git-status error, since that's
+the same mechanism requirement 9 already describes for a file living
+outside the detected repo ("git commands... naturally fail... no new
+logic needed"). Distinct note wording for timeout vs. a generic failure.
+Added `status_test.go`: the four cases in T005's acceptance list (clean,
+modified, untracked, timeout), plus one extra
+(`TestFileStatus_GenericFailure`) covering the requirement-9 edge case,
+explicitly commented as going beyond the minimum list. `go build ./...`,
+`go test ./internal/codecontext/... -run TestFileStatus`, `gofumpt -l`,
+and `golangci-lint run` all passed clean (Vedant-run/confirmed).
+**Deviations from plan (if any):** The requirement-8/requirement-9
+gitStatusUnknown scope extension above.
+**New open questions:** None.
+
+---

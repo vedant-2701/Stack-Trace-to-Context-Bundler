@@ -51,7 +51,7 @@ standing rules.
     file shorter than the window, file not found, permission-denied
     (simulated via a file with no read permission in `t.TempDir()`).
 
-- [ ] **T005** — Implement per-file staleness check (`status.go`): runs
+- [x] **T005** — Implement per-file staleness check (`status.go`): runs
   `git status --porcelain <file>`, maps output to the internal
   `gitStatus` type (clean/modified/untracked/unknown-on-timeout per
   `plan.md`'s Data model), all non-clean variants collapsing to
