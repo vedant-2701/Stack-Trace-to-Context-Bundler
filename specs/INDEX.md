@@ -19,7 +19,7 @@ you're already in, or that chat's context balloons.
 | 002a | CLI input handling | Entrypoints, stdin/file-arg reading, flags (`--lang`, output format) | 001 | done |
 | 002b | Pipeline wiring | Wires 003–009 together into the full detect → parse → render → clipboard flow | 002a, 003, 004, 005a, 006a, 007, 008, 009 | idea |
 | 003 | Language auto-detection | Tries each registered parser's `Detect()` against the raw trace; defines "no match"/ambiguous behavior | 001; needs ≥1 real parser (005a or 006a) to test against | idea |
-| 004 | Own-code context extraction | Shared: read file at line, snippet window, `git blame -L`, repo-level git metadata (current commit, branch, uncommitted changes), stale/not-found handling — language-agnostic | 001 | idea |
+| 004 | Own-code context extraction | Shared: read file at line, snippet window, `git blame -L`, repo-level git metadata (current commit, branch, uncommitted changes), stale/not-found handling — language-agnostic | 001 (+ requires a `001` contract patch: `GitMetadata` → pointer, schemaVersion MAJOR bump) | planned |
 | 005a | Java parser | `Caused by:` chain parsing, frame bucketing (own/dependency/runtime), runtime + runtime-version detection (JVM) | 001, 004 | idea |
 | 005b | Java dependency resolution | `mvn`/`gradle` shell-out to resolve dependency versions for `dependency`-bucket frames | 001, 005a | idea |
 | 006a | TypeScript/JS parser | `.cause` chain parsing, frame bucketing (own/`node_modules`/`node:internal`), runtime + runtime-version detection (node/bun/deno) | 001, 004 | idea |
@@ -28,3 +28,4 @@ you're already in, or that chat's context balloons.
 | 008 | JSON renderer | Bundle → raw contract JSON | 001 | idea |
 | 009 | Clipboard integration | OS-appropriate clipboard write via subprocess (`pbcopy` on macOS; `wl-copy` → `xclip` fallback chain on Linux, clear stderr error if neither is available; `clip.exe` on Windows) | — | idea |
 | 010 | Distribution & release packaging | Build matrix (`all`/`java`/`typescript` × 5 platform targets), how users actually get the binary | 002b; at least one of 005a/006a working end-to-end | idea |
+| 011 | Configurable snippet context window | Expose 004's own-code snippet line-count (fixed at ±5/side in 004) as a `--context-lines`-style CLI flag | 004, 002a | idea |
