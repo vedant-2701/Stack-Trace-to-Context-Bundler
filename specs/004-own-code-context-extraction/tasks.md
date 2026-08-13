@@ -40,7 +40,7 @@ standing rules.
     passes, covering: repo found (all three fields populated), no repo
     found, rev-parse timeout, detached HEAD (`branch` == `"HEAD"`).
 
-- [ ] **T004** — Implement windowed snippet extraction (`snippet.go`):
+- [x] **T004** — Implement windowed snippet extraction (`snippet.go`):
   reads only the needed line range (spec.md's non-functional
   requirement), clamps at file start/end, and classifies
   not-found/unreadable files per spec.md requirement 2. Table-driven

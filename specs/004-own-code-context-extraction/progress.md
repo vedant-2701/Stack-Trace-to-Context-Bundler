@@ -106,3 +106,33 @@ existing explicit instruction.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-08-13
+**Task(s):** T004
+**What happened:** Added `internal/codecontext/snippet.go`: unexported
+`buildSnippet(path, targetLine, contextLines)` streams the file line by
+line via `bufio.Scanner`, discarding lines before the window and
+breaking as soon as it scans past the window's end line, so a large file
+with an early target line is never read past what's needed (non-functional
+requirement). Clamps `StartLine`/`EndLine` to the file's actual bounds.
+Errors are returned as-is from `os.Open`/scan so `errors.Is(err,
+fs.ErrNotExist)` still works -- callers (T007) decide status/note wording
+from that, same "caller decides" split as blame.go (T006).
+Resolved a doc inconsistency: `plan.md`'s file-layout section called the
+window-size constant unexported, but its API/contracts section listed it
+as exported for feature 011 to reference externally. Implemented as
+exported `DefaultContextLines = 5`, per the API/contracts section.
+Added `snippet_test.go`: six tests matching the acceptance list exactly
+(normal window, target line 1, target line at EOF, file shorter than the
+window, file not found via `fs.ErrNotExist`, permission-denied via
+`os.Chmod(0o000)` in `t.TempDir()`, auto-skipped under root).
+Vedant's own gate run flagged one `golangci-lint` (errcheck) finding on
+the unchecked `f.Close()` in the original `defer f.Close()`; fixed to
+`defer func() { _ = f.Close() }()` (Vedant-applied, verified). `go build
+./...`, `go test ./internal/codecontext/... -run TestSnippet`, `gofumpt
+-l`, and `golangci-lint run` all passed clean after that fix.
+**Deviations from plan (if any):** The `DefaultContextLines`
+export-vs-unexported resolution above.
+**New open questions:** None.
+
+---
