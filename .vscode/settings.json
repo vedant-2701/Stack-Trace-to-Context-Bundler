@@ -3,5 +3,5 @@
         "buildFlags": [
             "-tags=integration"
         ]
-    },
+    }
 }
