@@ -81,7 +81,7 @@ standing rules.
     hash from the first occurrence and reuse it for the second group
     rather than treating that group as metadata-less.
 
-- [ ] **T007** — Implement `BuildCodeContexts` orchestrator (`context.go`):
+- [x] **T007** — Implement `BuildCodeContexts` orchestrator (`context.go`):
   iterates `chain`, filters to `own`-bucket frames, wires T004 (snippet) +
   T005 (status) + T006 (blame) together per spec.md requirements 1-2,
   5-7, 9-10, assembling each `contract.CodeContext`. Table-driven tests

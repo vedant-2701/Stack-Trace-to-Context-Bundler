@@ -192,3 +192,40 @@ above.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-08-13
+**Task(s):** T007
+**What happened:** Added `internal/codecontext/context.go`: exported
+`BuildCodeContexts(ctx, chain, language, gitMeta)` wrapping unexported
+`buildCodeContexts(ctx, chain, language, gitMeta, runner)`. Decision
+flagged and made before implementing: `plan.md`'s listed signature had
+no `language` parameter, but `contract.CodeContext.Language` is
+required/non-omitempty and nothing else in this feature has a source
+for it (`Frame` carries no per-frame language) -- added `language
+contract.Language` as a parameter, mirroring `Bundle.Language` being a
+single bundle-wide value. Also ensured the zero-own-frames case returns
+a non-nil empty slice (`make([]contract.CodeContext, 0)`), not a nil
+slice, since `Bundle.CodeContexts` has no `omitempty` and a nil Go slice
+marshals to JSON `null`, contradicting `types.go`'s own "never null"
+header comment.
+`buildOneCodeContext` short-circuits through four stages in requirement
+order: file read (T004) -> repo presence (`gitMeta != nil`) -> per-file
+status (T005) -> blame (T006), stopping at the first stage that can't
+proceed. A blame failure does not demote status away from `"ok"`
+(requirement 7). `notFoundNote`/`blameFailureNote` distinguish
+timeout/specific-error wording from the generic case, same pattern as
+T005's `checkFileStatus`.
+Added `context_test.go`: one test per acceptance-list combination
+(clean/tracked with blame, not-found, unreadable, stale-modified,
+stale-untracked, no-repo, blame-fails, zero own-bucket frames), plus
+one extra (`TestBuildCodeContexts_FrameRefIndexing`) verifying
+ChainIndex/FrameIndex across multiple nodes with non-own frames
+interleaved -- nothing else in this task exercised that. `go build
+./...`, `go test ./internal/codecontext/... -run TestBuildCodeContexts`,
+`gofumpt -l`, and `golangci-lint run` all passed clean
+(Vedant-run/confirmed).
+**Deviations from plan (if any):** The `language` parameter addition
+and the non-nil-empty-slice decision, both above.
+**New open questions:** None.
+
+---
