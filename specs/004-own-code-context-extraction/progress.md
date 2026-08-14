@@ -162,3 +162,33 @@ gitStatusUnknown scope extension above.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-08-13
+**Task(s):** T006
+**What happened:** Added `internal/codecontext/blame.go`:
+`buildBlame(ctx, filePath, startLine, endLine, runner)` runs `git blame
+--porcelain -L <start>,<end> <file>` over the already-clamped snippet
+range, same cwd-set-to-file's-directory approach as T003/T005. Parser
+(`parseBlamePorcelain`) groups entries entirely off git's own
+group-size field on the header line (present only on a group's first
+line) rather than re-deriving grouping by comparing consecutive commit
+hashes. Handles the non-contiguous same-commit reappearance case by
+caching each commit's metadata (author, commitDate, summary) by hash on
+first sight and reusing it when a later group repeats the hash without
+repeating metadata; a hash referenced with nothing cached errors loudly
+rather than emitting an empty Author/Summary (Article VI).
+`CommitDate` computed once here (author-time + author-tz -> RFC3339),
+verified against `testdata/example_java.json`'s existing format before
+writing the code. Added `blame_test.go`: all five cases from T006's
+acceptance list (single-commit window, multi-commit window split at the
+real boundary, command failure, timeout, non-contiguous reappearance).
+Vedant's gate run flagged one `golangci-lint` (staticcheck QF1001)
+finding on `isHexSHA`'s De Morgan's-law-eligible condition; fixed
+(Vedant-applied, verified equivalent and correctly applied). `go build
+./...`, `go test ./internal/codecontext/... -run TestBlame`, `gofumpt
+-l`, and `golangci-lint run` all passed clean after that fix.
+**Deviations from plan (if any):** None beyond the QF1001 lint fix noted
+above.
+**New open questions:** None.
+
+---

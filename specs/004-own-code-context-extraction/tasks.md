@@ -62,7 +62,7 @@ standing rules.
     passes, covering: clean, modified, untracked, status-check timeout
     (→ stale + cautious note).
 
-- [ ] **T006** — Implement `git blame` parsing (`blame.go`): runs
+- [x] **T006** — Implement `git blame` parsing (`blame.go`): runs
   `git blame --porcelain -L <start>,<end> <file>`, parses porcelain output
   into `contract.BlameEntry` grouped by contiguous same-commit ranges
   (spec.md requirement 6), and surfaces blame failures/timeouts per
