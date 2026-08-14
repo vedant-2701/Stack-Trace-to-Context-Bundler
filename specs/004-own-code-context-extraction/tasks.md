@@ -93,7 +93,7 @@ standing rules.
     stale-untracked, no-repo, blame-fails), plus a chain with zero
     own-bucket frames (empty result, no panic).
 
-- [ ] **T008** — Full acceptance pass: walk every checkbox in `spec.md`'s
+- [x] **T008** — Full acceptance pass: walk every checkbox in `spec.md`'s
   Acceptance Criteria section against real behavior; add the CI-only,
   build-tag-gated integration test (`plan.md`'s Testing strategy) that
   exercises the real `os/exec` `gitRunner` against a throwaway

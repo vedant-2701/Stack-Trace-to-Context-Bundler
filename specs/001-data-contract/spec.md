@@ -1,10 +1,11 @@
 # Spec: Data contract
 
-**Status:** Implemented (`internal/contract`, T000-T006 all complete). Five
-of ten acceptance criteria below are satisfied by this feature alone;
-five depend on features that don't exist yet (005a, 006a, 004, 005b,
-006b) and are tracked in `memory/known-gaps.md`, not
-left silently unchecked.
+**Status:** Implemented (`internal/contract`, T000-T006 all complete).
+Seven of ten acceptance criteria below are satisfied (five by this
+feature alone, two more by 004 now that it's complete); three still
+depend on features that don't exist yet (005a, 006a, and the end-to-end
+part of 005b/006b), tracked in `memory/known-gaps.md`, not left silently
+unchecked.
 **Folder:** specs/001-data-contract
 
 ## Overview
@@ -195,13 +196,17 @@ so it survives an account change or a memory reset).
 - [ ] Given a TS/JS stack trace with an `Error.cause` chain, when parsed,
       then `chain` contains one node per cause, with `elidedFrameCount`
       omitted or `0`. **Deferred to 006a**, same reason as above.
-- [ ] Given a bundle built for a file that has uncommitted local changes,
+- [x] Given a bundle built for a file that has uncommitted local changes,
       when `codeContexts` is built for a frame in that file, then `status`
-      is `"stale"`. **Deferred to 004** -- "stale/not-found handling" is
-      explicitly that feature's scope; 001 only defines the `status` enum.
-- [ ] Given a bundle built for a file not present in the current checkout,
+      is `"stale"`. Satisfied by 004 (`internal/codecontext.checkFileStatus`);
+      see `004-own-code-context-extraction/spec.md`'s acceptance criteria
+      and `checkFileStatus`/`BuildCodeContexts` tests.
+- [x] Given a bundle built for a file not present in the current checkout,
       when `codeContexts` is built for a frame referencing it, then
-      `status` is `"not_found"`. **Deferred to 004**, same reason.
+      `status` is `"not_found"`. Satisfied by 004
+      (`internal/codecontext.buildSnippet`); see
+      `004-own-code-context-extraction/spec.md`'s acceptance criteria and
+      `buildSnippet`/`BuildCodeContexts` tests.
 - [x] Given a pasted trace exceeding 512 KB, when the bundle is built,
       then `rawInput` is truncated to the cap and `rawInputTruncated` is
       `true`. Satisfied by `TruncateRawInput` (T006); see

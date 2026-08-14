@@ -229,3 +229,43 @@ and the non-nil-empty-slice decision, both above.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-08-13
+**Task(s):** T008
+**What happened:** Added `internal/codecontext/integration_test.go`
+(`//go:build integration`, excluded from default `go test ./...` and
+lefthook/CI, run via `go test -tags integration
+./internal/codecontext/...`): three tests against a real `git init`-ed
+`t.TempDir()` repo, exercising `execGitRunner` for real rather than the
+fake -- clean tracked file (`BuildGitMetadata` + `BuildCodeContexts`
+against real `git blame` output, checked against the actual `HEAD`
+commit hash and a real author name), uncommitted changes (`stale`), and
+outside any repo (`nil`). This repo had no prior build-tag convention to
+match, so used the standard Go idiom (`integration`).
+Walked all 10 checkboxes in this feature's own `spec.md` Acceptance
+Criteria section against real tests and checked every one, each with a
+"Satisfied by ...; see TestName" note matching `001-data-contract/spec.md`'s
+existing convention (checked that file first before writing these).
+None deferred -- full coverage. Flipped this spec's Status line to
+`Implemented`.
+Closed the loop on `memory/known-gaps.md`'s two rows owned by this
+feature (uncommitted-changes -> stale, file-not-present -> not_found):
+removed both rows, and checked the corresponding two boxes in
+`001-data-contract/spec.md` with "Satisfied by 004" notes, updating 001's
+top status line from "five of ten" to "seven of ten" satisfied.
+`go build ./...`, `go test ./internal/codecontext/...`, `go test -tags
+integration ./internal/codecontext/...`, `gofumpt -l`, and `golangci-lint
+run` all passed clean (Vedant-run/confirmed).
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
+
+## Feature complete
+
+All T001-T008 done. `internal/codecontext` now provides
+`BuildGitMetadata` and `BuildCodeContexts` as this feature's public
+surface, consumed by 002b (pipeline wiring) once that feature starts.
+`DefaultContextLines` is the one other exported symbol, for 011 to
+reference. See `specs/INDEX.md` for this feature's status flip to `done`
+and what's next in the planned sequence.

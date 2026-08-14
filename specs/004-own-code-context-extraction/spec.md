@@ -1,6 +1,6 @@
 # Spec: Own-code context extraction
 
-**Status:** Approved
+**Status:** Implemented (`internal/codecontext`, T001-T008 all complete).
 **Folder:** specs/004-own-code-context-extraction
 
 ## Overview
@@ -191,44 +191,79 @@ feature legitimately needs.
 
 ## Acceptance criteria
 
-- [ ] Given an own-bucket frame whose file exists, is git-tracked, and is
+- [x] Given an own-bucket frame whose file exists, is git-tracked, and is
       clean, when its `CodeContext` is built, then `status` is `"ok"` and
       `blame` contains one or more entries grouped by contiguous
-      same-commit ranges within the snippet window.
-- [ ] Given an own-bucket frame whose file does not exist on disk, when its
+      same-commit ranges within the snippet window. Satisfied by
+      `buildOneCodeContext`/`buildBlame` (T006, T007); see
+      `TestBuildCodeContexts_CleanTracked`,
+      `TestBlame_SingleCommitWindow`/`TestBlame_MultiCommitWindow`, and
+      `TestIntegration_RealGit_CleanTrackedFile` (real git, build-tag
+      `integration`).
+- [x] Given an own-bucket frame whose file does not exist on disk, when its
       `CodeContext` is built, then `status` is `"not_found"` with an
       explanatory `note`. **Satisfies the `001-data-contract` deferred
-      criterion** (`memory/known-gaps.md`).
-- [ ] Given an own-bucket frame whose file exists but can't be read (e.g.
+      criterion** (`memory/known-gaps.md`). Satisfied by `buildSnippet`/
+      `buildOneCodeContext` (T004, T007); see `TestSnippet_FileNotFound`
+      and `TestBuildCodeContexts_FileNotFound`.
+- [x] Given an own-bucket frame whose file exists but can't be read (e.g.
       permission denied), when its `CodeContext` is built, then `status` is
-      `"not_found"` with a `note` stating the actual reason.
-- [ ] Given an own-bucket frame whose file has uncommitted local changes,
+      `"not_found"` with a `note` stating the actual reason. Satisfied by
+      `buildSnippet`/`notFoundNote` (T004, T007); see
+      `TestSnippet_PermissionDenied` and
+      `TestBuildCodeContexts_FileUnreadable`.
+- [x] Given an own-bucket frame whose file has uncommitted local changes,
       when its `CodeContext` is built, then `status` is `"stale"`, `blame`
       is omitted, and `note` says so. **Satisfies the `001-data-contract`
-      deferred criterion** (`memory/known-gaps.md`).
-- [ ] Given an own-bucket frame whose file is untracked (never committed)
+      deferred criterion** (`memory/known-gaps.md`). Satisfied by
+      `checkFileStatus` (T005, T007); see `TestFileStatus_Modified`,
+      `TestBuildCodeContexts_StaleModified`, and
+      `TestIntegration_RealGit_UncommittedChanges` (real git).
+- [x] Given an own-bucket frame whose file is untracked (never committed)
       in an otherwise-git-initialized repo, when its `CodeContext` is
       built, then `status` is `"stale"`, `blame` is omitted, and `note`
-      distinguishes this from the uncommitted-changes case.
-- [ ] Given a bundle built outside any git repository, when it's built,
+      distinguishes this from the uncommitted-changes case. Satisfied by
+      `checkFileStatus` (T005, T007); see `TestFileStatus_Untracked` and
+      `TestBuildCodeContexts_StaleUntracked`.
+- [x] Given a bundle built outside any git repository, when it's built,
       then `Bundle.GitMetadata` is omitted entirely (nil, not present in
       JSON), and every own-bucket frame's `CodeContext.status` is `"ok"`
       with `blame` omitted and a `note` explaining no repo was found.
-- [ ] Given a bundle built inside a git repository, when it's built, then
+      Satisfied by `BuildGitMetadata`/`buildOneCodeContext` (T003, T007);
+      see `TestBuildGitMetadata_NoRepoFound`,
+      `TestBuildCodeContexts_NoRepo`, and `TestIntegration_RealGit_NoRepo`
+      (real git).
+- [x] Given a bundle built inside a git repository, when it's built, then
       `Bundle.GitMetadata` is present with `currentCommit`, `branch`
       (literally `"HEAD"` if detached), and `uncommittedChanges` all
-      populated.
-- [ ] Given a frame's `lineNumber` near the start or end of its file, when
+      populated. Satisfied by `BuildGitMetadata` (T003); see
+      `TestBuildGitMetadata_RepoFound_CleanTree`/`_DirtyTree`,
+      `TestBuildGitMetadata_DetachedHead`, and
+      `TestIntegration_RealGit_CleanTrackedFile`/`_UncommittedChanges`
+      (real git).
+- [x] Given a frame's `lineNumber` near the start or end of its file, when
       its snippet is built, then the window is clamped to the file's
-      actual bounds rather than requesting out-of-range lines.
-- [ ] Given `git blame` fails despite a tracked, clean file (simulated via
+      actual bounds rather than requesting out-of-range lines. Satisfied
+      by `buildSnippet` (T004); see `TestSnippet_TargetLineOne`,
+      `TestSnippet_TargetLineAtEOF`, and
+      `TestSnippet_FileShorterThanWindow`.
+- [x] Given `git blame` fails despite a tracked, clean file (simulated via
       the hand-written fake, e.g. git binary missing), when the
       `CodeContext` is built, then `status` stays `"ok"`, `blame` is
-      omitted, and `note` explains the blame failure.
-- [ ] Given any git subprocess call exceeds 10 seconds (simulated via the
+      omitted, and `note` explains the blame failure. Satisfied by
+      `buildOneCodeContext`/`blameFailureNote` (T007); see
+      `TestBuildCodeContexts_BlameFails`.
+- [x] Given any git subprocess call exceeds 10 seconds (simulated via the
       fake), when the relevant `CodeContext`/`GitMetadata` is built, then
       the timeout is handled per requirement 8's per-call-type rule, and
-      the bundle is still produced (never a hang or crash).
+      the bundle is still produced (never a hang or crash). Satisfied by
+      `execGitRunner`'s internal `context.WithTimeout` (T002) plus each
+      caller's per-call-type handling (T003, T005, T006); see
+      `TestBuildGitMetadata_DetectionTimeout`, `TestFileStatus_Timeout`,
+      and `TestBlame_Timeout`. Not separately exercised against a real
+      10-second wait in the integration test (T008) -- impractical for a
+      routine test run, and the fake already exercises every per-call-type
+      branch this requirement specifies.
 
 ## Open questions
 
