@@ -161,6 +161,66 @@ func TestBlame_Timeout(t *testing.T) {
 	}
 }
 
+func TestBlame_TruncatedMetadataBlock(t *testing.T) {
+	// Output ends right after the header + full metadata, before the
+	// content line that's supposed to terminate the group -- malformed
+	// porcelain output despite a successful (err == nil) command result.
+	// Must fail loudly, not silently emit a BlameEntry from a partial
+	// metadata block.
+	out := shaA + " 10 10 1\n" +
+		"author Jane Doe\n" +
+		"author-time 0\n" +
+		"author-tz +0000\n" +
+		"summary Fix bug\n" +
+		"filename app.go\n" // no trailing tab-content line
+	fake := &fakeGitRunner{fn: func(context.Context, string, ...string) (string, error) {
+		return out, nil
+	}}
+
+	_, err := buildBlame(context.Background(), "/repo/app.go", 10, 10, fake)
+	if err == nil {
+		t.Fatal("buildBlame: expected an error for a truncated metadata block, got nil")
+	}
+}
+
+func TestBlame_LongLine(t *testing.T) {
+	// A blame content line well past bufio.Scanner's default ~64KiB token
+	// limit (minified/generated source) must not fail parsing.
+	longLine := strings.Repeat("x", 200*1024)
+	out := porcelain(
+		shaA+" 1 1 1",
+		"author Jane Doe",
+		"author-mail <jane@example.com>",
+		"author-time 0",
+		"author-tz +0000",
+		"committer Jane Doe",
+		"committer-mail <jane@example.com>",
+		"committer-time 0",
+		"committer-tz +0000",
+		"summary Fix bug",
+		"filename app.go",
+		"\t"+longLine,
+	)
+	fake := &fakeGitRunner{fn: func(context.Context, string, ...string) (string, error) {
+		return out, nil
+	}}
+
+	got, err := buildBlame(context.Background(), "/repo/app.go", 1, 1, fake)
+	if err != nil {
+		t.Fatalf("buildBlame: unexpected error: %v", err)
+	}
+	assertBlameEntries(t, got, []contract.BlameEntry{
+		{
+			StartLine:  1,
+			EndLine:    1,
+			CommitHash: shaA,
+			Author:     "Jane Doe",
+			CommitDate: "1970-01-01T00:00:00Z",
+			Summary:    "Fix bug",
+		},
+	})
+}
+
 func TestBlame_NonContiguousSameCommitReappearance(t *testing.T) {
 	// shaA covers lines 1-3, shaB covers lines 4-5, then shaA reappears
 	// at line 6 -- non-contiguous with its first group. Porcelain omits

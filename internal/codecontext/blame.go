@@ -66,6 +66,7 @@ type commitMeta struct {
 // for later groups that don't repeat it.
 func parseBlamePorcelain(out string) ([]contract.BlameEntry, error) {
 	scanner := bufio.NewScanner(strings.NewReader(out))
+	scanner.Buffer(make([]byte, 0, 64*1024), maxScannerLineBytes)
 	cache := map[string]commitMeta{}
 	var entries []contract.BlameEntry
 
@@ -96,37 +97,9 @@ func parseBlamePorcelain(out string) ([]contract.BlameEntry, error) {
 			return nil, fmt.Errorf("parse group size in %q: %w", line, err)
 		}
 
-		meta := map[string]string{}
-		for scanner.Scan() {
-			l := scanner.Text()
-			if strings.HasPrefix(l, "\t") {
-				break // file content line, discard
-			}
-			key, val, _ := strings.Cut(l, " ")
-			meta[key] = val
-		}
-
-		if author, ok := meta["author"]; ok {
-			commitDate, err := formatCommitDate(meta["author-time"], meta["author-tz"])
-			if err != nil {
-				return nil, fmt.Errorf("commit %s: %w", sha, err)
-			}
-			cache[sha] = commitMeta{
-				author:     author,
-				commitDate: commitDate,
-				summary:    meta["summary"],
-			}
-		}
-
-		cm, ok := cache[sha]
-		if !ok {
-			// A repeat occurrence of a commit whose first occurrence
-			// was never cached -- shouldn't happen with well-formed
-			// porcelain output (git always shows full metadata the
-			// first time a commit appears in this output), but fail
-			// loudly rather than silently emitting an empty
-			// author/summary (Article VI).
-			return nil, fmt.Errorf("commit %s referenced before its metadata was seen in this output", sha)
+		cm, err := readGroupMetadata(scanner, sha, line, cache)
+		if err != nil {
+			return nil, err
 		}
 
 		entries = append(entries, contract.BlameEntry{
@@ -143,6 +116,67 @@ func parseBlamePorcelain(out string) ([]contract.BlameEntry, error) {
 	}
 
 	return entries, nil
+}
+
+// readGroupMetadata consumes one blame group's metadata block -- the
+// lines between a group-starting header and its terminating
+// tab-prefixed content line -- and returns the resolved commitMeta for
+// sha: either freshly parsed from this block, or reused from cache if
+// this block was empty because porcelain already showed sha's metadata
+// earlier in this same output (the non-contiguous-reappearance case).
+// line is only used to give parse errors a useful location. Split out of
+// parseBlamePorcelain to keep that function's branching within gocyclo's
+// limit, and because this block is a genuinely separable unit: "resolve
+// one group's commit metadata" from "walk the header stream and emit
+// entries."
+func readGroupMetadata(scanner *bufio.Scanner, sha, line string, cache map[string]commitMeta) (commitMeta, error) {
+	meta := map[string]string{}
+	sawContentLine := false
+	for scanner.Scan() {
+		l := scanner.Text()
+		if strings.HasPrefix(l, "\t") {
+			sawContentLine = true
+			break // file content line, discard
+		}
+		key, val, _ := strings.Cut(l, " ")
+		meta[key] = val
+	}
+	if !sawContentLine {
+		// EOF (or a scan error) before this group's metadata block was
+		// terminated by its content line -- malformed/truncated porcelain
+		// output. execGitRunner already fails the whole call on a
+		// non-zero git exit, so this should only happen if git exits 0
+		// but writes output that doesn't match its own documented format;
+		// fail loudly rather than silently emitting a BlameEntry from a
+		// possibly-incomplete metadata block (Article VI).
+		if err := scanner.Err(); err != nil {
+			return commitMeta{}, fmt.Errorf("read git blame metadata for %q: %w", line, err)
+		}
+		return commitMeta{}, fmt.Errorf("git blame output ended before %q's metadata block was terminated by a content line", line)
+	}
+
+	if author, ok := meta["author"]; ok {
+		commitDate, err := formatCommitDate(meta["author-time"], meta["author-tz"])
+		if err != nil {
+			return commitMeta{}, fmt.Errorf("commit %s: %w", sha, err)
+		}
+		cache[sha] = commitMeta{
+			author:     author,
+			commitDate: commitDate,
+			summary:    meta["summary"],
+		}
+	}
+
+	cm, ok := cache[sha]
+	if !ok {
+		// A repeat occurrence of a commit whose first occurrence was
+		// never cached -- shouldn't happen with well-formed porcelain
+		// output (git always shows full metadata the first time a commit
+		// appears in this output), but fail loudly rather than silently
+		// emitting an empty author/summary (Article VI).
+		return commitMeta{}, fmt.Errorf("commit %s referenced before its metadata was seen in this output", sha)
+	}
+	return cm, nil
 }
 
 // isHexSHA reports whether s looks like a full 40-character git commit

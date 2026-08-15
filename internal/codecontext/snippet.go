@@ -2,6 +2,7 @@ package codecontext
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -18,6 +19,20 @@ import (
 // --context-lines flag.
 const DefaultContextLines = 5
 
+// errEmptyFile is returned by buildSnippet when the target file exists
+// and is readable but has zero lines. Kept as its own sentinel rather
+// than reusing fs.ErrNotExist or a generic wrap: this is a genuinely
+// different situation from "not found" or "unreadable" (spec.md
+// requirement 2's two named cases), and a note claiming the file wasn't
+// found would misdescribe a file that's actually right there, just
+// empty. Still surfaces through contract.StatusNotFound, the same
+// reused-status approach requirement 2 already uses for
+// permission-denied -- a 4th CodeContextStatus value was already
+// considered and rejected once in this feature's plan.md for that case,
+// for the same reason (not worth another MAJOR-bump contract change for
+// a distinction the note field can carry).
+var errEmptyFile = errors.New("file has no lines")
+
 // buildSnippet extracts a fixed-size text window of source lines around
 // targetLine in the file at path (spec.md requirement 1), clamped to the
 // file's actual first/last line when the window would run past either
@@ -28,12 +43,13 @@ const DefaultContextLines = 5
 // is never read past what's actually needed.
 //
 // A non-nil error means the file could not be extracted at all --
-// missing, or exists but unreadable (spec.md requirement 2; both cases
-// reuse contract.StatusNotFound). This function doesn't decide
-// status/note wording itself -- callers distinguish "doesn't exist" from
-// "exists but unreadable" via errors.Is(err, fs.ErrNotExist) to build
-// requirement 2's distinguishing note text, the same "caller decides
-// status/note" split blame.go (T006) also uses.
+// missing, unreadable, or present-but-empty (spec.md requirement 2's two
+// named cases, plus errEmptyFile above; all three reuse
+// contract.StatusNotFound). This function doesn't decide status/note
+// wording itself -- callers distinguish these via errors.Is(err,
+// fs.ErrNotExist) / errors.Is(err, errEmptyFile) to build requirement 2's
+// distinguishing note text, the same "caller decides status/note" split
+// blame.go (T006) also uses.
 func buildSnippet(path string, targetLine, contextLines int) (contract.Snippet, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -53,6 +69,7 @@ func buildSnippet(path string, targetLine, contextLines int) (contract.Snippet, 
 	lastLine := 0
 
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxScannerLineBytes)
 	lineNum := 0
 	for scanner.Scan() {
 		lineNum++
@@ -67,6 +84,10 @@ func buildSnippet(path string, targetLine, contextLines int) (contract.Snippet, 
 	}
 	if err := scanner.Err(); err != nil {
 		return contract.Snippet{}, fmt.Errorf("read %s: %w", path, err)
+	}
+
+	if lastLine == 0 {
+		return contract.Snippet{}, fmt.Errorf("%s: %w", path, errEmptyFile)
 	}
 
 	actualEnd := end

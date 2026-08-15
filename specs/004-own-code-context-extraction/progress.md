@@ -269,3 +269,62 @@ surface, consumed by 002b (pipeline wiring) once that feature starts.
 `DefaultContextLines` is the one other exported symbol, for 011 to
 reference. See `specs/INDEX.md` for this feature's status flip to `done`
 and what's next in the planned sequence.
+
+---
+
+**Date:** 2026-08-15
+**Task(s):** Post-T008 PR review fix pass (Copilot)
+**What happened:** Verified all seven Copilot review threads against the
+actual files before acting on any of them. Six were legitimate, applied:
+1. `bufio.Scanner`'s default ~64KiB token limit in `snippet.go` and
+   `blame.go` could fail on a single minified/generated source line.
+   Added `scanner.Buffer(...)` (1MiB ceiling, `maxScannerLineBytes`) to
+   both. Added `TestSnippet_LongLine`/`TestBlame_LongLine`.
+2. `blame.go`'s metadata-parsing loop could silently proceed if EOF hit
+   before a group's terminating content line (malformed/truncated
+   porcelain output despite `err == nil`, an unlikely but real gap since
+   `execGitRunner` only guards against a non-zero exit, not a
+   well-formed-but-truncated stdout). Added an explicit
+   `sawContentLine` check that fails loudly instead. Added
+   `TestBlame_TruncatedMetadataBlock`.
+3. **Real code gap, not docs drift**: `plan.md`'s Architecture section
+   has always mandated `slog.Warn` on every degraded-but-continuing path
+   (no-repo, stale, blame failure) -- never implemented across
+   T003/T005/T006/T007. Added `warnDegraded` in `context.go`, called at
+   each of the four points `buildOneCodeContext` sets a degraded `cc.Note`
+   -- centralized there rather than spread across
+   `gitmeta.go`/`status.go`/`blame.go` as `plan.md` originally described,
+   since those three return value/error pairs, not a `note` tied to a
+   specific `CodeContext`; `context.go` is the one place every path's
+   final note text actually exists. Added
+   `TestBuildCodeContexts_LogsWarnOnDegradedPath`, which installs a
+   capturing `slog.Handler` and asserts a Warn record actually fires --
+   not just that the code compiles.
+4. `plan.md` drift confirmed on four more points (all real, `plan.md`
+   itself never updated after the T002/T003/T004 sessions that made these
+   calls, even though `progress.md` recorded the reasoning at the time):
+   public API signatures still showing a `runner` param and missing
+   `language`; repo detection still described as two calls including
+   `--show-toplevel`; the "Flagged for recheck" section left as an open
+   question that was actually already resolved at T003;
+   `DefaultContextLines` still described as unexported. Fixed all four
+   locations plus the two above (six total edits to `plan.md`).
+5. Empty-file edge case (`buildSnippet` returning `StartLine == EndLine
+   == 0` for a zero-line file) -- flagged to Vedant rather than silently
+   fixed, since it changes observable behavior. Vedant's direction: don't
+   reuse `not_found`'s existing wording ambiguously, give it a genuinely
+   distinct Go-level error. Added `errEmptyFile` sentinel in `snippet.go`,
+   a `notFoundNote` branch for it in `context.go` (still surfaces as
+   `contract.StatusNotFound` -- a 4th status value was already rejected
+   once in this same `plan.md` for the permission-denied case, same
+   reasoning applies here, not reopened). Added `TestSnippet_EmptyFile`
+   and `TestBuildCodeContexts_EmptyFile`. Recorded as an 11th acceptance
+   criterion in `spec.md` (explicitly noted as PR-review-surfaced, not
+   from the original interrogation) and folded into requirement 2's text,
+   rather than left as an implementation-only decision with no spec trail.
+**Deviations from plan (if any):** All of the above; each is a genuine
+gap (four in code, six in docs) this session's own earlier work left
+behind, not scope creep.
+**New open questions:** None.
+
+---

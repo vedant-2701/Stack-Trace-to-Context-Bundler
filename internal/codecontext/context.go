@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 
 	"github.com/vedant-2701/stack-trace-bundler/internal/contract"
 )
@@ -52,6 +53,16 @@ func buildCodeContexts(ctx context.Context, chain []contract.ExceptionNode, lang
 // repo skips status/blame (requirement 3); a non-clean status skips
 // blame (requirement 5); only a clean, tracked file with a repo present
 // reaches blame (requirement 6).
+//
+// Every degraded-but-continuing outcome here (not_found, no repo, stale,
+// blame failure) gets a slog.Warn at the point it's decided, carrying the
+// same reasoning as the note that ends up on cc -- per plan.md's
+// Architecture section ("Logging"), so the diagnostic is visible at the
+// default log level without -v/-vv. Centralized here rather than spread
+// across gitmeta.go/status.go/blame.go individually: cc.Note is what
+// those functions' return values eventually become, and this is the one
+// place that's true for every path, so logging here covers all of them
+// without duplicating a log line per helper.
 func buildOneCodeContext(ctx context.Context, ref contract.FrameRef, frame contract.Frame, language contract.Language, hasRepo bool, runner gitRunner) contract.CodeContext {
 	cc := contract.CodeContext{
 		FrameRef: ref,
@@ -63,6 +74,7 @@ func buildOneCodeContext(ctx context.Context, ref contract.FrameRef, frame contr
 	if err != nil {
 		cc.Status = contract.StatusNotFound
 		cc.Note = notFoundNote(err)
+		warnDegraded(ref, frame.FilePath, cc.Status, cc.Note)
 		return cc
 	}
 	cc.Snippet = snippet
@@ -70,6 +82,7 @@ func buildOneCodeContext(ctx context.Context, ref contract.FrameRef, frame contr
 	if !hasRepo {
 		cc.Status = contract.StatusOK
 		cc.Note = "no git repository found"
+		warnDegraded(ref, frame.FilePath, cc.Status, cc.Note)
 		return cc
 	}
 
@@ -77,6 +90,7 @@ func buildOneCodeContext(ctx context.Context, ref contract.FrameRef, frame contr
 	if status != gitStatusClean {
 		cc.Status = contract.StatusStale
 		cc.Note = note
+		warnDegraded(ref, frame.FilePath, cc.Status, cc.Note)
 		return cc
 	}
 
@@ -87,6 +101,7 @@ func buildOneCodeContext(ctx context.Context, ref contract.FrameRef, frame contr
 		// tracked and clean, only the blame lookup failed.
 		cc.Status = contract.StatusOK
 		cc.Note = blameFailureNote(err)
+		warnDegraded(ref, frame.FilePath, cc.Status, cc.Note)
 		return cc
 	}
 
@@ -95,12 +110,30 @@ func buildOneCodeContext(ctx context.Context, ref contract.FrameRef, frame contr
 	return cc
 }
 
-// notFoundNote distinguishes "file doesn't exist" from "file exists but
-// couldn't be read" (spec.md requirement 2) -- both map to
+// warnDegraded logs one degraded-but-continuing CodeContext outcome at
+// Warn level (package-level slog default, stderr-only per constitution
+// Article II; CONVENTIONS.md's Logging section: Warn is the default
+// level, so this is visible without -v/-vv).
+func warnDegraded(ref contract.FrameRef, filePath string, status contract.CodeContextStatus, note string) {
+	slog.Warn("own-code context degraded",
+		"file", filePath,
+		"chainIndex", ref.ChainIndex,
+		"frameIndex", ref.FrameIndex,
+		"status", status,
+		"reason", note,
+	)
+}
+
+// notFoundNote distinguishes "file doesn't exist", "file exists but
+// couldn't be read", and "file exists but is empty" (spec.md requirement
+// 2's two named cases, plus errEmptyFile) -- all three map to
 // contract.StatusNotFound, but the note must state the actual reason.
 func notFoundNote(err error) string {
 	if errors.Is(err, fs.ErrNotExist) {
 		return "file not found in current checkout -- trace may be from a different commit"
+	}
+	if errors.Is(err, errEmptyFile) {
+		return "file exists but is empty (no lines) -- trace may be from a different commit or the file was truncated"
 	}
 	return fmt.Sprintf("file exists but could not be read: %s", err)
 }

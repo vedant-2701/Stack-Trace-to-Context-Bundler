@@ -3,9 +3,11 @@ package codecontext
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/vedant-2701/stack-trace-bundler/internal/contract"
@@ -286,4 +288,76 @@ func TestBuildCodeContexts_FrameRefIndexing(t *testing.T) {
 			t.Errorf("contexts[%d].FrameRef = %+v, want %+v", i, got[i].FrameRef, want)
 		}
 	}
+}
+
+func TestBuildCodeContexts_EmptyFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "Empty.java")
+	if err := os.WriteFile(path, []byte{}, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	fake := &fakeGitRunner{fn: func(context.Context, string, ...string) (string, error) {
+		t.Fatal("git should never be called for a file that couldn't even be read")
+		return "", nil
+	}}
+
+	got := buildCodeContexts(context.Background(), singleOwnFrameChain(path, 1), contract.LanguageJava,
+		&contract.GitMetadata{}, fake)
+
+	cc := got[0]
+	if cc.Status != contract.StatusNotFound {
+		t.Errorf("Status = %v, want StatusNotFound", cc.Status)
+	}
+	if !strings.Contains(cc.Note, "empty") {
+		t.Errorf("Note = %q, want it to say the file is empty, not that it's missing", cc.Note)
+	}
+	if strings.Contains(cc.Note, "not found in current checkout") {
+		t.Errorf("Note = %q, should not claim the file is absent -- it exists, just empty", cc.Note)
+	}
+}
+
+// captureHandler is a minimal slog.Handler that records every Record it
+// receives, so TestBuildCodeContexts_LogsWarnOnDegradedPath can verify a
+// Warn log actually fires -- not just that the code compiles.
+type captureHandler struct {
+	mu      *sync.Mutex
+	records *[]slog.Record
+}
+
+func (h captureHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h captureHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	*h.records = append(*h.records, r)
+	return nil
+}
+
+func (h captureHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h captureHandler) WithGroup(string) slog.Handler      { return h }
+
+func TestBuildCodeContexts_LogsWarnOnDegradedPath(t *testing.T) {
+	oldLogger := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(oldLogger) })
+
+	var mu sync.Mutex
+	var records []slog.Record
+	slog.SetDefault(slog.New(captureHandler{mu: &mu, records: &records}))
+
+	path := writeSourceFile(t, t.TempDir(), "Handler.java", "line1\nline2\nline3\n")
+	fake := &fakeGitRunner{fn: func(context.Context, string, ...string) (string, error) {
+		return " M Handler.java\n", nil // modified -> stale, a degraded path
+	}}
+
+	_ = buildCodeContexts(context.Background(), singleOwnFrameChain(path, 2), contract.LanguageJava,
+		&contract.GitMetadata{}, fake)
+
+	mu.Lock()
+	defer mu.Unlock()
+	for _, r := range records {
+		if r.Level == slog.LevelWarn && r.Message == "own-code context degraded" {
+			return
+		}
+	}
+	t.Error(`expected a Warn-level "own-code context degraded" log record for the stale path, got none`)
 }

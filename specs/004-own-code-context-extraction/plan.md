@@ -14,13 +14,13 @@ Two independent top-level entry points, matching the split already visible
 in `contract.Bundle`'s shape (`GitMetadata` is bundle-level; `CodeContexts`
 is per-frame):
 
-- `BuildGitMetadata(ctx context.Context, workDir string, runner gitRunner) *contract.GitMetadata`
+- `BuildGitMetadata(ctx context.Context, workDir string) *contract.GitMetadata`
   — requirement 3/4/8. Returns `nil` for every "no repo" / timeout path.
   Never returns an error — a failure to find/read a repo is a valid,
   representable outcome (`nil`), not an error condition the caller must
   branch on separately. This mirrors `contract.TruncateRawInput`'s
   "outcome as a value, not an error" shape from `001-data-contract`.
-- `BuildCodeContexts(ctx context.Context, chain []contract.ExceptionNode, gitMeta *contract.GitMetadata, runner gitRunner) []contract.CodeContext`
+- `BuildCodeContexts(ctx context.Context, chain []contract.ExceptionNode, language contract.Language, gitMeta *contract.GitMetadata) []contract.CodeContext`
   — requirements 1-2, 5-7, 9-10. Iterates every `ExceptionNode`/`Frame`,
   skips non-`own` buckets, builds one `CodeContext` per own-bucket frame.
   Takes the same `*contract.GitMetadata` `BuildGitMetadata` already
@@ -30,9 +30,16 @@ is per-frame):
   frame's own file's directory (`Frame.FilePath`, already on hand per
   frame), relying on git's own upward repo search rather than a
   passed-in root (this is the same mechanism requirement 9 already
-  relies on for the multi-repo edge case). `runner` is the unexported
-  interface below, present here for test injection — the public wrapper
-  (see API/contracts) constructs the real one and omits this parameter.
+  relies on for the multi-repo edge case). Also takes `language
+  contract.Language`: `contract.CodeContext.Language` is required
+  (non-`omitempty`), and nothing else in this feature has a source for
+  it, since `Frame` carries no per-frame language (a bundle is
+  single-language by design) — added at T007 implementation time, not
+  originally listed here. Neither function takes a `runner` parameter:
+  each is a thin public wrapper around an unexported, runner-injectable
+  twin (`buildGitMetadata`/`buildCodeContexts`) that tests call directly
+  via same-package fakes — see API/contracts below, the actual final
+  shape both functions ended up with.
 
 A small unexported `gitRunner` interface abstracts the actual subprocess
 call, so `go test ./...` never needs a real `git` binary
@@ -55,8 +62,9 @@ a hand-written fake implementing the same interface (no mocking framework,
 per `CONVENTIONS.md`), returning canned output or a simulated timeout per
 test case.
 
-Repo detection (`git rev-parse --is-inside-work-tree` then
-`--show-toplevel`), staleness (`git status --porcelain <file>`), and blame
+Repo detection (`git rev-parse --is-inside-work-tree` only — see "Flagged
+for recheck" below, resolved at T003: `--show-toplevel` was dropped),
+staleness (`git status --porcelain <file>`), and blame
 (`git blame --porcelain -L <start>,<end> <file>`) are three separate
 `gitRunner.Run` calls with independent 10s timeouts (requirement 8) — not
 one combined call, so one slow file's blame can't block another file's
@@ -66,15 +74,20 @@ Every degraded-but-continuing path this feature produces — no repo found,
 a frame's `stale` result (modified, untracked, or a `status` timeout), a
 blame failure, or a blame timeout — is exactly the `Warn` case
 `CONVENTIONS.md`'s logging section describes ("degraded but continuing —
-file not found, fell back to a note"). Each of these paths calls
-`slog.Warn` (package-level default logger, stderr-only per constitution
-Article II) with the same reasoning already captured in that path's
-`note` field, so the diagnostic is visible without `-v`/`-vv`. This
-applies in `gitmeta.go`, `status.go`, and `blame.go` wherever a `note` is
-set; `context.go` doesn't log separately since it only assembles what
-those three already decided. `Debug`-level logging inside individual
-`gitRunner.Run` calls (e.g. the exact command run) is left to
-implementation judgment, not specified further here.
+file not found, fell back to a note"). `context.go`'s `buildOneCodeContext`
+calls `slog.Warn` (package-level default logger, stderr-only per
+constitution Article II) at each point it sets `cc.Note` to a
+degraded-path reason, carrying that same reasoning as log fields, so the
+diagnostic is visible without `-v`/`-vv`. Centralized in `context.go`
+rather than spread across `gitmeta.go`/`status.go`/`blame.go`
+individually (originally planned per-file, revised at T007
+implementation time): those three functions each return a value/error
+pair, not a `note` string tied to a specific `CodeContext` field, so
+`context.go`'s `buildOneCodeContext` is the one place every degraded
+outcome's final `note` text actually exists, and logging there covers
+all paths without a duplicated log line per helper. `Debug`-level logging
+inside individual `gitRunner.Run` calls (e.g. the exact command run) is
+left to implementation judgment, not specified further here.
 
 ## Stack & versions
 
@@ -143,11 +156,14 @@ internal/codecontext/
   runner_fake_test.go  # hand-written fake gitRunner shared by *_test.go files above
 ```
 
-Window size (spec.md requirement 1) is an unexported constant in
-`snippet.go` for this feature (`defaultContextLines = 5`), passed as an
-explicit parameter to the windowing function rather than hardcoded inside
-it — so feature 011 can later expose it as a real parameter without
-touching this function's internals, only its caller.
+Window size (spec.md requirement 1) is an exported constant in
+`snippet.go`, `DefaultContextLines = 5` (originally planned unexported;
+revised at T004 implementation time since feature 011 needs to reference
+it from outside this package — see API/contracts below, the authoritative
+section for this), passed as an explicit parameter to the windowing
+function rather than hardcoded inside it — so feature 011 can later
+expose it as a real parameter without touching this function's internals,
+only its caller.
 
 ## API / contracts (if applicable)
 
@@ -159,7 +175,7 @@ HTTP/RPC surface, same pattern as `internal/contract`):
   itself stays unexported, consistent with `CONVENTIONS.md`'s "default to
   unexported" naming rule — tests reach it via same-package fakes, not a
   public seam).
-- `codecontext.BuildCodeContexts(ctx context.Context, chain []contract.ExceptionNode, gitMeta *contract.GitMetadata) []contract.CodeContext`
+- `codecontext.BuildCodeContexts(ctx context.Context, chain []contract.ExceptionNode, language contract.Language, gitMeta *contract.GitMetadata) []contract.CodeContext`
   — production entry point (wraps the real `gitRunner`, same pattern as
   `BuildGitMetadata` above). Takes the already-built `*contract.GitMetadata`
   (nil or non-nil) directly — `hasRepo` is just `gitMeta != nil`, and no
@@ -168,7 +184,9 @@ HTTP/RPC surface, same pattern as `internal/contract`):
   a shared root) — so 002b (pipeline wiring, when it exists) calls
   `BuildGitMetadata` once and passes the result straight into
   `BuildCodeContexts`, matching spec.md requirement 3's "detection happens
-  once" rule structurally, not just by convention.
+  once" rule structurally, not just by convention. Also takes `language
+  contract.Language`, added at T007 implementation time (see Architecture
+  section above for why).
 - `codecontext.DefaultContextLines` — exported constant, `5`, for 011 to
   reference as its own default without duplicating the number.
 
@@ -253,13 +271,13 @@ HTTP/RPC surface, same pattern as `internal/contract`):
 
 ## Flagged for recheck at implementation time (design review)
 
-`gitmeta.go`'s repo detection is documented above as two calls: `git
-rev-parse --is-inside-work-tree` then `--show-toplevel`. Reviewed against
-the concern that the binary can be invoked from a subdirectory of the
-repo, not just its root, and something needs the actual project root in
-that case.
+**Resolved at T003.** `gitmeta.go`'s repo detection was documented above
+as two calls: `git rev-parse --is-inside-work-tree` then
+`--show-toplevel`. Reviewed against the concern that the binary can be
+invoked from a subdirectory of the repo, not just its root, and something
+needs the actual project root in that case.
 
-Checked: every value `BuildGitMetadata` actually produces
+Checked at T003: every value `BuildGitMetadata` actually produces
 (`currentCommit`, `branch`, `uncommittedChanges` via `rev-parse HEAD`,
 `rev-parse --abbrev-ref HEAD`, `git status --porcelain` with no pathspec)
 resolves correctly regardless of which subdirectory `workDir` is — git
@@ -268,13 +286,12 @@ and `git status --porcelain` with no pathspec reports the whole working
 tree's status, not just the invoking subdirectory's. This is the same
 upward-search mechanism this plan already relies on for per-file commands
 (requirement 9). `contract.GitMetadata` also has no field to hold a repo
-root path even if `--show-toplevel` were called. On the evidence in this
-file, the second call's output isn't consumed anywhere.
+root path even if `--show-toplevel` were called. No consumer of the
+second call's output was found anywhere in this feature.
 
-Not removing the call on this pass — there may be a reason for it that
-isn't written down here (an anticipated future consumer, or a deliberate
-second, more specific detection signal beyond what `--is-inside-work-tree`
-gives). Whoever starts T003 should re-decide before implementing: either
-drop `--show-toplevel` (one fewer subprocess call, halves the
-detection-timeout budget), or write down what actually consumes its
-output and keep it.
+**Decision: `--show-toplevel` was dropped.** Repo detection
+(`isInsideGitWorkTree` in `gitmeta.go`) is a single
+`git rev-parse --is-inside-work-tree` call — one fewer subprocess call,
+and it halves the detection-timeout budget for no loss of behavior. If a
+future feature needs the actual repo root, that's a new, distinct need at
+that point, not a revival of this dropped call.

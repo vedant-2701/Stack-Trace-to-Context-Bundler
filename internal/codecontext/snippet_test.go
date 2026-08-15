@@ -118,3 +118,43 @@ func TestSnippet_PermissionDenied(t *testing.T) {
 		t.Errorf("error = %v: matched fs.ErrNotExist, want a distinct permission error (file exists, just unreadable)", err)
 	}
 }
+
+func TestSnippet_EmptyFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "empty.go")
+	if err := os.WriteFile(path, []byte{}, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	_, err := buildSnippet(path, 1, DefaultContextLines)
+	if err == nil {
+		t.Fatal("buildSnippet: expected an error for a zero-line file, got nil")
+	}
+	if !errors.Is(err, errEmptyFile) {
+		t.Errorf("error = %v, want errors.Is(err, errEmptyFile)", err)
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("error = %v: matched fs.ErrNotExist, want a distinct empty-file error (file exists, just empty)", err)
+	}
+}
+
+func TestSnippet_LongLine(t *testing.T) {
+	// A single line well past bufio.Scanner's default ~64KiB token limit
+	// (minified/generated code) must not fail extraction.
+	longLine := strings.Repeat("x", 200*1024)
+	content := "short line 1\n" + longLine + "\nshort line 3\n"
+	path := filepath.Join(t.TempDir(), "long.go")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	snip, err := buildSnippet(path, 2, DefaultContextLines)
+	if err != nil {
+		t.Fatalf("buildSnippet: unexpected error: %v", err)
+	}
+	if snip.StartLine != 1 || snip.EndLine != 3 {
+		t.Errorf("got {Start:%d End:%d}, want {1 3}", snip.StartLine, snip.EndLine)
+	}
+	if !strings.Contains(snip.Code, longLine) {
+		t.Error("Code does not contain the long line in full")
+	}
+}

@@ -46,14 +46,18 @@ builds context for the ones marked `own`.
    this feature's exported window-size parameter.
 2. If the referenced file does not exist on disk at all, `CodeContext`
    `status` must be `"not_found"`, with a `note` explaining that.
-   A file that exists but can't be read (e.g. permission denied) is
-   **also** reported as `"not_found"` rather than a distinct status value
-   — the contract's status enum stays closed at three values (per the
-   contract-change decision below) — but the `note` must state the actual
-   reason (e.g. "permission denied"), not claim the file is literally
-   absent, so the distinction isn't lost even though the enum value is
-   shared. *(Flagged design call — reusing an existing enum value rather
-   than adding a fourth; revisit if this proves confusing in practice.)*
+   A file that exists but can't be read (e.g. permission denied), or
+   exists and is readable but has zero lines (empty), is **also** reported
+   as `"not_found"` rather than a distinct status value — the contract's
+   status enum stays closed at three values (per the contract-change
+   decision below) — but the `note` must state the actual reason (e.g.
+   "permission denied", or "file is empty"), not claim the file is
+   literally absent, so the distinction isn't lost even though the enum
+   value is shared. *(Flagged design call — reusing an existing enum
+   value rather than adding a fourth; revisit if this proves confusing in
+   practice. The empty-file case was surfaced during PR review, not the
+   original interrogation — added here and to acceptance criteria rather
+   than silently left as an implementation-only decision.)*
 3. Before doing any per-file git work, the system must attempt to detect
    whether the tool is running inside a git working tree (via
    `git rev-parse`, from the current working directory — see requirement 9
@@ -264,6 +268,14 @@ feature legitimately needs.
       10-second wait in the integration test (T008) -- impractical for a
       routine test run, and the fake already exercises every per-call-type
       branch this requirement specifies.
+- [x] Given an own-bucket frame whose file exists, is readable, and has
+      zero lines (empty), when its `CodeContext` is built, then `status`
+      is `"not_found"` with a `note` stating the file is empty, not
+      claiming it's absent. Surfaced during PR review (Copilot), not the
+      original interrogation; added to requirement 2 and here rather than
+      fixed silently. Satisfied by `buildSnippet`'s `errEmptyFile`
+      sentinel and `notFoundNote` (T004, T007); see
+      `TestSnippet_EmptyFile` and `TestBuildCodeContexts_EmptyFile`.
 
 ## Open questions
 
