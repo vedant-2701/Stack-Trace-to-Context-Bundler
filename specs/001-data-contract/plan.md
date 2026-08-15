@@ -222,6 +222,11 @@ own stack needs, out of scope here.
     }
   ],
 
+  // Optional at the bundle level as of schemaVersion "2.0.0" (bumped
+  // from "1.0.0" by 004-own-code-context-extraction): Bundle.GitMetadata
+  // is *GitMetadata (json:"gitMetadata,omitempty"), omitted entirely
+  // (not null) when no git repository is found. When present, all three
+  // fields below are always populated.
   "gitMetadata": {
     "currentCommit": "string",
     "branch": "string",

@@ -22,7 +22,7 @@ package contract
 // removed, or its type changed; an existing enum/status value's meaning
 // changed); MINOR for additive-only changes (a new optional field); no
 // bump for implementation changes that don't touch the shape at all.
-const SchemaVersion = "1.0.0"
+const SchemaVersion = "2.0.0"
 
 // Language identifies the source language of a stack trace. Closed for
 // v1: matches the two parser features in specs/INDEX.md (005a Java, 006a
@@ -170,7 +170,12 @@ type Bundle struct {
 	// CodeContexts exists only for own-bucket frames.
 	CodeContexts []CodeContext `json:"codeContexts"`
 
-	GitMetadata GitMetadata `json:"gitMetadata"`
+	// GitMetadata is nil and omitted from the JSON entirely when no git
+	// repository is found for this bundle (004-own-code-context-extraction's
+	// scope). Go's omitempty has no effect on a non-pointer struct field,
+	// so the pointer is required, not optional, to make omission work.
+	// When non-nil, all three inner fields are always populated.
+	GitMetadata *GitMetadata `json:"gitMetadata,omitempty"`
 
 	Dependencies Dependencies `json:"dependencies"`
 }
