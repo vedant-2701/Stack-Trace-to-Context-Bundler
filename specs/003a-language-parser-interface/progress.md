@@ -115,3 +115,76 @@ long-term shape is an open question owned by 006a (tracked in
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-08-17
+**Task(s):** T003 — re-verified Java hand-trace against shipped `registry.go`.
+**What happened:**
+- Re-checked the Java hand-trace pseudocode (`RuntimeException` +
+  `Caused by: SQLException`) from `plan.md` against the actual
+  `internal/parser/registry.go` produced by T001.
+- Confirmed: `Frames[0]`-as-throw-site holds for both nodes; all three
+  `Bucket` values exercised; `PackageName` (`group:artifact` form) matches
+  `contract.Frame.PackageName`'s doc comment; `ElidedFrameCount: 2` matches
+  the field's type/semantics; `Runtime{Name:"jvm",
+  VersionSource:local-environment}` matches `contract.Runtime` and
+  `VersionSourceLocalEnvironment`; return shape matches `Parse`'s actual
+  signature exactly.
+- No drift found. No correction needed to `registry.go` or `plan.md`.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-08-17
+**Task(s):** T004 — re-verified TS/JS hand-trace against shipped `registry.go`.
+**What happened:**
+- Re-checked the TS/JS hand-trace pseudocode (`TypeError` with `[cause]`
+  chain, `ECONNREFUSED`) from `plan.md` against the actual
+  `internal/parser/registry.go` produced by T001.
+- Confirmed: `Language()`'s doc comment still explicitly flags static
+  return as provisional for this exact JS-vs-TS-indistinguishable case,
+  pointing at `known-gaps.md`; `ColumnNumber` matches
+  `contract.Frame.ColumnNumber` (JS/TS-only, omitempty);
+  `ElidedFrameCount: 0` matches (V8 doesn't elide); the `node:net` runtime
+  frame (no `PackageName`) and `node_modules` dependency frame
+  (`PackageName:"express"`) match `contract.Frame`'s bucket/PackageName
+  rules; `Runtime{Name:"node", VersionSource:unknown}` matches
+  `VersionSourceUnknown`; return shape matches `Parse`'s actual signature.
+- No drift found. No correction needed to `registry.go` or `plan.md`.
+  `Language()`/JS-vs-TS ambiguity this example demonstrates still holds
+  against the real doc comment, unchanged from `plan.md`.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-08-17
+**Task(s):** T005 — pre-commit gate.
+**What happened:**
+- No files changed by T003 or T004 (both pure-verification tasks, no
+  drift found in either). No new code since T002's gate run, which
+  already passed (`gofumpt -l`, `golangci-lint run`, `go build ./...`,
+  `go test ./...`, all reported 0 errors). Closing T005 without
+  re-running the gate, per user's explicit reasoning — not silently
+  assumed.
+**Deviations from plan (if any):** None — gate not literally re-run this
+task, by agreement with user since nothing changed.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-08-17
+**Task(s):** T006 — updated `specs/INDEX.md` status, confirmed `known-gaps.md`.
+**What happened:**
+- Updated `specs/INDEX.md`'s 003a row: `in-progress` → `done`.
+- Re-checked `memory/known-gaps.md`'s 003a-owned row (`Language()`'s
+  static-per-implementation viability, owner 006a, status pending)
+  against the shipped `Language()` doc comment in `registry.go` — matches
+  exactly, no edit needed. 003a is a source of this deferred criterion,
+  not an owner of anything itself, so nothing else to check off here.
+- 003a is now fully complete: T001–T006 all closed, spec.md's four
+  acceptance criteria all satisfied per the T001–T005 record above.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---

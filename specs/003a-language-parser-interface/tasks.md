@@ -29,7 +29,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     -l`, `golangci-lint run`, and `go build ./...` all pass with zero
     `LanguageParser` implementations existing yet.
 
-- [ ] **T003** — Re-verify the Java hand-trace (`RuntimeException` +
+- [x] **T003** — Re-verify the Java hand-trace (`RuntimeException` +
   `Caused by:` `SQLException`, own/dependency/runtime frames) already
   written in `plan.md` against the actual `internal/parser/registry.go`
   produced by T001. The pseudocode walkthrough itself was written during
@@ -47,7 +47,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     none turns up, record "re-verified against registry.go, no drift" in
     `progress.md`.
 
-- [ ] **T004** — Re-verify the TS/JS hand-trace (`TypeError` with `[cause]`
+- [x] **T004** — Re-verify the TS/JS hand-trace (`TypeError` with `[cause]`
   chain, own/dependency/runtime frames, column numbers) already written in
   `plan.md` against `registry.go`, the same way as T003.
   - Depends on: T001
@@ -57,13 +57,13 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     demonstrates still holds against the real `Language()` doc comment.
     Any drift corrected and recorded in `progress.md`, same as T003.
 
-- [ ] **T005** — Run the full pre-commit gate and confirm clean.
+- [x] **T005** — Run the full pre-commit gate and confirm clean.
   - Depends on: T002, T003, T004
   - Acceptance: `gofumpt -l -w .`, `golangci-lint run ./...`,
     `go build ./...`, and `go test ./...` all exit 0 (`go test ./...`
     passes trivially — no test files added by this feature).
 
-- [ ] **T006** — Update `specs/INDEX.md`'s row for 003a (status → `done`)
+- [x] **T006** — Update `specs/INDEX.md`'s row for 003a (status → `done`)
   and confirm the `memory/known-gaps.md` entry added during interrogation
   still accurately describes the shipped interface.
   - Depends on: T005
