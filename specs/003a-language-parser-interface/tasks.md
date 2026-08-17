@@ -3,7 +3,7 @@
 Derived from `plan.md`. Work through these in order, one at a time.
 Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
 
-- [ ] **T001** — Create `internal/parser/registry.go` with the
+- [x] **T001** — Create `internal/parser/registry.go` with the
   `LanguageParser` interface (`Language`, `Detect`, `Parse`) and full
   doc comments per spec.md requirements 1-4, 6-11 (requirement 5's
   wrapping-behavior documentation also lives in this file's `Parse` doc

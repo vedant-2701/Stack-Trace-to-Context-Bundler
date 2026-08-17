@@ -67,3 +67,32 @@ long-term shape is an open question owned by 006a (tracked in
 `known-gaps.md`, not here).
 
 ---
+
+**Date:** 2026-08-17
+**Task(s):** T001 — created `internal/parser/registry.go`.
+**What happened:**
+- Updated `specs/INDEX.md`'s 003a row: `planned` → `in-progress`, ahead of
+  starting T001.
+- Created `internal/parser/registry.go` with the `LanguageParser` interface
+  (`Language`, `Detect`, `Parse`), transcribed from `plan.md`'s
+  API/contracts block with no changes — doc comments cover frame ordering
+  (`Frames[0]` = throw site), full-bucket-assignment, `Parse`'s
+  binary-outcome/`ErrUnparseable`-wrapping rule, `ctx`'s
+  cancellation-only contract, `Detect`'s no-I/O constraint, the `rawTrace`
+  non-empty precondition, and `Language`'s provisional-viability note
+  pointing at `known-gaps.md`.
+- Verified all referenced `contract` symbols (`Language`, `ExceptionNode`,
+  `Runtime`, `VersionSourceLocalEnvironment`) exist in
+  `internal/contract/types.go` with matching names before treating the
+  file as correct.
+- Confirmed via `git branch --show-current` that work is on
+  `feature/003a-language-parser-interface`.
+- User ran `gofumpt -l internal/parser/registry.go`,
+  `golangci-lint run ./internal/parser/...`, and `go build ./...` locally;
+  reported all three passed with 0 errors. Not independently verified by
+  Claude beyond the symbol check above — no tool available to execute
+  commands on the user's machine.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
