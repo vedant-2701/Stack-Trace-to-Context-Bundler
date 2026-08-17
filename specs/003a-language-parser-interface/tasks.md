@@ -19,7 +19,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     (`context`) — nothing from any `parser/<lang>/` package. `gofumpt -l`
     and `golangci-lint run` pass on the file.
 
-- [ ] **T002** — Create `internal/parser/errors.go` with the
+- [x] **T002** — Create `internal/parser/errors.go` with the
   `ErrUnparseable` sentinel per spec.md requirement 5.
   - Depends on: T001
   - Acceptance: File exists; declares `var ErrUnparseable = errors.New(...)`

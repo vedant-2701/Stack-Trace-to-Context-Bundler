@@ -96,3 +96,22 @@ long-term shape is an open question owned by 006a (tracked in
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-08-17
+**Task(s):** T002 — created `internal/parser/errors.go`.
+**What happened:**
+- Created `internal/parser/errors.go` with the `ErrUnparseable` sentinel,
+  transcribed verbatim from `plan.md`'s API/contracts block, per spec.md
+  requirement 5.
+- No comment placed directly above `package parser` in this file —
+  `registry.go` already carries the sole package doc comment, per
+  `CONVENTIONS.md`'s `revive`/`package-comments` rule.
+- User ran `gofumpt -l internal/parser/errors.go`,
+  `golangci-lint run ./internal/parser/...`, `go build ./...`, and
+  `go test ./...` locally; reported all passed with 0 errors. Not
+  independently verified by Claude — no tool available to execute
+  commands on the user's machine.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
