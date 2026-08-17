@@ -102,6 +102,7 @@ internal/
 ├── codecontext/  shared, language-agnostic: file read, snippet windowing, git blame
 ├── parser/
 │   ├── registry.go     LanguageParser interface + detection registry
+│   ├── errors.go       Sentinel parse errors (e.g. ErrUnparseable)
 │   ├── java/
 │   └── typescript/
 ├── render/       markdown.go, json.go
