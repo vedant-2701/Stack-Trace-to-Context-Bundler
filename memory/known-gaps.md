@@ -32,6 +32,7 @@ just written down in a sibling feature's file first.
 | 001-data-contract | Java `Caused by:` chain parses into `chain[]` with correct `elidedFrameCount` | 005a | pending |
 | 001-data-contract | TS/JS `Error.cause` chain parses into `chain[]` with `elidedFrameCount` omitted/0 | 006a | pending |
 | 001-data-contract | Package with no locally resolvable version → `dependencies.locked[pkg].version` omitted, `.note` explains why (end-to-end; struct/JSON shape already covered by 001's own tests) | 005b, 006b | pending |
+| 003a-language-parser-interface | `LanguageParser.Language()` is a static per-implementation method returning one fixed `contract.Language`. TypeScript compiles to `.js` before running, so a compiled-then-`node`-run trace may be structurally indistinguishable from plain JavaScript -- verify whether a static return is actually sufficient for the `typescript` package, or whether language must be determined per-trace (e.g. returned from `Parse()` instead) once real `ts-node`/`tsx`/`bun`/`deno`/compiled-`node` traces are examined | 006a | pending |
 
 ## Accepted v1 limitations
 
