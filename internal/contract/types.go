@@ -212,9 +212,16 @@ type ExceptionNode struct {
 	ClassName string `json:"className"`
 	Message   string `json:"message"`
 
-	// ElidedFrameCount is Java's "... N more" line, which elides frames
-	// this node shares with its enclosing exception. Omitted/0 for
-	// JS/TS -- V8 doesn't elide shared frames the same way.
+	// ElidedFrameCount counts frames elided because they're shared with
+	// the enclosing exception in this node's chain. For Java, this is the
+	// number parsed from "... N more". For JS/TS, this is NOT omitted/0 --
+	// Node's util.inspect DOES elide shared trailing frames between an
+	// error and its cause, collapsing them into a literal "... N lines
+	// matching cause stack trace ..." line (confirmed against real Node
+	// 24.18.0 output, see specs/006a-ts-js-parser/testdata/). The exact
+	// parsing rule for each language is that language's own parser's
+	// concern (005a/006a), not this package's -- this field only says
+	// what the parsed result means once produced.
 	ElidedFrameCount int `json:"elidedFrameCount,omitempty"`
 
 	Frames []Frame `json:"frames"`
