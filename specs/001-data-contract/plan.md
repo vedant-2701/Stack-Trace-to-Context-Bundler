@@ -137,8 +137,13 @@ own stack needs, out of scope here.
       "className": "string, e.g. 'java.lang.RuntimeException' or 'TypeError'",
       "message": "string",
       // Java's "... N more" line, which elides frames this node shares
-      // with its enclosing exception. 0/omit for JS/TS -- V8 doesn't
-      // elide shared frames the same way.
+      // with its enclosing exception. For JS/TS, this is NOT 0/omit --
+      // Node's util.inspect DOES elide shared trailing frames between an
+      // error and its cause, via a literal "... N lines matching cause
+      // stack trace ..." line; N is a real, meaningful, non-zero value
+      // in the common case (confirmed against real Node 24.18.0 output
+      // during 006a's interrogation; corrected from the original wrong
+      // assumption here -- see memory/known-gaps.md).
       "elidedFrameCount": "number",
       "frames": [
         {

@@ -69,9 +69,17 @@ generated, tested JSON fixture — the single source of truth for what a
    when unknown.
 8. `chain` must support a linear sequence of exception nodes, outermost to
    root cause (branching chains are out of scope, see below). Each node
-   must carry `className`, `message`, `elidedFrameCount` (Java's
-   `"... N more"`; omitted/0 for JS/TS, which doesn't elide shared frames
-   the same way), and `frames[]`.
+   must carry `className`, `message`, `elidedFrameCount`, and `frames[]`.
+   `elidedFrameCount` is Java's `"... N more"` count. For JS/TS, this is
+   NOT omitted/0 as originally assumed here — Node's `util.inspect` DOES
+   elide shared trailing frames between an error and its cause, via a
+   literal `"... N lines matching cause stack trace ..."` line; `N` is a
+   real, meaningful, non-zero value in the common case (confirmed against
+   real Node 24.18.0 output during 006a's interrogation; see
+   `memory/known-gaps.md` and `006a-ts-js-parser/spec.md`'s FR8). The
+   exact parsing rule for each language is that language's own parser's
+   concern (005a/006a), not this feature's — this requirement only says
+   what the field means once produced.
 9. Each frame must carry: `index`; `filePath` (a normalized absolute
    filesystem path, never a URI — even where the source ecosystem natively
    emits one, e.g. Deno's `file://` URLs, since `codeContexts` needs a real
@@ -195,7 +203,10 @@ so it survives an account change or a memory reset).
       has no parser to produce it from real input.
 - [ ] Given a TS/JS stack trace with an `Error.cause` chain, when parsed,
       then `chain` contains one node per cause, with `elidedFrameCount`
-      omitted or `0`. **Deferred to 006a**, same reason as above.
+      reflecting Node's real `util.inspect` cause-chain elision (a real,
+      meaningful, non-zero value in the common case — NOT omitted/0, per
+      the corrected FR8 above). **Deferred to 006a**, same reason as
+      above.
 - [x] Given a bundle built for a file that has uncommitted local changes,
       when `codeContexts` is built for a frame in that file, then `status`
       is `"stale"`. Satisfied by 004 (`internal/codecontext.checkFileStatus`);
