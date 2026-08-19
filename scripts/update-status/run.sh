@@ -23,15 +23,15 @@ if [ -z "${FEATURE_ID}" ]; then
     
     # Use fzf for interactive searching and arrow-key selection if available
     if command -v fzf &>/dev/null; then
-        SELECTED_ROW=$(grep -E '^\|[[:space:]]*[0-9]{3}[[:space:]]*\|' "${INDEX_FILE}" | fzf --header="Select Feature (Type to search, ↑/↓ arrow keys to navigate)" --height=40% --layout=reverse)
+        SELECTED_ROW=$(grep -E '^\|[[:space:]]*[0-9]{3}[a-zA-Z]*[[:space:]]*\|' "${INDEX_FILE}" | fzf --header="Select Feature (Type to search, ↑/↓ arrow keys to navigate)" --height=40% --layout=reverse)
         if [ -n "${SELECTED_ROW}" ]; then
             FEATURE_ID=$(echo "${SELECTED_ROW}" | awk -F'|' '{print $2}' | xargs)
         fi
     else
         echo "Existing features in specs/INDEX.md:"
-        grep -E '^\|[[:space:]]*[0-9]{3}[[:space:]]*\|' "${INDEX_FILE}" || true
+        grep -E '^\|[[:space:]]*[0-9]{3}[a-zA-Z]*[[:space:]]*\|' "${INDEX_FILE}" || true
         echo ""
-        read -rp "Enter 3-digit Feature ID (e.g. 001): " FEATURE_ID
+        read -rp "Enter 3-digit Feature ID (e.g. 001, 003a): " FEATURE_ID
     fi
 fi
 
