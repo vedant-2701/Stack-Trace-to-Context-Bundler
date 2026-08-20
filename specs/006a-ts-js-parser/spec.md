@@ -44,10 +44,14 @@ wiring (002b), or auto-detection ambiguity handling (003b).
    explicitly out of scope (see Out of scope, and
    `memory/known-gaps.md`).
 2. Recognizes three distinct real-world input shapes, all Node.js:
-   - **(a) True uncaught crash** -- a source-line-and-caret preamble
-     (`/path/to/file.js:N\n    <source line>\n    ^\n\n`) followed by
-     `util.inspect`-formatted error output, followed by a trailing
-     `Node.js vX.Y.Z` line.
+   - **(a) True uncaught crash** -- has two preamble variants: a
+     **synchronous throw** (`/path/to/file.js:N\n    <source line>\n    ^\n\n`)
+     or an **unhandled promise rejection**
+     (`node:internal/process/promises:N\n    triggerUncaughtException(err, true /* fromPromise */);\n    ^\n\n`)
+     -- either followed by `util.inspect`-formatted error output, followed
+     by a trailing `Node.js vX.Y.Z` line. `Detect()`/`Parse()` accept
+     either variant (confirmed via real capture, see
+     `testdata/CAPTURE-FINDINGS.md`).
    - **(b) Logged object** -- `console.error(err)`/`console.log(err)`:
      the same `util.inspect`-formatted error output as (a), but with
      NO source-line-and-caret preamble and NO trailing `Node.js vX.Y.Z`
@@ -106,6 +110,22 @@ wiring (002b), or auto-detection ambiguity handling (003b).
    bracket-nested structure (confirmed against real captured Node
    24.18.0 output, see `specs/006a-ts-js-parser/testdata/`) into
    successive `contract.ExceptionNode` entries, outermost first.
+
+   A block's brace body (top-level exception or `[cause]`-nested) may
+   contain additional `key: value,` property lines after the frame list
+   and before the closing `}` (e.g. `errno`, `code`, `syscall` on system
+   errors, or `code: 'GenericFailure'` on the top-level exception itself
+   -- this is not cause-specific). These are recognized as block content,
+   not mistaken for a new frame or a malformed line, and dropped -- not
+   surfaced on `contract.ExceptionNode`, which has no field for them --
+   logging via `slog.Warn` when present.
+
+   The `[cause]:` bracket marker is the *only* valid signal for a JS/TS
+   cause-chain boundary. A literal `"Caused by:"` substring appearing in
+   an error's own `.message` (confirmed possible via native-binding
+   errors, e.g. `@swc/core` -- see `testdata/CAPTURE-FINDINGS.md`) MUST
+   NOT be interpreted as a chain boundary -- that convention belongs to
+   Java, not JS/TS.
 8. Recognizes Node's frame-elision line
    (`... N lines matching cause stack trace ...`) and sets
    `ExceptionNode.ElidedFrameCount` to the parsed `N`. This is a real,
@@ -233,6 +253,13 @@ wiring (002b), or auto-detection ambiguity handling (003b).
   for itself.
 - `AggregateError` / `Suppressed`-style branching chains -- `Bundle.Chain`
   is strictly linear per `001`'s contract; out of scope for any parser.
+  Concretely: when a block's brace body contains `[errors]:` instead of
+  `[cause]:`, `Parse()` does not attempt to interpret it as a chain. It
+  parses that block as a single terminal `ExceptionNode` (header + own
+  frames, if any) and drops the `[errors]` array's nested errors entirely
+  (not surfaced, not partially parsed), logging via `slog.Warn`. This is
+  a successful (degraded) parse, not `ErrUnparseable` (confirmed real
+  shape, see `testdata/CAPTURE-FINDINGS.md`).
 
 ## Acceptance criteria
 
@@ -283,6 +310,21 @@ wiring (002b), or auto-detection ambiguity handling (003b).
       trace's own line order (FR21). **Flagged for reverification during
       technical review** -- not yet exercised by an explicit test, only
       checked by inspection during interrogation.
+- [ ] Given a trace produced by Node's native TypeScript execution
+      (type-stripping, no `tsc`/`tsx` involved -- `.ts` frame paths via
+      the ordinary CJS loader, no transformer frame), when
+      `Detect()`/`Language()` run, then the result is
+      `LanguageTypeScript`, identical to the `tsx`-wrapped case.
+- [ ] Given a trace whose top-level exception's brace body contains
+      `[errors]:` (an `AggregateError`) instead of `[cause]:`, when
+      parsed, then the result is a single terminal `ExceptionNode` with
+      the `[errors]` array dropped and a `slog.Warn` logged -- not
+      `ErrUnparseable`.
+- [ ] Given a trace whose message is a multi-line diff (e.g. Node's
+      built-in `assert.strictEqual` output, containing indented
+      brace-like lines that are not real frames), when parsed, then
+      frame detection correctly ignores the diff lines (no `at ` prefix)
+      and only real frame lines are extracted.
 
 ## Open questions
 

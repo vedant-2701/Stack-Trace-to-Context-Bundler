@@ -30,6 +30,18 @@ Parse pipeline, in order:
    corrected during technical design review), and tolerates a trailing
    `{` on the last frame line of a block that's followed by `[cause]:`
    (e.g. `at node:internal/main/run_main_module:33:47 {`).
+
+   A block's frame list may be followed by one or more `key: value,`
+   property lines before the closing `}` (system-error properties like
+   `errno`/`code`/`syscall`, or arbitrary properties on the top-level
+   exception itself, e.g. `code: 'GenericFailure'`) -- these are
+   recognized as block content and dropped, not mistaken for a new frame
+   line or a parse error (see spec.md FR7).
+
+   A block whose brace body contains `[errors]:` instead of `[cause]:`
+   (an `AggregateError`) is treated as terminal -- the array is not
+   walked into as further blocks; that block becomes a single
+   `ExceptionNode` and parsing stops there (see spec.md Out of scope).
 3. Elision-line detection (`... N lines matching cause stack trace
    ...`) is a per-block frame-line variant, not a separate pass --
    replaces exactly one position in that block's frame list with the
@@ -135,6 +147,15 @@ FR6 -- 003b's registry (once built) won't see both claim the same input.
   frame-line pattern but has no valid Error header and no usable frame at
   all) -- needed for T009's `ErrUnparseable` acceptance criterion; none of
   the other fixtures exercise this path.
+- Real fixtures added during this amendment round (all in
+  `specs/006a-ts-js-parser/testdata/`, to be copied into the package's
+  own `testdata/` during T001): the async/unhandled-rejection preamble
+  variant, native TypeScript execution (no transformer frame), extra
+  brace-body properties on both a nested `[cause]` and a top-level
+  exception, the `@swc/core` message-only false `"Caused by:"` case, the
+  `AggregateError`/`[errors]:` degraded-parse case, and `assert`'s
+  multi-line diff message as a frame-boundary stress test. See
+  `testdata/CAPTURE-FINDINGS.md` for the full capture round writeup.
 - `runtime_test.go` fakes the `node --version` subprocess call rather
   than actually shelling out in tests, mirroring
   `internal/codecontext/runner_fake_test.go`'s existing pattern for git.
