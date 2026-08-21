@@ -3,7 +3,7 @@
 Derived from `plan.md`. Work through these in order, one at a time.
 Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
 
-- [ ] **T001** -- Capture round complete (see
+- [x] **T001** -- Capture round complete (see
   `specs/006a-ts-js-parser/testdata/CAPTURE-FINDINGS.md` for the full
   writeup): 3+-level nested `.cause` chain, extra brace-body properties
   (both cause-nested and top-level), the async/unhandled-rejection crash

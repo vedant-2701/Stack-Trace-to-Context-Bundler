@@ -1,0 +1,17 @@
+/home/vedant/stack-trace-bundler/errors-test/app.ts:2
+  throw new Error("TS execution test error");
+        ^
+
+Error: TS execution test error
+    at level3 (/home/vedant/stack-trace-bundler/errors-test/app.ts:2:9)
+    at level2 (/home/vedant/stack-trace-bundler/errors-test/app.ts:4:21)
+    at level1 (/home/vedant/stack-trace-bundler/errors-test/app.ts:5:21)
+    at <anonymous> (/home/vedant/stack-trace-bundler/errors-test/app.ts:6:1)
+    at Object.<anonymous> (/home/vedant/stack-trace-bundler/errors-test/app.ts:6:8)
+    at Module._compile (node:internal/modules/cjs/loader:1871:14)
+    at Object.transformer (/home/vedant/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-C557imBs.cjs:9:3619)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+
+Node.js v24.18.0

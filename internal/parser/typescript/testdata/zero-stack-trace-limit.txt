@@ -1,0 +1,7 @@
+/home/vedant/stack-trace-bundler/errors-test/pg-fails.js:4
+  throw new Error("Zero stack frames requested");
+  ^
+
+[Error: Zero stack frames requested]
+
+Node.js v24.18.0

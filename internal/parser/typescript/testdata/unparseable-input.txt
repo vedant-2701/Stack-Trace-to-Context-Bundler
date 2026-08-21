@@ -1,0 +1,2 @@
+this is not an error header just random text
+    at node:internal/modules/cjs/loader:1594:32

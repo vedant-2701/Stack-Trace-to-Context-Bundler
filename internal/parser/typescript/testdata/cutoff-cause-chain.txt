@@ -1,0 +1,6 @@
+Error: outer failure
+    at Object.<anonymous> (/home/vedant/script.js:2:15)
+    at Module._compile (node:internal/modules/cjs/loader:1871:14)
+    at node:internal/main/run_main_module:33:47 {
+  [cause]: Error: inner fail
+      at Object.<anonymous> (/home/vedant/script.js:1:

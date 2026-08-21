@@ -1,0 +1,17 @@
+/home/vedant/stack-trace-bundler/errors-test/dist/bundle.js:1
+(()=>{var e=(o,n)=>()=>{try{return n||o((n={exports:{}}).exports,n),n.exports}catch(t){throw n=0,t}};var u=e(()=>{function l(){return null.nonExistentMethod()}l()});u();})();
+                                                                                       ^
+
+TypeError: Cannot read properties of null (reading 'nonExistentMethod')
+    at l (/home/vedant/stack-trace-bundler/errors-test/dist/bundle.js:1:140)
+    at /home/vedant/stack-trace-bundler/errors-test/dist/bundle.js:1:160
+    at /home/vedant/stack-trace-bundler/errors-test/dist/bundle.js:1:39
+    at /home/vedant/stack-trace-bundler/errors-test/dist/bundle.js:1:166
+    at Object.<anonymous> (/home/vedant/stack-trace-bundler/errors-test/dist/bundle.js:1:172)
+    at Module._compile (node:internal/modules/cjs/loader:1871:14)
+    at Object..js (node:internal/modules/cjs/loader:2002:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+
+Node.js v24.18.0
