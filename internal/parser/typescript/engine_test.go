@@ -194,3 +194,38 @@ func TestDetectNodeTrace(t *testing.T) {
 		}
 	})
 }
+
+// TestExtractTraceVersion exercises spec.md FR14: version extracted +
+// found only for shape (a) (true crash) fixtures carrying the trailing
+// Node.js vX.Y.Z line, distinguishing both preamble variants from
+// shape (b)/(c), which never legitimately carry one.
+func TestExtractTraceVersion(t *testing.T) {
+	tests := []struct {
+		fixture     string
+		wantVersion string
+		wantOK      bool
+	}{
+		{"crash-with-cause.txt", "24.18.0", true},               // sync-throw variant
+		{"crash-async-rejection-preamble.txt", "24.18.0", true}, // async-rejection variant
+		{"zero-stack-trace-limit.txt", "24.18.0", true},         // zero frames, still shape (a)
+		{"import-outside-module.txt", "24.18.0", true},          // multi-caret "^^^^^^" preamble
+		{"logged-object-with-cause.txt", "", false},             // shape (b): no preamble, no version line
+		{"bare-stack.txt", "", false},                           // shape (c): no preamble, no version line
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.fixture, func(t *testing.T) {
+			content, err := os.ReadFile(filepath.Join("testdata", tt.fixture))
+			if err != nil {
+				t.Fatalf("reading fixture: %v", err)
+			}
+			gotVersion, gotOK := extractTraceVersion(string(content))
+			if gotOK != tt.wantOK {
+				t.Fatalf("extractTraceVersion(%s) ok = %v, want %v", tt.fixture, gotOK, tt.wantOK)
+			}
+			if gotVersion != tt.wantVersion {
+				t.Errorf("extractTraceVersion(%s) version = %q, want %q", tt.fixture, gotVersion, tt.wantVersion)
+			}
+		})
+	}
+}

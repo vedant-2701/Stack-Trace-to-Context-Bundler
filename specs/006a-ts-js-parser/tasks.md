@@ -70,7 +70,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     on the browser-trace synthetic fixture; false on plain non-trace
     text.
 
-- [ ] **T004** -- Implement source-line+caret preamble detection --
+- [x] **T004** -- Implement source-line+caret preamble detection --
   covering BOTH variants per spec.md FR2 (synchronous throw
   `/path/to/file.js:N\n    <source line>\n    ^` and unhandled-promise-
   rejection `node:internal/process/promises:N\n    triggerUncaughtException(err, true /* fromPromise */);\n    ^`) -- and

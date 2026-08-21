@@ -91,17 +91,28 @@ func parseFrameLine(line string) (frame contract.Frame, ok bool) {
 
 // versionLinePattern matches Node's trailing "Node.js vX.Y.Z" line,
 // present on shape (a) (true uncaught crash) only per spec.md FR2/14.
-var versionLinePattern = regexp.MustCompile(`(?m)^Node\.js v\d+\.\d+\.\d+$`)
+// Capturing group 1 is the version number, used by extractTraceVersion
+// (T004); MatchString callers (detectNodeTrace) that only need presence
+// are unaffected by the capture group.
+var versionLinePattern = regexp.MustCompile(`(?m)^Node\.js v(\d+\.\d+\.\d+)$`)
 
 // crashPreamblePattern matches the caret marker line that ends both
 // crash-preamble variants (sync-throw and unhandled-promise-rejection,
 // spec.md FR2) -- some amount of leading whitespace (variable, since V8
-// positions the caret under the offending source column), then a single
-// "^", then end of line. Detecting only the caret line, not the full
-// two-variant preamble text, is enough for Detect()'s presence check;
-// T004 does the full preamble parse (distinguishing which variant, for
-// version extraction).
-var crashPreamblePattern = regexp.MustCompile(`(?m)^\s*\^\s*$`)
+// positions the caret under the offending source column), then one or
+// more "^" characters, then end of line. Multiple carets is real, not a
+// defensive guess: testdata/import-outside-module.txt emits "^^^^^^",
+// not a single "^" (confirmed during T004; the original T003 version of
+// this pattern only matched a single caret and would have silently
+// missed this real case -- it happened not to affect any T003 test
+// outcome only because that fixture also has a node: internal frame
+// satisfying detectNodeTrace's other OR-branch, but the gap was real).
+// Detecting only the caret line, not the full preamble text, is enough
+// for Detect()'s presence check; T004's crashPreambleBlockPattern below
+// does the fuller three-line structural match needed for version
+// extraction, where a bare caret line alone would be too loose a signal
+// to attribute VersionSourceTrace to.
+var crashPreamblePattern = regexp.MustCompile(`(?m)^\s*\^+\s*$`)
 
 // detectNodeTrace implements spec.md FR4's Detect() heuristic, shared by
 // both javascriptParser and typescriptParser (they differ only in
@@ -164,4 +175,55 @@ func splitDescription(desc string) (className, methodName string) {
 		return desc[:idx], desc[idx+1:]
 	}
 	return "", desc
+}
+
+// crashPreambleBlockPattern matches the full three-line crash-preamble
+// shape shared by both spec.md FR2 variants: a marker line ending in
+// ":<N>" (the source file path for the synchronous-throw variant, or
+// the literal "node:internal/process/promises:<N>" for the
+// unhandled-promise-rejection variant), a non-blank content line (the
+// offending source line, or Node's own internal
+// triggerUncaughtException(...) line), then a caret-marker line. Both
+// variants share this exact three-line structure -- confirmed against
+// testdata/crash-with-cause.txt (sync) and
+// testdata/crash-async-rejection-preamble.txt (async) -- so one pattern
+// covers both rather than two near-duplicate ones (Article IV).
+//
+// Deliberately stricter than detectNodeTrace's crashPreamblePattern
+// (caret-line only): gating trace-sourced version extraction (FR14) on
+// the fuller three-line structure is more precise than gating it on a
+// bare caret line, which in principle could appear for unrelated
+// reasons. A false negative here (preamble present but not matched)
+// only costs falling back to T005's local shell-out, not a wrong
+// answer -- so this can afford to be conservative.
+var crashPreambleBlockPattern = regexp.MustCompile(
+	`(?m)^.+:\d+\n.*\S.*\n\s*\^+\s*$`,
+)
+
+// extractTraceVersion returns the version parsed from a trailing
+// "Node.js vX.Y.Z" line, and whether one was found. Per spec.md FR14,
+// this only applies to shape (a) (true uncaught crash): the crash
+// preamble must be present first. A logged-object dump (shape b) or
+// bare .stack log (shape c) never legitimately carries a trailing
+// version line, so a coincidental version-looking line without the
+// preamble present is not attributed to VersionSourceTrace -- that
+// attribution belongs to T010's composition step, this function only
+// supplies the raw extraction.
+//
+// If more than one version-line match exists in the text (not expected
+// in a real trace, but not structurally impossible), the last one is
+// used, matching Node's own convention of appending it at the very end
+// of stdout.
+func extractTraceVersion(rawTrace string) (version string, ok bool) {
+	if !crashPreambleBlockPattern.MatchString(rawTrace) {
+		return "", false
+	}
+
+	matches := versionLinePattern.FindAllStringSubmatch(rawTrace, -1)
+	if len(matches) == 0 {
+		return "", false
+	}
+
+	last := matches[len(matches)-1]
+	return last[1], true
 }
