@@ -36,7 +36,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     (or equivalent index) lists every fixture and which spec.md
     FR/acceptance criterion it exists to exercise.
 
-- [ ] **T002** -- Implement the V8 frame-line regex and single-frame-line
+- [x] **T002** -- Implement the V8 frame-line regex and single-frame-line
   parser (one line -> `contract.Frame`, `Bucket`/`PackageName` not yet
   set). Per spec.md FR4/plan.md's pipeline step 2: the regex strips
   leading whitespace rather than anchoring to a fixed column count
