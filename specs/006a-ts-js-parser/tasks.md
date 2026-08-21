@@ -81,7 +81,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     on both the sync-throw crash fixture AND the async-rejection crash
     fixture; correctly finds neither on the logged-object fixture.
 
-- [ ] **T005** -- Implement local-environment shell-out fallback
+- [x] **T005** -- Implement local-environment shell-out fallback
   (`node --version`, ~2s timeout via `context.WithTimeout` +
   `exec.CommandContext`) and `VersionSourceUnknown` fallback, with a
   fake-exec test seam mirroring
