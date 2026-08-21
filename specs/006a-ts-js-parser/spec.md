@@ -69,13 +69,36 @@ wiring (002b), or auto-detection ambiguity handling (003b).
    BOTH: (i) at least one line matches the V8 frame-line pattern (some
    amount of leading whitespace, then `at <description> (<file>:<line>:<col>)`
    or `at <file>:<line>:<col>`, optionally followed by a trailing `{` when
-   it's the last frame line before a `[cause]:` block), AND (ii) at least
-   one Node-specific positive signal is present: a `node:` internal frame, a
+   it's the last frame line before a `[cause]:` block), **OR** the
+   source-line-and-caret crash preamble is present, **OR** a trailing
+   `Node.js vX.Y.Z` line is present -- this relaxation (added during T003)
+   covers a genuine real fixture with zero frame lines
+   (`Error.stackTraceLimit = 0`, see FR19 and `testdata/zero-stack-trace-limit.txt`)
+   that still carries the crash preamble and version line -- that
+   combination cannot plausibly appear outside a real Node crash dump, so
+   requiring a frame-line match in addition to it would reject a genuine
+   Node trace for no real benefit; AND (ii) at least one Node-specific positive signal is present: a `node:` internal frame, a
    `node_modules` path segment, a trailing `Node.js vX.Y.Z` line, or the
    source-line-and-caret crash preamble. Requiring (ii) prevents
    false-positive matches on browser (Chrome/V8-based) stack traces,
    which share the same frame-line grammar but lack all four Node-specific
-   signals. **Leading whitespace is variable, not fixed at 4 spaces** --
+   signals.
+
+   **Known residual gap, not solved by the above**: a bare `.stack`-only
+   log line with zero frames AND none of the four Node-specific signals
+   (e.g. `console.error(err.stack)` on an error whose own stack was
+   itself already empty -- confirmed real, see
+   `testdata/bare-stack-fetch-cause.txt`, literally just
+   `"TypeError: fetch failed"` with no file, no frame, no signal of any
+   kind) is genuinely undetectable -- no heuristic can distinguish it
+   from an arbitrary one-line string in any language, and loosening
+   `Detect()` further to catch it would reopen the exact false-positive
+   risk condition (ii) exists to prevent. `Detect()` correctly returns
+   `false` for this fixture; it falls through to 003b's "no parser
+   matched" path by design, not by omission (see
+   `memory/known-gaps.md`). 
+
+   **Leading whitespace is variable, not fixed at 4 spaces** --
    confirmed against real captures in `testdata/`: a `[cause]:`-nested
    block's frames are indented 6 spaces, two more than the enclosing
    block's 4. T001 captures a 3+-level-nested real fixture to confirm

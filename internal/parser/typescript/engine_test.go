@@ -1,6 +1,8 @@
 package typescript
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/vedant-2701/stack-trace-bundler/internal/contract"
@@ -133,4 +135,62 @@ func TestParseFrameLine(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestDetectNodeTrace exercises spec.md FR4's Detect() heuristic against
+// every fixture in testdata/. wantDetect is true for every real and
+// synthetic fixture except bare-stack-fetch-cause.txt, which is
+// genuinely undetectable by design (see spec.md FR4's "known residual
+// gap" note and memory/known-gaps.md) -- and false for the
+// browser-trace synthetic fixture and a hardcoded plain-text case.
+func TestDetectNodeTrace(t *testing.T) {
+	tests := []struct {
+		fixture    string
+		wantDetect bool
+	}{
+		{"crash-with-cause.txt", true},
+		{"crash-typeerror-no-cause.txt", true},
+		{"logged-object-with-cause.txt", true},
+		{"bare-stack.txt", true},
+		{"crash-3level-cause.txt", true},
+		{"crash-async-rejection-preamble.txt", true},
+		{"logged-object-fetch-cause.txt", true},
+		{"bare-stack-fetch-cause.txt", false}, // the confirmed exception -- see doc comment above
+		{"nested-deps-flat.txt", true},
+		{"zero-stack-trace-limit.txt", true}, // zero frames, but preamble + version line present
+		{"esm-runtime-error.txt", true},
+		{"import-outside-module.txt", true},
+		{"ts-native-execution.txt", true},
+		{"ts-compiled-then-run.txt", true},
+		{"ts-tsx-transformer-path.txt", true},
+		{"esbuild-minified-bundle.txt", true},
+		{"scoped-package-swc-false-caused-by.txt", true},
+		{"aggregate-error-uncaught.txt", true},
+		{"assert-multiline-diff.txt", true},
+		{"scoped-package-babel.txt", true},
+		{"deep-nested-node-modules.txt", true},
+		{"browser-trace-false-positive.txt", false},
+		{"truncated-mid-frame.txt", true},
+		{"cutoff-cause-chain.txt", true},
+		{"unparseable-input.txt", true}, // Detect() matches loosely by design (FR20) -- Parse() fails this one, not Detect()
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.fixture, func(t *testing.T) {
+			content, err := os.ReadFile(filepath.Join("testdata", tt.fixture))
+			if err != nil {
+				t.Fatalf("reading fixture: %v", err)
+			}
+			if got := detectNodeTrace(string(content)); got != tt.wantDetect {
+				t.Errorf("detectNodeTrace(%s) = %v, want %v", tt.fixture, got, tt.wantDetect)
+			}
+		})
+	}
+
+	t.Run("plain non-trace text", func(t *testing.T) {
+		text := "just some random text\nwith multiple lines\nno error at all here"
+		if got := detectNodeTrace(text); got {
+			t.Errorf("detectNodeTrace(plain text) = %v, want false", got)
+		}
+	})
 }

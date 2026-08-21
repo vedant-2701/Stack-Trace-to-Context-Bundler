@@ -56,12 +56,19 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     trailing `{` (last-frame-before-`[cause]:` case, from the real
     fixtures).
 
-- [ ] **T003** -- Implement `Detect()`'s shared heuristic (FR4): V8
-  frame-line pattern present AND at least one of
-  node:/node_modules/version-line/preamble signals present.
+- [x] **T003** -- Implement `Detect()`'s shared heuristic (FR4): V8
+  frame-line pattern present (OR the crash preamble present, OR a
+  trailing version line present -- relaxed during T003 to admit a real
+  zero-frame fixture that still carries both of those signals) AND at
+  least one of node:/node_modules/version-line/preamble signals present.
   - Depends on: T002
-  - Acceptance: true on all real captured fixtures; false on the
-    browser-trace synthetic fixture; false on plain non-trace text.
+  - Acceptance: true on all real captured fixtures EXCEPT
+    `bare-stack-fetch-cause.txt` (zero frames AND none of the four
+    Node-specific signals -- genuinely undetectable, confirmed with
+    Vedant during T003, falls through to 003b's "no parser matched"
+    path by design; see spec.md FR4 and `memory/known-gaps.md`); false
+    on the browser-trace synthetic fixture; false on plain non-trace
+    text.
 
 - [ ] **T004** -- Implement source-line+caret preamble detection --
   covering BOTH variants per spec.md FR2 (synchronous throw

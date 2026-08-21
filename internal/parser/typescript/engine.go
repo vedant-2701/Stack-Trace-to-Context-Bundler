@@ -89,6 +89,68 @@ func parseFrameLine(line string) (frame contract.Frame, ok bool) {
 	return frame, true
 }
 
+// versionLinePattern matches Node's trailing "Node.js vX.Y.Z" line,
+// present on shape (a) (true uncaught crash) only per spec.md FR2/14.
+var versionLinePattern = regexp.MustCompile(`(?m)^Node\.js v\d+\.\d+\.\d+$`)
+
+// crashPreamblePattern matches the caret marker line that ends both
+// crash-preamble variants (sync-throw and unhandled-promise-rejection,
+// spec.md FR2) -- some amount of leading whitespace (variable, since V8
+// positions the caret under the offending source column), then a single
+// "^", then end of line. Detecting only the caret line, not the full
+// two-variant preamble text, is enough for Detect()'s presence check;
+// T004 does the full preamble parse (distinguishing which variant, for
+// version extraction).
+var crashPreamblePattern = regexp.MustCompile(`(?m)^\s*\^\s*$`)
+
+// detectNodeTrace implements spec.md FR4's Detect() heuristic, shared by
+// both javascriptParser and typescriptParser (they differ only in
+// Language() and the extension check in Detect(), per FR5/FR6 -- see
+// T010). Returns true only if condition (i) is met -- at least one V8
+// frame-line match, OR the crash preamble is present, OR a trailing
+// version line is present (the OR relaxation was added during T003; see
+// spec.md FR4 for why: a real zero-frame fixture,
+// testdata/zero-stack-trace-limit.txt, still carries the preamble and
+// version line and would otherwise be incorrectly rejected) -- AND
+// condition (ii): at least one Node-specific signal (a node: internal
+// frame, a node_modules path segment, the version line, or the
+// preamble).
+//
+// A bare .stack line with zero frames and none of the four signals
+// (testdata/bare-stack-fetch-cause.txt) correctly returns false here --
+// see spec.md FR4's "known residual gap" note. That's not an oversight;
+// no heuristic can distinguish that input from an arbitrary one-line
+// string in any language without reopening the false-positive risk
+// condition (ii) exists to prevent.
+func detectNodeTrace(rawTrace string) bool {
+	hasFrameLine := false
+	hasNodeInternalFrame := false
+	hasNodeModulesFrame := false
+
+	for _, line := range strings.Split(rawTrace, "\n") {
+		frame, ok := parseFrameLine(line)
+		if !ok {
+			continue
+		}
+		hasFrameLine = true
+		if strings.HasPrefix(frame.FilePath, "node:") {
+			hasNodeInternalFrame = true
+		}
+		if strings.Contains(frame.FilePath, "node_modules") {
+			hasNodeModulesFrame = true
+		}
+	}
+
+	hasPreamble := crashPreamblePattern.MatchString(rawTrace)
+	hasVersionLine := versionLinePattern.MatchString(rawTrace)
+
+	if !hasFrameLine && !hasPreamble && !hasVersionLine {
+		return false
+	}
+
+	return hasNodeInternalFrame || hasNodeModulesFrame || hasVersionLine || hasPreamble
+}
+
 // splitDescription splits a V8 frame description on its first "." into
 // (ClassName, MethodName): "Object.<anonymous>" -> ("Object",
 // "<anonymous>"), "Module.executeUserEntryPoint [as runMain]" ->
