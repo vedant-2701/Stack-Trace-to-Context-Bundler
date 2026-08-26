@@ -229,3 +229,200 @@ func TestExtractTraceVersion(t *testing.T) {
 		})
 	}
 }
+
+// TestParseChain exercises T006's [cause]: bracket-chain parsing
+// (spec.md FR7/FR8) against every real fixture listed in T006's own
+// acceptance criteria in tasks.md. Fixtures requiring T009's later
+// tolerance logic (truncated/cut-off/zero-frame/unparseable inputs) are
+// deliberately not exercised here -- see engine.go's parseNodeAndCause
+// doc comment.
+//
+// Split into one top-level Test func per fixture group (plus a shared
+// mustParseChain helper) rather than one Test func with many t.Run
+// subtests -- gocyclo scores all nested closures against the enclosing
+// function, and a single TestParseChain covering all six fixture groups
+// tripped golangci-lint's complexity threshold.
+
+// mustParseChain reads fixture from testdata/ and parses it, failing
+// the test immediately if either step doesn't succeed. Shared by every
+// TestParseChain* function below to avoid repeating the read+parse+ok
+// boilerplate six times.
+func mustParseChain(t *testing.T, fixture string) []contract.ExceptionNode {
+	t.Helper()
+	content, err := os.ReadFile(filepath.Join("testdata", fixture))
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+	chain, ok := parseChain(string(content))
+	if !ok {
+		t.Fatalf("parseChain(%s) ok = false, want true", fixture)
+	}
+	return chain
+}
+
+// checkTwoNodeCrashChain asserts the shared 2-node shape that both
+// crash-with-cause.txt and logged-object-with-cause.txt must parse to
+// (spec.md FR7/FR8/FR21).
+func checkTwoNodeCrashChain(t *testing.T, fixture string) {
+	t.Helper()
+	chain := mustParseChain(t, fixture)
+	if len(chain) != 2 {
+		t.Fatalf("len(chain) = %d, want 2", len(chain))
+	}
+
+	outer, inner := chain[0], chain[1]
+
+	if outer.ClassName != "Error" || outer.Message != "outer failure" {
+		t.Errorf("outer = %q: %q, want Error: outer failure", outer.ClassName, outer.Message)
+	}
+	if outer.ElidedFrameCount != 5 {
+		t.Errorf("outer.ElidedFrameCount = %d, want 5", outer.ElidedFrameCount)
+	}
+	if len(outer.Frames) != 3 {
+		t.Fatalf("len(outer.Frames) = %d, want 3", len(outer.Frames))
+	}
+	// FR21 reverification: Frames[0] must be the frame nearest this
+	// node's own origin -- confirmed against the raw fixture's first
+	// "at" line for outer, not just a count.
+	wantFrame0 := contract.Frame{
+		FilePath: "/home/vedant/script.js", LineNumber: 2, ColumnNumber: 15,
+		ClassName: "Object", MethodName: "<anonymous>",
+	}
+	if outer.Frames[0] != wantFrame0 {
+		t.Errorf("outer.Frames[0] = %+v, want %+v", outer.Frames[0], wantFrame0)
+	}
+
+	if inner.ClassName != "Error" || inner.Message != "inner failure" {
+		t.Errorf("inner = %q: %q, want Error: inner failure", inner.ClassName, inner.Message)
+	}
+	if inner.ElidedFrameCount != 0 {
+		t.Errorf("inner.ElidedFrameCount = %d, want 0", inner.ElidedFrameCount)
+	}
+	if len(inner.Frames) != 8 {
+		t.Fatalf("len(inner.Frames) = %d, want 8", len(inner.Frames))
+	}
+	wantInnerFrame0 := contract.Frame{
+		FilePath: "/home/vedant/script.js", LineNumber: 1, ColumnNumber: 15,
+		ClassName: "Object", MethodName: "<anonymous>",
+	}
+	if inner.Frames[0] != wantInnerFrame0 {
+		t.Errorf("inner.Frames[0] = %+v, want %+v", inner.Frames[0], wantInnerFrame0)
+	}
+}
+
+func TestParseChainCrashAndLoggedObjectSameChain(t *testing.T) {
+	for _, fixture := range []string{"crash-with-cause.txt", "logged-object-with-cause.txt"} {
+		t.Run(fixture, func(t *testing.T) {
+			checkTwoNodeCrashChain(t, fixture)
+		})
+	}
+}
+
+func TestParseChainThreeLevelNested(t *testing.T) {
+	chain := mustParseChain(t, "crash-3level-cause.txt")
+	if len(chain) != 3 {
+		t.Fatalf("len(chain) = %d, want 3", len(chain))
+	}
+
+	wantElided := []int{5, 6, 0}
+	wantFrameCount := []int{3, 3, 10}
+	wantMessage := []string{"outer failure", "middle failure", "innermost failure"}
+	wantFrame0MethodName := []string{"<anonymous>", "level2", "level1"}
+	wantFrame0Line := []int{7, 5, 2}
+
+	for i, node := range chain {
+		if node.Message != wantMessage[i] {
+			t.Errorf("chain[%d].Message = %q, want %q", i, node.Message, wantMessage[i])
+		}
+		if node.ElidedFrameCount != wantElided[i] {
+			t.Errorf("chain[%d].ElidedFrameCount = %d, want %d", i, node.ElidedFrameCount, wantElided[i])
+		}
+		if len(node.Frames) != wantFrameCount[i] {
+			t.Fatalf("len(chain[%d].Frames) = %d, want %d", i, len(node.Frames), wantFrameCount[i])
+		}
+		if node.Frames[0].MethodName != wantFrame0MethodName[i] {
+			t.Errorf("chain[%d].Frames[0].MethodName = %q, want %q", i, node.Frames[0].MethodName, wantFrame0MethodName[i])
+		}
+		if node.Frames[0].LineNumber != wantFrame0Line[i] {
+			t.Errorf("chain[%d].Frames[0].LineNumber = %d, want %d", i, node.Frames[0].LineNumber, wantFrame0Line[i])
+		}
+	}
+}
+
+func TestParseChainFetchCauseZeroFrameBracket(t *testing.T) {
+	chain := mustParseChain(t, "logged-object-fetch-cause.txt")
+	if len(chain) != 2 {
+		t.Fatalf("len(chain) = %d, want 2", len(chain))
+	}
+	outer, inner := chain[0], chain[1]
+	if outer.ClassName != "TypeError" || outer.Message != "fetch failed" {
+		t.Errorf("outer = %q: %q, want TypeError: fetch failed", outer.ClassName, outer.Message)
+	}
+	if len(outer.Frames) != 0 {
+		t.Errorf("len(outer.Frames) = %d, want 0 (bracket zero-frame header)", len(outer.Frames))
+	}
+	if inner.ClassName != "Error" || inner.Message != "connect ECONNREFUSED 127.0.0.1:59999" {
+		t.Errorf("inner = %q: %q, want Error: connect ECONNREFUSED 127.0.0.1:59999", inner.ClassName, inner.Message)
+	}
+	if len(inner.Frames) != 1 {
+		t.Fatalf("len(inner.Frames) = %d, want 1", len(inner.Frames))
+	}
+}
+
+func TestParseChainScopedPackageSWCCausedByNotBoundary(t *testing.T) {
+	chain := mustParseChain(t, "scoped-package-swc-false-caused-by.txt")
+	if len(chain) != 1 {
+		t.Fatalf("len(chain) = %d, want 1 -- 'Caused by:' text must not open a second node", len(chain))
+	}
+	node := chain[0]
+	wantMessage := "Failed to deserialize buffer as swc::config::Options\n" +
+		"JSON: {\"jsc\":{\"target\":\"invalid-target\"}}\n" +
+		"\n" +
+		"Caused by:\n" +
+		"    Unknown ES version: invalid-target at line 1 column 35"
+	if node.Message != wantMessage {
+		t.Errorf("Message = %q, want %q", node.Message, wantMessage)
+	}
+	if len(node.Frames) != 10 {
+		t.Errorf("len(Frames) = %d, want 10", len(node.Frames))
+	}
+}
+
+func TestParseChainAggregateErrorDropped(t *testing.T) {
+	chain := mustParseChain(t, "aggregate-error-uncaught.txt")
+	if len(chain) != 1 {
+		t.Fatalf("len(chain) = %d, want 1 -- [errors] must not be attempted as a chain", len(chain))
+	}
+	node := chain[0]
+	if node.ClassName != "AggregateError" || node.Message != "All promises were rejected" {
+		t.Errorf("node = %q: %q, want AggregateError: All promises were rejected", node.ClassName, node.Message)
+	}
+	if len(node.Frames) != 0 {
+		t.Errorf("len(Frames) = %d, want 0", len(node.Frames))
+	}
+}
+
+func TestParseChainAssertMultilineDiff(t *testing.T) {
+	chain := mustParseChain(t, "assert-multiline-diff.txt")
+	if len(chain) != 1 {
+		t.Fatalf("len(chain) = %d, want 1", len(chain))
+	}
+	node := chain[0]
+	if node.ClassName != "AssertionError [ERR_ASSERTION]" {
+		t.Errorf("ClassName = %q, want %q", node.ClassName, "AssertionError [ERR_ASSERTION]")
+	}
+	wantMessage := "Expected \"actual\" to be reference-equal to \"expected\":\n" +
+		"+ actual - expected\n" +
+		"\n" +
+		"  {\n" +
+		"+   age: 30,\n" +
+		"-   age: 31,\n" +
+		"    name: 'Alice'\n" +
+		"  }\n"
+	if node.Message != wantMessage {
+		t.Errorf("Message = %q, want %q", node.Message, wantMessage)
+	}
+	if len(node.Frames) != 8 {
+		t.Errorf("len(Frames) = %d, want 8 -- diff lines must not be counted as frames", len(node.Frames))
+	}
+}

@@ -91,7 +91,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     `Note`; fake-exec failure/timeout sets `VersionSourceUnknown`, no
     version.
 
-- [ ] **T006** -- Implement `[cause]:` bracket-chain parsing into
+- [x] **T006** -- Implement `[cause]:` bracket-chain parsing into
   successive `ExceptionNode` entries, plus the
   `"... N lines matching cause stack trace ..."` elision-line detection
   feeding `ElidedFrameCount`.
