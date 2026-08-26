@@ -124,7 +124,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
   - Acceptance: real bare-stack fixture parses to exactly one
     `ExceptionNode`, no cause ever detected, not treated as degraded.
 
-- [ ] **T008** -- Implement frame bucketing (own/dependency/runtime),
+- [x] **T008** -- Implement frame bucketing (own/dependency/runtime),
   `PackageName` extraction (incl. scoped packages, nested
   `node_modules`), anonymous/native -> `BucketRuntime`, bundled-path ->
   `BucketOwn` default, and `file://` URI normalization.
