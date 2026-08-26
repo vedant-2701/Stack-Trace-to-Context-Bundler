@@ -402,6 +402,56 @@ func TestParseChainAggregateErrorDropped(t *testing.T) {
 	}
 }
 
+// TestParseChainBareStack exercises T007/spec.md FR9: shape (c), a bare
+// `.stack` string logged via console.error(err.stack), has no [cause]:
+// or brace-body structure at all -- its header line's collectMessageAndFrames
+// call never finds an opensBody frame line, so parseNodeAndCause returns
+// a single-node chain without ever entering the body-processing loop
+// that looks for [cause]:/[errors]:/a closing "}". This requires no new
+// production code: shape (c) falls out of T006's parseChain as the
+// "header not followed by a body" case, confirmed here rather than
+// assumed (see T006's progress.md entry, which flagged this as likely
+// but not yet checked against the fixture).
+func TestParseChainBareStack(t *testing.T) {
+	chain := mustParseChain(t, "bare-stack.txt")
+	if len(chain) != 1 {
+		t.Fatalf("len(chain) = %d, want 1 -- bare .stack must never produce a cause node", len(chain))
+	}
+
+	node := chain[0]
+	if node.ClassName != "Error" || node.Message != "outer failure" {
+		t.Errorf("node = %q: %q, want Error: outer failure", node.ClassName, node.Message)
+	}
+	if node.ElidedFrameCount != 0 {
+		t.Errorf("node.ElidedFrameCount = %d, want 0", node.ElidedFrameCount)
+	}
+	if len(node.Frames) != 8 {
+		t.Fatalf("len(node.Frames) = %d, want 8", len(node.Frames))
+	}
+	// FR21: Frames[0] is the frame nearest this node's own origin,
+	// matching the fixture's first "at" line.
+	wantFrame0 := contract.Frame{
+		FilePath: "/home/vedant/script.js", LineNumber: 2, ColumnNumber: 15,
+		ClassName: "Object", MethodName: "<anonymous>",
+	}
+	if node.Frames[0] != wantFrame0 {
+		t.Errorf("node.Frames[0] = %+v, want %+v", node.Frames[0], wantFrame0)
+	}
+	// Last frame has no file:// or node_modules signal, just a bare
+	// node: internal path with no described function name -- confirms
+	// the bare-form frame-line branch is exercised too, not just the
+	// described form.
+	wantLastFrame := contract.Frame{
+		FilePath: "node:internal/main/run_main_module", LineNumber: 33, ColumnNumber: 47,
+	}
+	wantLastFrame.Index = 7
+	gotLastFrame := node.Frames[7]
+	gotLastFrame.Index = 7
+	if gotLastFrame != wantLastFrame {
+		t.Errorf("node.Frames[7] = %+v, want %+v", gotLastFrame, wantLastFrame)
+	}
+}
+
 func TestParseChainAssertMultilineDiff(t *testing.T) {
 	chain := mustParseChain(t, "assert-multiline-diff.txt")
 	if len(chain) != 1 {

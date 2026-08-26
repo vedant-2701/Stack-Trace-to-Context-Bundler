@@ -117,7 +117,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     from frame detection (no `at ` prefix) and don't corrupt the
     message/frame boundary.
 
-- [ ] **T007** -- Implement bare `.stack`-string parsing (shape (c)):
+- [x] **T007** -- Implement bare `.stack`-string parsing (shape (c)):
   detect absence of `[cause]:`/brace structure, produce a single-node
   chain.
   - Depends on: T002
