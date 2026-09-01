@@ -134,7 +134,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     scoped package, nested node_modules, anonymous, node: internal,
     bundled-no-sourcemap default, file:// normalization).
 
-- [ ] **T009** -- Implement malformed/partial-trace tolerance (FR17-20):
+- [x] **T009** -- Implement malformed/partial-trace tolerance (FR17-20):
   trailing incomplete line dropped + `slog.Warn`, cut-off cause dropped +
   `slog.Warn`, zero-frame error accepted, true unparseable ->
   `parser.ErrUnparseable`.

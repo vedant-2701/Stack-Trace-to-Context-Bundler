@@ -1,11 +1,13 @@
 package typescript
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/vedant-2701/stack-trace-bundler/internal/contract"
+	"github.com/vedant-2701/stack-trace-bundler/internal/parser"
 )
 
 func TestParseFrameLine(t *testing.T) {
@@ -449,6 +451,109 @@ func TestParseChainBareStack(t *testing.T) {
 	gotLastFrame.Index = 7
 	if gotLastFrame != wantLastFrame {
 		t.Errorf("node.Frames[7] = %+v, want %+v", gotLastFrame, wantLastFrame)
+	}
+}
+
+// TestParseChainTruncatedMidFrame exercises T009/spec.md FR17: a
+// trailing incomplete frame line ("at Module._load (node:internal/
+// modules/cjs/lo", cut off mid-location) must be dropped, not counted
+// as a frame and not swallowed into Message -- the 4 complete frames
+// before it are still a successful parse.
+func TestParseChainTruncatedMidFrame(t *testing.T) {
+	chain := mustParseChain(t, "truncated-mid-frame.txt")
+	if len(chain) != 1 {
+		t.Fatalf("len(chain) = %d, want 1", len(chain))
+	}
+	node := chain[0]
+	if node.ClassName != "Error" || node.Message != "outer failure" {
+		t.Errorf("node = %q: %q, want Error: outer failure -- the truncated line must not leak into Message", node.ClassName, node.Message)
+	}
+	if len(node.Frames) != 4 {
+		t.Fatalf("len(node.Frames) = %d, want 4", len(node.Frames))
+	}
+}
+
+// TestParseChainCutoffCauseChain exercises T009/spec.md FR18: a
+// [cause]: node that opens but is itself cut off mid-frame
+// (testdata/cutoff-cause-chain.txt's inner "Error: inner fail" node has
+// only a truncated "at Object.<anonymous> (/home/vedant/script.js:1:"
+// line, no closing brace) must be dropped ENTIRELY -- not kept with the
+// truncated line corrupting its Message, which is what the pre-T009
+// code did. Only the outer node survives.
+func TestParseChainCutoffCauseChain(t *testing.T) {
+	chain := mustParseChain(t, "cutoff-cause-chain.txt")
+	if len(chain) != 1 {
+		t.Fatalf("len(chain) = %d, want 1 -- the incomplete inner cause must be dropped entirely, not kept corrupted", len(chain))
+	}
+	node := chain[0]
+	if node.ClassName != "Error" || node.Message != "outer failure" {
+		t.Errorf("node = %q: %q, want Error: outer failure", node.ClassName, node.Message)
+	}
+	if len(node.Frames) != 3 {
+		t.Fatalf("len(node.Frames) = %d, want 3", len(node.Frames))
+	}
+}
+
+// TestParseChainZeroFrameLegit exercises T009/spec.md FR19 against the
+// canonical Error.stackTraceLimit = 0 fixture: a message-only error
+// with zero frames is a valid, complete degraded result (distinct from
+// FR17's truncated case) -- Frames must be a non-nil empty slice, not
+// nil, so it marshals to JSON "[]" rather than "null"
+// (contract.ExceptionNode.Frames carries no omitempty tag).
+func TestParseChainZeroFrameLegit(t *testing.T) {
+	chain := mustParseChain(t, "zero-stack-trace-limit.txt")
+	if len(chain) != 1 {
+		t.Fatalf("len(chain) = %d, want 1", len(chain))
+	}
+	node := chain[0]
+	if node.ClassName != "Error" || node.Message != "Zero stack frames requested" {
+		t.Errorf("node = %q: %q, want Error: Zero stack frames requested", node.ClassName, node.Message)
+	}
+	if node.Frames == nil {
+		t.Error("node.Frames is nil, want a non-nil empty slice (must marshal to JSON [], not null)")
+	}
+	if len(node.Frames) != 0 {
+		t.Errorf("len(node.Frames) = %d, want 0", len(node.Frames))
+	}
+}
+
+// TestParseTraceUnparseable exercises T009/spec.md FR20: genuinely
+// unparseable input (no valid exception header at all) must surface as
+// an error wrapping parser.ErrUnparseable via errors.Is, not just a
+// bare ok==false the caller has to remember to check -- this is
+// parseTrace's whole purpose (see its doc comment for why it's a
+// separate function from parseChain).
+func TestParseTraceUnparseable(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("testdata", "unparseable-input.txt"))
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+
+	chain, err := parseTrace(string(content))
+	if chain != nil {
+		t.Errorf("parseTrace returned non-nil chain %+v on unparseable input, want nil", chain)
+	}
+	if !errors.Is(err, parser.ErrUnparseable) {
+		t.Fatalf("parseTrace error = %v, want it to wrap parser.ErrUnparseable", err)
+	}
+}
+
+// TestParseTraceSuccess is parseTrace's happy-path counterpart to
+// TestParseTraceUnparseable -- confirms it also correctly passes
+// through a valid parse with a nil error, not just that it detects the
+// failure case.
+func TestParseTraceSuccess(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("testdata", "bare-stack.txt"))
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+
+	chain, err := parseTrace(string(content))
+	if err != nil {
+		t.Fatalf("parseTrace(bare-stack.txt) error = %v, want nil", err)
+	}
+	if len(chain) != 1 {
+		t.Fatalf("len(chain) = %d, want 1", len(chain))
 	}
 }
 

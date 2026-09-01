@@ -1,12 +1,14 @@
 package typescript
 
 import (
+	"fmt"
 	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/vedant-2701/stack-trace-bundler/internal/contract"
+	"github.com/vedant-2701/stack-trace-bundler/internal/parser"
 )
 
 // frameLinePattern matches a single V8 stack-frame line, once leading
@@ -161,6 +163,21 @@ func detectNodeTrace(rawTrace string) bool {
 	}
 
 	return hasNodeInternalFrame || hasNodeModulesFrame || hasVersionLine || hasPreamble
+}
+
+// looksLikeFrameLine reports whether line's trimmed form starts with
+// V8's frame-line marker "at ", the same prefix frameLinePattern itself
+// anchors on. Used to distinguish a genuinely truncated frame line
+// (spec.md FR17/FR18) from ordinary multi-line message text -- no real
+// message line in any captured fixture starts with this literal prefix
+// (confirmed against every multi-line-message fixture:
+// testdata/scoped-package-swc-false-caused-by.txt,
+// testdata/assert-multiline-diff.txt), but this remains a heuristic: a
+// message that coincidentally started with the word "at" would be
+// misclassified. Accepted risk, same category as every other heuristic
+// in this grammar.
+func looksLikeFrameLine(line string) bool {
+	return strings.HasPrefix(strings.TrimLeft(line, " "), "at ")
 }
 
 // splitDescription splits a V8 frame description on its first "." into
@@ -368,12 +385,13 @@ func skipPreamble(rawTrace string) string {
 // line matches neither pattern (frame zone ended without a body; that
 // line is left unconsumed for the caller/an enclosing recursive call to
 // see, e.g. an enclosing block's own closing "}").
-func (p *blockParser) collectMessageAndFrames() (messageLines []string, frames []contract.Frame, elided int, opensBody bool) {
+func (p *blockParser) collectMessageAndFrames() (messageLines []string, frames []contract.Frame, elided int, opensBody, truncated bool) {
 	inFrameZone := false
+	frames = []contract.Frame{}
 	for {
 		line, ok := p.peek()
 		if !ok {
-			return messageLines, frames, elided, opensBody
+			return messageLines, frames, elided, false, false
 		}
 
 		if n, isElision := parseElisionLine(line); isElision {
@@ -390,9 +408,23 @@ func (p *blockParser) collectMessageAndFrames() (messageLines []string, frames [
 			p.next()
 			inFrameZone = true
 			if opens {
-				return messageLines, frames, elided, true
+				return messageLines, frames, elided, true, false
 			}
 			continue
+		}
+
+		if looksLikeFrameLine(line) {
+			// spec.md FR17: this line was clearly attempting to be a frame
+			// line ("at ...") but failed frameLinePattern -- truncated
+			// mid-frame, not message text. Drop it, warn, and stop:
+			// whatever's already been collected (possibly zero frames,
+			// e.g. a [cause] node cut off before its first frame -- see
+			// parseNodeAndCause's FR18 handling of this truncated signal)
+			// is the correct partial result. Nothing meaningful can follow
+			// a truncated frame line within this same block.
+			slog.Warn("dropping truncated frame line", "line", line)
+			p.next()
+			return messageLines, frames, elided, false, true
 		}
 
 		if !inFrameZone {
@@ -401,7 +433,7 @@ func (p *blockParser) collectMessageAndFrames() (messageLines []string, frames [
 			continue
 		}
 
-		return messageLines, frames, elided, false
+		return messageLines, frames, elided, false, false
 	}
 }
 
@@ -443,33 +475,39 @@ func (p *blockParser) skipErrorsArray(arrayIndent int) {
 // Returns this node plus every node found by following its cause chain
 // (this node first) -- spec.md FR7. Returns ok == false only when the
 // current line isn't a valid header at all (no ClassName/message split
-// point found) -- the caller (T009, composing the full Parse()) decides
-// whether that becomes parser.ErrUnparseable; this function stays a raw
-// primitive, consistent with parseFrameLine/detectNodeTrace/
-// extractTraceVersion's established pattern.
-func (p *blockParser) parseNodeAndCause() ([]contract.ExceptionNode, bool) {
+// point found) -- parseTrace (below) wraps that into
+// parser.ErrUnparseable; this function stays a raw primitive,
+// consistent with parseFrameLine/detectNodeTrace/
+// extractTraceVersion's established pattern. The third return value,
+// truncated, is T009's addition (spec.md FR17/FR18): reports whether
+// THIS node's own header/frame collection was cut off mid-parse --
+// never whether a descendant cause node was truncated and dropped,
+// which is already fully resolved (see the [cause]-handling branch
+// below) before this function returns.
+func (p *blockParser) parseNodeAndCause() ([]contract.ExceptionNode, bool, bool) {
 	headerLine, ok := p.next()
 	if !ok {
-		return nil, false
+		return nil, false, false
 	}
 
 	headerIndent := leadingSpaces(headerLine)
 	className, firstMessageLine, isBracketForm, headerOpensBody, ok := splitHeaderLine(strings.TrimLeft(headerLine, " "))
 	if !ok {
-		return nil, false
+		return nil, false, false
 	}
 
 	messageLines := []string{firstMessageLine}
-	var frames []contract.Frame
+	frames := []contract.Frame{}
 	elided := 0
 	opensBody := headerOpensBody
+	truncated := false
 
 	// The bracket form always means zero frames (that's why util.inspect
 	// uses it) and a fully self-contained single-line message -- no
 	// further message/frame collection needed or correct to attempt.
 	if !isBracketForm {
 		var moreMessage []string
-		moreMessage, frames, elided, opensBody = p.collectMessageAndFrames()
+		moreMessage, frames, elided, opensBody, truncated = p.collectMessageAndFrames()
 		messageLines = append(messageLines, moreMessage...)
 	}
 
@@ -479,19 +517,37 @@ func (p *blockParser) parseNodeAndCause() ([]contract.ExceptionNode, bool) {
 		ElidedFrameCount: elided,
 		Frames:           frames,
 	}
+
+	if len(node.Frames) == 0 && !truncated {
+		// spec.md FR19: a message-only error with zero frames (e.g.
+		// Error.stackTraceLimit = 0, or an outer node in a logged-object
+		// dump that util.inspect renders in the zero-frame bracket form,
+		// confirmed real via testdata/logged-object-fetch-cause.txt's
+		// outer node) is a valid, complete degraded result, not a
+		// failure -- but still worth surfacing via slog.Warn since a
+		// caller/AI assistant consuming the bundle has no own-code
+		// frames to work with for this node. Gated on !truncated so this
+		// doesn't double-warn on top of collectMessageAndFrames' own
+		// FR17 warning for the same underlying cause.
+		slog.Warn("exception node has zero frames", "className", className)
+	}
+
 	chain := []contract.ExceptionNode{node}
 
 	if !opensBody {
-		return chain, true
+		return chain, true, truncated
 	}
 
 	for {
 		line, ok := p.peek()
 		if !ok {
-			// Truncated body -- FR18's cut-off-cause tolerance is T009's
-			// job to formalize (including the required slog.Warn); T006
-			// just needs to not crash here, which returning what's been
-			// built so far satisfies.
+			// Body opened ("... {") but ran out before a closing "}" was
+			// ever found, and no [cause]: was found either (that case is
+			// handled below, inside the [cause]-handling branch). Nothing
+			// was ever started that needs dropping, so returning what's
+			// already been built (just this node) is already the correct
+			// result -- still worth a warning for visibility.
+			slog.Warn("exception body truncated before closing brace", "className", className)
 			break
 		}
 
@@ -508,8 +564,22 @@ func (p *blockParser) parseNodeAndCause() ([]contract.ExceptionNode, bool) {
 			// line's own leading whitespace, so the recursive call parses
 			// the remainder as an ordinary header line.
 			p.lines[p.pos] = line[:lineIndent] + strings.TrimPrefix(trimmedLine, "[cause]: ")
-			causeChain, causeOK := p.parseNodeAndCause()
+			causeChain, causeOK, causeTruncated := p.parseNodeAndCause()
 			if !causeOK {
+				break
+			}
+			if causeTruncated {
+				// spec.md FR18: the cause chain opened ([cause]: appeared)
+				// but never resolved -- trace was cut off mid-cause. Keep
+				// this node (already in chain), drop the incomplete cause
+				// entirely rather than keeping it with corrupted/partial
+				// content (confirmed real via
+				// testdata/cutoff-cause-chain.txt, where the cause's own
+				// truncated frame line would otherwise be swallowed into
+				// its Message), and stop: input is exhausted, nothing more
+				// to find.
+				slog.Warn("dropping incomplete cause node -- trace cut off mid-cause",
+					"outerClassName", className)
 				break
 			}
 			chain = append(chain, causeChain...)
@@ -532,7 +602,7 @@ func (p *blockParser) parseNodeAndCause() ([]contract.ExceptionNode, bool) {
 		p.next()
 	}
 
-	return chain, true
+	return chain, true, truncated
 }
 
 // parseChain is T006's entry point: parses the [cause]: bracket-chain
@@ -540,9 +610,32 @@ func (p *blockParser) parseNodeAndCause() ([]contract.ExceptionNode, bool) {
 // including any crash preamble, which this function strips itself via
 // skipPreamble -- into a linear chain of contract.ExceptionNode, plus
 // ElidedFrameCount per node (FR8). Returns ok == false only when no
-// valid exception header can be found at all.
+// valid exception header can be found at all. Discards
+// parseNodeAndCause's own truncated bool -- nothing at this level
+// needs it; the FR17/FR18 tolerance behavior it drives is already fully
+// resolved (warned and, where required, dropped) inside
+// parseNodeAndCause/collectMessageAndFrames before this function ever
+// sees the result.
 func parseChain(rawTrace string) ([]contract.ExceptionNode, bool) {
 	body := skipPreamble(rawTrace)
 	p := &blockParser{lines: strings.Split(body, "\n")}
-	return p.parseNodeAndCause()
+	chain, ok, _ := p.parseNodeAndCause()
+	return chain, ok
+}
+
+// parseTrace is T009's addition on top of parseChain: converts
+// parseChain's binary ok bool into an actual parser.ErrUnparseable
+// -wrapped error (spec.md FR20), for T010's Parse() composition to
+// return directly. Kept as a separate function rather than changing
+// parseChain's own signature, since engine_test.go's existing
+// TestParseChain* table tests all assert against the ok-bool form and
+// there's no reason to disturb that; parseChain also stays consistent
+// with parseFrameLine/detectNodeTrace/extractTraceVersion's established
+// raw-primitive-returns-ok-bool pattern.
+func parseTrace(rawTrace string) ([]contract.ExceptionNode, error) {
+	chain, ok := parseChain(rawTrace)
+	if !ok {
+		return nil, fmt.Errorf("%w: no valid exception header found", parser.ErrUnparseable)
+	}
+	return chain, nil
 }
