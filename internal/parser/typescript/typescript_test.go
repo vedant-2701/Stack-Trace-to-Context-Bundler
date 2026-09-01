@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/vedant-2701/stack-trace-bundler/internal/contract"
@@ -244,5 +245,83 @@ func TestParseUnparseable(t *testing.T) {
 	}
 	if !errors.Is(err, parser.ErrUnparseable) {
 		t.Fatalf("err = %v, want it to wrap parser.ErrUnparseable", err)
+	}
+}
+
+// TestParseChainStructureIdenticalAcrossShapes exercises T011/spec.md
+// AC1+AC2 together: shape (a) (crash-with-cause.txt, a true crash with
+// a trailing version line) and shape (b) (logged-object-with-cause.txt,
+// the same exception content logged via console.error(err), no
+// preamble, no version line) must parse to the IDENTICAL chain
+// structure -- only Runtime.VersionSource differs. Uses parseEngine
+// directly with a fixed fake runner (not the exported Parse(), which
+// T010's TestParseFullComposition already proves is a thin wrapper
+// around parseEngine) so the comparison is fully deterministic.
+func TestParseChainStructureIdenticalAcrossShapes(t *testing.T) {
+	crashContent := mustReadFixture(t, "crash-with-cause.txt")
+	loggedContent := mustReadFixture(t, "logged-object-with-cause.txt")
+
+	fakeRunner := &fakeNodeVersionRunner{fn: func(context.Context) (string, error) {
+		return "v24.18.0\n", nil
+	}}
+
+	crashChain, crashRuntime, err := parseEngine(context.Background(), crashContent, fakeRunner)
+	if err != nil {
+		t.Fatalf("parseEngine(crash-with-cause.txt) error = %v", err)
+	}
+	loggedChain, loggedRuntime, err := parseEngine(context.Background(), loggedContent, fakeRunner)
+	if err != nil {
+		t.Fatalf("parseEngine(logged-object-with-cause.txt) error = %v", err)
+	}
+
+	if !reflect.DeepEqual(crashChain, loggedChain) {
+		t.Errorf("chains differ:\ncrash-with-cause.txt: %+v\nlogged-object-with-cause.txt: %+v", crashChain, loggedChain)
+	}
+
+	// AC1: shape (a) has a trailing "Node.js vX.Y.Z" line -> trace-sourced,
+	// the fake runner is never even consulted for this one.
+	if crashRuntime.VersionSource != contract.VersionSourceTrace || crashRuntime.Version != "24.18.0" {
+		t.Errorf("crash runtime = %+v, want {Version: 24.18.0, VersionSource: trace}", crashRuntime)
+	}
+	// AC2: shape (b) has no trailing version line -> falls back to the
+	// local environment (VersionSourceUnknown's fallback path is already
+	// covered generically by TestParseEngineLocalFallback -- the failure
+	// branch inside parseEngine doesn't care which fixture triggered it).
+	if loggedRuntime.VersionSource != contract.VersionSourceLocalEnvironment {
+		t.Errorf("logged runtime.VersionSource = %q, want local-environment", loggedRuntime.VersionSource)
+	}
+}
+
+// TestParseEngineNormalizesFileURI exercises T011/spec.md AC12 through
+// the FULL pipeline (parseChain + bucketing), not just assignBucket in
+// isolation against a literal string as bucket_test.go's "file:// URI is
+// normalized before bucketing" case already does -- this is the one
+// real fixture (esm-runtime-error.txt) that carries an actual "file://"
+// frame path all the way from raw text through parseEngine's
+// composition, and it was never exercised as a whole fixture by any
+// earlier task's tests (only by TestParseFrameLine's single-line case
+// and TestDetectNodeTrace/TestExtractTraceVersion, neither of which
+// reaches bucketing).
+func TestParseEngineNormalizesFileURI(t *testing.T) {
+	content := mustReadFixture(t, "esm-runtime-error.txt")
+	fakeRunner := &fakeNodeVersionRunner{fn: func(context.Context) (string, error) {
+		return "v24.18.0\n", nil
+	}}
+
+	chain, _, err := parseEngine(context.Background(), content, fakeRunner)
+	if err != nil {
+		t.Fatalf("parseEngine error = %v", err)
+	}
+	if len(chain) != 1 || len(chain[0].Frames) == 0 {
+		t.Fatalf("unexpected chain shape: %+v", chain)
+	}
+
+	got := chain[0].Frames[0].FilePath
+	want := "/home/vedant/stack-trace-bundler/errors-test/pg-fails.js"
+	if got != want {
+		t.Errorf("Frames[0].FilePath = %q, want %q -- file:// must be normalized", got, want)
+	}
+	if chain[0].Frames[0].Bucket != contract.BucketOwn {
+		t.Errorf("Frames[0].Bucket = %q, want own", chain[0].Frames[0].Bucket)
 	}
 }

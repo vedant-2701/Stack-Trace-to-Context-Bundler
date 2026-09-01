@@ -286,64 +286,72 @@ wiring (002b), or auto-detection ambiguity handling (003b).
 
 ## Acceptance criteria
 
-- [ ] Given a true uncaught-crash trace with a `.cause` chain (shape a),
+- [x] Given a true uncaught-crash trace with a `.cause` chain (shape a),
       when parsed, then the result is a multi-node chain with correct
       `ElidedFrameCount` per node, `Runtime.Version` set from the
       trailing `Node.js vX.Y.Z` line with `VersionSourceTrace`.
-- [ ] Given the same error logged via `console.error(err)` (shape b, no
+- [x] Given the same error logged via `console.error(err)` (shape b, no
       preamble, no trailing version line), when parsed, then the result
       is the same chain structure as the crash-dump case, but
       `Runtime.VersionSource` is `VersionSourceLocalEnvironment` (or
       `VersionSourceUnknown` if the local shell-out fails).
-- [ ] Given the same error logged via `console.error(err.stack)` (shape
+- [x] Given the same error logged via `console.error(err.stack)` (shape
       c), when parsed, then the result is a single-node chain with no
       cause ever detected -- not treated as a parse failure.
-- [ ] Given a trace where every frame's `FilePath` ends in `.js`
+- [x] Given a trace where every frame's `FilePath` ends in `.js`
       (compiled TypeScript or hand-written JS), when `Detect()`/
       `Language()` run, then the result is `LanguageJavaScript`.
-- [ ] Given a trace where at least one frame's `FilePath` ends in `.ts`
+- [x] Given a trace where at least one frame's `FilePath` ends in `.ts`
       or `.tsx` (`ts-node`/`tsx` execution), when `Detect()`/`Language()`
       run, then the result is `LanguageTypeScript`.
-- [ ] Given a trace with frames under a `node_modules/lodash/` path and
+- [x] Given a trace with frames under a `node_modules/lodash/` path and
       frames under a `node_modules/@babel/core/` path, when bucketed,
       then both are `BucketDependency` with `PackageName` `"lodash"`
-      and `"@babel/core"` respectively.
-- [ ] Given a trace with an `<anonymous>` frame and a `node:internal/...`
+      and `"@babel/core"` respectively. (Verified with a real-fixture
+      equivalent, `node_modules/statuses/`, rather than literally
+      `lodash` -- no real capture happens to use that package name, and
+      the bucketing rule is identical regardless of which package;
+      `@babel/core` itself IS the literal real-fixture package name,
+      confirmed via `testdata/scoped-package-babel.txt` /
+      `bucket_test.go`.)
+- [x] Given a trace with an `<anonymous>` frame and a `node:internal/...`
       frame, when bucketed, then both are `BucketRuntime`.
-- [ ] Given a Chrome DevTools-style browser trace (V8 frame grammar, no
+- [x] Given a Chrome DevTools-style browser trace (V8 frame grammar, no
       `node:`/`node_modules`/version-line/preamble signal), when
       `Detect()` runs, then it returns `false`.
-- [ ] Given a trace truncated exactly at `002a`'s 512KB cap, cutting the
+- [x] Given a trace truncated exactly at `002a`'s 512KB cap, cutting the
       last frame line mid-way, when parsed, then the result is a
       successful parse with the incomplete trailing line dropped and a
       `slog.Warn` logged.
-- [ ] Given a trace whose `[cause]:` chain is cut off mid-cause, when
+- [x] Given a trace whose `[cause]:` chain is cut off mid-cause, when
       parsed, then the outer exception node is kept, the incomplete
       cause node is dropped, and a `slog.Warn` is logged -- not a parse
       failure.
-- [ ] Given input that superficially matches the V8 frame-line pattern
+- [x] Given input that superficially matches the V8 frame-line pattern
       but has no valid Error header or usable frame at all, when parsed,
       then `Parse()` returns an error wrapping `parser.ErrUnparseable`.
-- [ ] Given a `file://`-prefixed frame path (Node ESM), when parsed,
+- [x] Given a `file://`-prefixed frame path (Node ESM), when parsed,
       then `Frame.FilePath` is normalized to a real filesystem path.
-- [ ] Given each real captured fixture in `testdata/` (the original
+- [x] Given each real captured fixture in `testdata/` (the original
       four plus any added by T001, including the 3+-level-nested-cause
       capture), when parsed, then `Frames[0]` of every `ExceptionNode` is
       the frame nearest that node's own error origin, matching the raw
-      trace's own line order (FR21). **Flagged for reverification during
-      technical review** -- not yet exercised by an explicit test, only
-      checked by inspection during interrogation.
-- [ ] Given a trace produced by Node's native TypeScript execution
+      trace's own line order (FR21). **Reverified during T011**: see
+      `engine_test.go`'s `TestFrameOrderingRealFixtures`, covering all
+      19 real fixtures (16 with an explicit `Frames[0]` assertion per
+      node; the remaining 3 have zero frames in every node and are
+      vacuously satisfied).
+- [x] Given a trace produced by Node's native TypeScript execution
       (type-stripping, no `tsc`/`tsx` involved -- `.ts` frame paths via
       the ordinary CJS loader, no transformer frame), when
       `Detect()`/`Language()` run, then the result is
       `LanguageTypeScript`, identical to the `tsx`-wrapped case.
-- [ ] Given a trace whose top-level exception's brace body contains
+- [x] Given a trace whose top-level exception's brace body contains
       `[errors]:` (an `AggregateError`) instead of `[cause]:`, when
       parsed, then the result is a single terminal `ExceptionNode` with
       the `[errors]` array dropped and a `slog.Warn` logged -- not
       `ErrUnparseable`.
-- [ ] Given a trace whose message is a multi-line diff (e.g. Node's
+- [x] Given a trace whose message is a multi-line diff (e.g. Node's
       built-in `assert.strictEqual` output, containing indented
       brace-like lines that are not real frames), when parsed, then
       frame detection correctly ignores the diff lines (no `at ` prefix)

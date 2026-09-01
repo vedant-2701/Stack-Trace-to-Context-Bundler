@@ -162,7 +162,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     an all-`.js`-path fixture each `Detect()` true on exactly one of the
     two values, never both, never neither.
 
-- [ ] **T011** -- Full integration pass: every `spec.md` acceptance
+- [x] **T011** -- Full integration pass: every `spec.md` acceptance
   criterion has a corresponding passing test; run the full gate
   (`gofumpt -l`, `golangci-lint run`, `go build ./...`, `go test ./...`).
   - Depends on: T010

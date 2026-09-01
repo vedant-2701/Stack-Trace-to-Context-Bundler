@@ -2,6 +2,7 @@ package typescript
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -554,6 +555,128 @@ func TestParseTraceSuccess(t *testing.T) {
 	}
 	if len(chain) != 1 {
 		t.Fatalf("len(chain) = %d, want 1", len(chain))
+	}
+}
+
+// TestFrameOrderingRealFixtures is T011's direct answer to spec.md
+// FR21's own "Flagged for reverification during technical review" note
+// (also AC13): every real captured fixture listed in
+// testdata/README.md's "Real captures" table gets an explicit
+// Frames[0] assertion here, checked against the actual raw fixture's
+// own first "at" line for that specific node -- not a frame count, and
+// not "checked by inspection" as spec.md's original note describes.
+// Consolidated into one table here (even where a handful of these
+// entries duplicate an assertion an earlier T006-9 test already makes,
+// e.g. crash-with-cause.txt/crash-3level-cause.txt/bare-stack.txt) so
+// there's one place a reviewer can point to as "every real fixture is
+// covered," rather than needing to piece it together across a dozen
+// other test functions written for different reasons.
+//
+// Fixtures with zero frames in every node
+// (bare-stack-fetch-cause.txt, zero-stack-trace-limit.txt,
+// aggregate-error-uncaught.txt) are vacuously satisfied -- there is no
+// Frames[0] to check -- and intentionally omitted from this table;
+// each already has its own dedicated zero-frame test elsewhere in this
+// file. 16 + 3 = 19, matching testdata/README.md's full "Real
+// captures" count.
+func TestFrameOrderingRealFixtures(t *testing.T) {
+	tests := []struct {
+		fixture    string
+		nodeIndex  int
+		wantFrame0 contract.Frame
+	}{
+		{"crash-with-cause.txt", 0, contract.Frame{
+			FilePath: "/home/vedant/script.js", LineNumber: 2, ColumnNumber: 15,
+			ClassName: "Object", MethodName: "<anonymous>",
+		}},
+		{"crash-with-cause.txt", 1, contract.Frame{
+			FilePath: "/home/vedant/script.js", LineNumber: 1, ColumnNumber: 15,
+			ClassName: "Object", MethodName: "<anonymous>",
+		}},
+		{"crash-typeerror-no-cause.txt", 0, contract.Frame{
+			FilePath: "/home/vedant/script.js", LineNumber: 3, ColumnNumber: 21,
+			ClassName: "Object", MethodName: "<anonymous>",
+		}},
+		{"logged-object-with-cause.txt", 0, contract.Frame{
+			FilePath: "/home/vedant/script.js", LineNumber: 2, ColumnNumber: 15,
+			ClassName: "Object", MethodName: "<anonymous>",
+		}},
+		{"bare-stack.txt", 0, contract.Frame{
+			FilePath: "/home/vedant/script.js", LineNumber: 2, ColumnNumber: 15,
+			ClassName: "Object", MethodName: "<anonymous>",
+		}},
+		{"crash-3level-cause.txt", 0, contract.Frame{
+			FilePath: "/home/vedant/script.js", LineNumber: 7, ColumnNumber: 15,
+			ClassName: "Object", MethodName: "<anonymous>",
+		}},
+		{"crash-3level-cause.txt", 1, contract.Frame{
+			FilePath: "/home/vedant/script.js", LineNumber: 5, ColumnNumber: 10,
+			MethodName: "level2",
+		}},
+		{"crash-3level-cause.txt", 2, contract.Frame{
+			FilePath: "/home/vedant/script.js", LineNumber: 2, ColumnNumber: 10,
+			MethodName: "level1",
+		}},
+		{"crash-async-rejection-preamble.txt", 0, contract.Frame{
+			FilePath: "node:net", LineNumber: 1706, ColumnNumber: 16,
+			ClassName: "TCPConnectWrap", MethodName: "afterConnect [as oncomplete]",
+		}},
+		{"logged-object-fetch-cause.txt", 1, contract.Frame{
+			FilePath: "node:net", LineNumber: 1706, ColumnNumber: 16,
+			ClassName: "TCPConnectWrap", MethodName: "afterConnect [as oncomplete]",
+		}},
+		{"nested-deps-flat.txt", 0, contract.Frame{
+			FilePath:   "/home/vedant/stack-trace-bundler/errors-test/node_modules/statuses/index.js",
+			LineNumber: 110, ColumnNumber: 11, MethodName: "getStatusMessage",
+		}},
+		{"esm-runtime-error.txt", 0, contract.Frame{
+			FilePath:   "file:///home/vedant/stack-trace-bundler/errors-test/pg-fails.js",
+			LineNumber: 4, ColumnNumber: 9, MethodName: "main",
+		}},
+		{"import-outside-module.txt", 0, contract.Frame{
+			FilePath: "node:internal/modules/cjs/loader", LineNumber: 1804, ColumnNumber: 18,
+			MethodName: "wrapSafe",
+		}},
+		{"ts-native-execution.txt", 0, contract.Frame{
+			FilePath:   "/home/vedant/stack-trace-bundler/errors-test/app.ts",
+			LineNumber: 2, ColumnNumber: 9, MethodName: "level3",
+		}},
+		{"ts-compiled-then-run.txt", 0, contract.Frame{
+			FilePath:   "/home/vedant/stack-trace-bundler/errors-test/app.js",
+			LineNumber: 3, ColumnNumber: 11, MethodName: "level3",
+		}},
+		{"ts-tsx-transformer-path.txt", 0, contract.Frame{
+			FilePath:   "/home/vedant/stack-trace-bundler/errors-test/app.ts",
+			LineNumber: 2, ColumnNumber: 9, MethodName: "level3",
+		}},
+		{"esbuild-minified-bundle.txt", 0, contract.Frame{
+			FilePath:   "/home/vedant/stack-trace-bundler/errors-test/dist/bundle.js",
+			LineNumber: 1, ColumnNumber: 140, MethodName: "l",
+		}},
+		{"scoped-package-swc-false-caused-by.txt", 0, contract.Frame{
+			FilePath:   "/home/vedant/stack-trace-bundler/errors-test/node_modules/@swc/core/index.js",
+			LineNumber: 309, ColumnNumber: 29, ClassName: "Compiler", MethodName: "transformSync",
+		}},
+		{"assert-multiline-diff.txt", 0, contract.Frame{
+			FilePath:   "/home/vedant/stack-trace-bundler/errors-test/pg-fails.js",
+			LineNumber: 2, ColumnNumber: 8, ClassName: "Object", MethodName: "<anonymous>",
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%s#%d", tt.fixture, tt.nodeIndex), func(t *testing.T) {
+			chain := mustParseChain(t, tt.fixture)
+			if tt.nodeIndex >= len(chain) {
+				t.Fatalf("chain has %d nodes, want at least %d", len(chain), tt.nodeIndex+1)
+			}
+			node := chain[tt.nodeIndex]
+			if len(node.Frames) == 0 {
+				t.Fatalf("chain[%d].Frames is empty, want at least 1", tt.nodeIndex)
+			}
+			if got := node.Frames[0]; got != tt.wantFrame0 {
+				t.Errorf("chain[%d].Frames[0] = %+v, want %+v", tt.nodeIndex, got, tt.wantFrame0)
+			}
+		})
 	}
 }
 
