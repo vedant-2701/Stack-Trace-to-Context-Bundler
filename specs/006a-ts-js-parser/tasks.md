@@ -149,7 +149,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     something this task's `ErrUnparseable` path needs to cover -- see
     `memory/known-gaps.md`.)
 
-- [ ] **T010** -- Implement `Language()` split
+- [x] **T010** -- Implement `Language()` split
   (`hasTSExtensionFrame`) and wire `javascriptParser`/`typescriptParser`
   as the two exported `LanguageParser` values, composing T002-T009 into
   the full `Parse()`/`Detect()`/`Language()` per value.
