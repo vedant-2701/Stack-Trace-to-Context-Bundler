@@ -23,7 +23,7 @@ you're already in, or that chat's context balloons.
 | 004 | Own-code context extraction | Shared: read file at line, snippet window, `git blame -L`, repo-level git metadata (current commit, branch, uncommitted changes), stale/not-found handling — language-agnostic | 001 (+ requires a `001` contract patch: `GitMetadata` → pointer, schemaVersion MAJOR bump) | done |
 | 005a | Java parser | `Caused by:` chain parsing, frame bucketing (own/dependency/runtime), runtime + runtime-version detection (JVM) | 001, 003a, 004 | idea |
 | 005b | Java dependency resolution | `mvn`/`gradle` shell-out to resolve dependency versions for `dependency`-bucket frames | 001, 005a | idea |
-| 006a | TypeScript/JS parser | `.cause` chain parsing (incl. Node's frame-elision, `"... N lines matching cause stack trace ..."`), frame bucketing (own/`node_modules`/`node:internal`), runtime + runtime-version detection (Node.js only for v1 -- Bun/Deno deferred, see `memory/known-gaps.md`) | 001, 003a, 004 | in-progress |
+| 006a | TypeScript/JS parser | `.cause` chain parsing (incl. Node's frame-elision, `"... N lines matching cause stack trace ..."`), frame bucketing (own/`node_modules`/`node:internal`), runtime + runtime-version detection (Node.js only for v1 -- Bun/Deno deferred, see `memory/known-gaps.md`) | 001, 003a, 004 | done |
 | 006b | TS/JS dependency resolution | `package.json`+lockfile resolution for `dependency`-bucket frames | 001, 006a | idea |
 | 007 | Markdown renderer | Bundle → clipboard-ready Markdown | 001 | idea |
 | 008 | JSON renderer | Bundle → raw contract JSON | 001 | idea |

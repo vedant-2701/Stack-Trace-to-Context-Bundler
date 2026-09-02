@@ -169,7 +169,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
   - Acceptance: all gate commands pass clean; every `spec.md` acceptance
     criterion checkbox can be marked `[x]`.
 
-- [ ] **T012** -- Add the source-map/bundled-code known-limitation entry
+- [x] **T012** -- Add the source-map/bundled-code known-limitation entry
   to `memory/known-gaps.md` (referenced but not yet written in `plan.md`
   Risks), and close out this feature's OWNED deferred-criterion row(s)
   (006a listed as Owner -- e.g. the 003a `Language()` static-return
