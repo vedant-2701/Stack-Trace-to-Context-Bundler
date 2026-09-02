@@ -1,0 +1,4 @@
+TypeError: Cannot read properties of undefined (reading 'map')
+    at renderList (https://example.com/static/js/app.bundle.js:142:18)
+    at updateView (https://example.com/static/js/app.bundle.js:98:12)
+    at HTMLButtonElement.onClick (https://example.com/static/js/app.bundle.js:210:9)

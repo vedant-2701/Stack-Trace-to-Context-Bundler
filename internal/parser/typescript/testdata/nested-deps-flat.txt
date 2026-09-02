@@ -1,0 +1,17 @@
+/home/vedant/stack-trace-bundler/errors-test/node_modules/statuses/index.js:110
+    throw new Error('invalid status code: ' + code)
+    ^
+
+Error: invalid status code: 999999
+    at getStatusMessage (/home/vedant/stack-trace-bundler/errors-test/node_modules/statuses/index.js:110:11)
+    at status (/home/vedant/stack-trace-bundler/errors-test/node_modules/statuses/index.js:142:12)
+    at Object.<anonymous> (/home/vedant/stack-trace-bundler/errors-test/pg-fails.js:2:1)
+    at Module._compile (node:internal/modules/cjs/loader:1871:14)
+    at Object..js (node:internal/modules/cjs/loader:2002:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+
+Node.js v24.18.0
