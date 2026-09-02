@@ -111,6 +111,21 @@ func TestAssignBucket(t *testing.T) {
 			wantPackageName: "",
 			wantFilePath:    "/home/vedant/stack-trace-bundler/errors-test/pg-fails.js",
 		},
+		{
+			// Synthetic -- no real Windows-generated fixture exists yet
+			// (see memory/known-gaps.md); confirms
+			// splitAfterLastNodeModules's backslash normalization is
+			// actually wired up. FilePath itself is NOT rewritten to
+			// forward slashes -- normalization is local to
+			// splitAfterLastNodeModules's own segment-finding, not applied
+			// to the Frame -- that's 004's concern (git blame/snippet
+			// extraction), not bucketing's, so it stays exactly as given.
+			name:            "dependency, Windows-style backslash path (synthetic, unverified against a real trace)",
+			input:           contract.Frame{FilePath: `C:\Users\vedant\project\node_modules\lodash\index.js`},
+			wantBucket:      contract.BucketDependency,
+			wantPackageName: "lodash",
+			wantFilePath:    `C:\Users\vedant\project\node_modules\lodash\index.js`,
+		},
 	}
 
 	for _, tt := range tests {

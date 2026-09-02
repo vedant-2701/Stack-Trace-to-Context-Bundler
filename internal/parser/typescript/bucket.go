@@ -40,8 +40,21 @@ func normalizeFileURI(path string) string {
 // dependency path -- no real fixture exercises this, but the segment
 // check costs nothing extra and avoids a class of bug the substring
 // check would silently invite.
+//
+// path's backslashes are normalized to forward slashes before
+// splitting, since contract.OS explicitly includes OSWindows (this tool
+// itself is meant to run there, not just parse traces about it) and a
+// Windows-style Node trace path uses "C:\...\node_modules\pkg\...".
+// Only a local copy is normalized for THIS function's own
+// segment-finding purposes -- the path returned to and stored on
+// contract.Frame.FilePath elsewhere is untouched, since FilePath's own
+// separator style is 004's concern (git blame/snippet extraction),
+// not bucketing's. No real Windows-generated fixture exists to verify
+// this against (every real capture for this feature is from Linux/WSL,
+// per memory/known-gaps.md) -- flagged there as an accepted,
+// unverified-but-low-risk fix, not silently presented as fully proven.
 func splitAfterLastNodeModules(path string) (packageName string, isDependency bool) {
-	segments := strings.Split(path, "/")
+	segments := strings.Split(strings.ReplaceAll(path, "\\", "/"), "/")
 
 	lastIdx := -1
 	for i, s := range segments {

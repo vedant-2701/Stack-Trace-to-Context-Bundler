@@ -20,7 +20,28 @@ import (
 //
 // Accepts:
 //   - the described form: "at <description> (<file>:<line>:<col>)"
-//   - the bare form (no function name): "at <file>:<line>:<col>"
+//   - the bare form (no function name): "at <file>:<line>:<col>" -- the
+//     bare-location group excludes "("/")" (so a genuinely truncated
+//     line that opened a described form's "(" but never got its
+//     closing ")" still correctly fails to match at all, rather than
+//     silently being reinterpreted as a valid bare frame -- this is
+//     what T009's truncation tolerance, e.g.
+//     testdata/truncated-mid-frame.txt, depends on) but is otherwise
+//     permissive of any character INCLUDING spaces, so a bare file path
+//     containing a space (real on macOS/Windows, and not structurally
+//     impossible on Linux either) is still recognized, not silently
+//     dropped as "not a frame line." The group is non-greedy (`+?`),
+//     not greedy: a greedy version would swallow a trailing " {" (the
+//     last-frame-before-[cause] case below) into the location itself,
+//     since "{" isn't excluded by the character class either --
+//     non-greedy correctly stops at the shortest match that still lets
+//     the optional trailing-brace group below match, exactly
+//     reproducing \S+'s original stop-before-any-whitespace behavior
+//     for that case while additionally permitting a space that ISN'T
+//     immediately followed by " {" (confirmed by hand-tracing both
+//     testdata/nested-deps-flat.txt's plain bare frames and
+//     testdata/crash-with-cause.txt's bare-frame-with-trailing-brace
+//     case against this exact pattern).
 //   - an optional "async " modifier V8 inserts for awaited frames,
 //     between "at " and either form above (confirmed real, see
 //     testdata/esm-runtime-error.txt and
@@ -28,7 +49,7 @@ import (
 //   - an optional trailing "{" when the line is the last frame before a
 //     [cause]: block (spec.md FR4), in either form
 var frameLinePattern = regexp.MustCompile(
-	`^at\s+(?:async\s+)?(?:(.+?)\s+\(([^()]+)\)|(\S+))(?:\s*\{)?$`,
+	`^at\s+(?:async\s+)?(?:(.+?)\s+\(([^()]+)\)|([^()]+?))(?:\s*\{)?$`,
 )
 
 // locationPattern splits a "<file>:<line>:<col>" location string. The
@@ -150,7 +171,7 @@ func detectNodeTrace(rawTrace string) bool {
 		if strings.HasPrefix(frame.FilePath, "node:") {
 			hasNodeInternalFrame = true
 		}
-		if strings.Contains(frame.FilePath, "node_modules") {
+		if _, isDependency := splitAfterLastNodeModules(frame.FilePath); isDependency {
 			hasNodeModulesFrame = true
 		}
 	}

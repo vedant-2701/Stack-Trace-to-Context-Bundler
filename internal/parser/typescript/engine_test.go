@@ -113,6 +113,47 @@ func TestParseFrameLine(t *testing.T) {
 			},
 		},
 		{
+			name:   "bare frame with a space in the file path",
+			line:   "at /Users/vedant/My Documents/script.js:2:15",
+			wantOK: true,
+			wantFrame: contract.Frame{
+				FilePath: "/Users/vedant/My Documents/script.js", LineNumber: 2, ColumnNumber: 15,
+			},
+		},
+		{
+			name:   "described frame with a space in the file path",
+			line:   "at Foo (/Users/vedant/My Documents/script.js:2:15)",
+			wantOK: true,
+			wantFrame: contract.Frame{
+				FilePath: "/Users/vedant/My Documents/script.js", LineNumber: 2, ColumnNumber: 15,
+				MethodName: "Foo",
+			},
+		},
+		{
+			// Regression check for the space-in-bare-path fix above: a
+			// bare frame's trailing " {" (last frame before [cause]:)
+			// must still be split off correctly, not swallowed into the
+			// location by the now-permits-spaces character class. This
+			// exact line is real (testdata/crash-with-cause.txt).
+			name:   "bare frame with a space nowhere near it, still splits trailing brace correctly",
+			line:   "    at node:internal/main/run_main_module:33:47 {",
+			wantOK: true,
+			wantFrame: contract.Frame{
+				FilePath: "node:internal/main/run_main_module", LineNumber: 33, ColumnNumber: 47,
+			},
+		},
+		{
+			// Regression check: a line that opens a described form's
+			// "(" but never gets a closing ")" (real truncation,
+			// testdata/truncated-mid-frame.txt/cutoff-cause-chain.txt)
+			// must still fail to match entirely -- T009's truncation
+			// tolerance depends on this. The bare-form fix must not
+			// accidentally start accepting this as a valid bare frame.
+			name:   "truncated described frame (opened paren, no close) still rejected",
+			line:   "    at Module._load (node:internal/modules/cjs/lo",
+			wantOK: false,
+		},
+		{
 			name:   "blank line is not a frame",
 			line:   "",
 			wantOK: false,
@@ -196,6 +237,21 @@ func TestDetectNodeTrace(t *testing.T) {
 			t.Errorf("detectNodeTrace(plain text) = %v, want false", got)
 		}
 	})
+}
+
+// TestDetectNodeTraceWindowsNodeModulesPath is a regression test for
+// detectNodeTrace reusing splitAfterLastNodeModules instead of a raw
+// strings.Contains check (a code-review fix, post-T011): confirms a
+// backslash-separated Windows-style node_modules path is still
+// recognized as a Node-specific signal for Detect() purposes, not just
+// for bucketing (bucket_test.go covers the bucketing side of this same
+// fix). Synthetic -- no real Windows-generated fixture exists yet, see
+// memory/known-gaps.md.
+func TestDetectNodeTraceWindowsNodeModulesPath(t *testing.T) {
+	text := "Error: fail\n    at foo (C:\\Users\\vedant\\project\\node_modules\\lodash\\index.js:1:1)\n"
+	if !detectNodeTrace(text) {
+		t.Error("detectNodeTrace(Windows node_modules path) = false, want true")
+	}
 }
 
 // TestExtractTraceVersion exercises spec.md FR14: version extracted +
