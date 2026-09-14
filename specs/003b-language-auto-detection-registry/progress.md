@@ -1,0 +1,117 @@
+# Progress Log: Language auto-detection registry
+
+Append an entry each time a task is completed or a significant decision is made.
+This is what lets you (or an agent) resume the feature in a new session without
+losing context.
+
+---
+
+**Date:** 2026-09-13
+**Task(s):** Pre-implementation — spec.md, plan.md, tasks.md written; no
+code tasks (T001-T006) started yet.
+**What happened:**
+- `specs/INDEX.md`'s dependency list for this feature originally read
+  `001, 003a, 005a, 006a`. 005a (Java parser) was flagged as a blocker
+  during the initial dependency check (status: idea, not started) and
+  Vedant confirmed it was a documentation mistake — this feature needs at
+  least one real `LanguageParser` to exist, not two. Vedant corrected
+  `specs/INDEX.md` to `001, 003a, 006a` before interrogation continued.
+- During grounding reads, found and verified (by copying the real
+  `detectNodeTrace` code into a throwaway Go program and running it
+  against the real `full-machine-reverify` #11 fixture) that
+  `memory/known-gaps.md` contained a stale entry: it claimed non-`Error`
+  thrown JS/TS values are undetectable and that the resulting "no parser
+  matched" outcome was owed to this feature. Actually,
+  `javascriptParser.Detect()` returns `true` for these (via the
+  crash-preamble/trailing-version-line OR-relaxation added in 006a's
+  T003), and they fail downstream at `Parse()` with `ErrUnparseable`
+  instead — never reaching this feature's 0-match path. Vedant confirmed;
+  the stale row was removed from `memory/known-gaps.md`.
+- Also verified `javascriptParser.Detect()`/`typescriptParser.Detect()`
+  are constructed to be mutually exclusive on any real trace (one requires
+  no `.ts`/`.tsx` frame, the other requires at least one) — confirmed
+  against `internal/parser/typescript/typescript.go`. This means no real
+  fixture can currently exercise this feature's ambiguous (2+ match)
+  branch; that's tracked as a known gap owned by 005a rather than blocking
+  this feature (resolved via hand-written fake parsers for testing
+  instead — see Deviations).
+- Resolved scope: this feature takes an explicit `[]LanguageParser` from
+  the caller (no global/package-level registry, no `Register()` function)
+  and does not handle `--lang` CLI hint mapping (002b's job). Flagged, but
+  did not resolve, a real conflict: `002a`'s `--lang` flag values
+  (`java`/`typescript`) predate 006a's split of the "typescript" family
+  into two separately-registered parsers and don't map cleanly onto them.
+  Left for 002b's own spec interrogation.
+- Resolved API shape: `DetectLanguage(rawTrace string, candidates
+  []LanguageParser) (LanguageParser, error)` in new file
+  `internal/parser/detect.go`; two new sentinels `ErrNoMatch`/
+  `ErrAmbiguous` in `errors.go`; empty `candidates` panics (programmer
+  error) rather than returning `ErrNoMatch`.
+**Deviations from plan (if any):** None yet — plan.md's Testing strategy
+(real fixtures for the no-match/single-match cases, hand-written fakes only
+for the ambiguous case) was decided jointly with Vedant during
+interrogation, not deviated from afterward.
+**New open questions:** None for this feature. Carried forward to 002b (not
+this feature's to resolve): how should `--lang=typescript` interact with
+006a's two registered parsers now that the hint no longer maps 1:1 to a
+parser?
+
+---
+
+**Date:** 2026-09-13
+**Task(s):** Pre-implementation spec-integrity audit (no code tasks
+started).
+**What happened:**
+- Audit surfaced that `plan.md`'s two API/contracts code blocks
+  (`errors.go` additions, `detect.go`) each carried a file-path label
+  comment directly above `package parser` (e.g. `// internal/parser/
+  detect.go`) -- exactly the anti-pattern `CONVENTIONS.md` bans, since
+  `revive`'s `package-comments` check (enabled in `.golangci.yml`) fails
+  any comment immediately preceding `package X` unless it starts with
+  `"Package X ..."`. If T001/T002 had transcribed those blocks literally,
+  `golangci-lint run` would have failed at T006's full-repo gate despite
+  T001/T002's own (narrower) acceptance criteria appearing to pass.
+  Fixed: both label-comment lines removed from `plan.md`.
+- Also flagged: the `ErrNoMatch` branch (`fmt.Errorf("%w", ErrNoMatch)`)
+  added no context beyond the sentinel itself, unlike the `ErrAmbiguous`
+  branch three lines below it, which names every matched candidate --
+  inconsistent with `CONVENTIONS.md`'s "always wrap with context, never a
+  bare re-throw" rule and structurally asymmetric with its sibling
+  branch. Resolved (Vedant's call): the zero-match branch now also names
+  every *checked* candidate's `Language()` value, prefixed `"checked "`,
+  mirroring `ErrAmbiguous`'s shape -- e.g. `"checked javascript,
+  typescript: no registered parser matched this trace"`. Updated
+  `plan.md` (doc comment, code, testing-strategy bullet), `spec.md` (FR4,
+  second acceptance criterion), and `tasks.md` (T003's acceptance
+  description) to match.
+**Deviations from plan (if any):** The `DetectLanguage` zero-match
+branch now builds a `names` slice from `candidates` (all of them, since
+none matched) in addition to the existing `matched`-based one in the
+ambiguous branch -- two separate loops, not shared, since they iterate
+different slices. Not a deviation from the *intent* already recorded
+above (`ErrNoMatch` was always meant to wrap the sentinel), just a
+late-added requirement on top of it.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-14
+**Task(s):** T001 — Add `ErrNoMatch` and `ErrAmbiguous` sentinels to `internal/parser/errors.go`.
+**What happened:**
+- Added `ErrNoMatch` (`"no registered parser matched this trace"`) and
+  `ErrAmbiguous` (`"trace matched more than one registered language"`) as
+  package-level `var`s in `internal/parser/errors.go`, directly below the
+  existing `ErrUnparseable`, each with a doc comment matching `plan.md`'s
+  API/contracts block (cross-referencing `DetectLanguage`, not yet
+  implemented, and the exit-code-4 mapping owned by 002b).
+- No file-level package comment existed above `package parser` in this
+  file, so no risk of the `revive` package-comments trap noted in this
+  feature's earlier progress entry.
+- Verified: `go build ./...`, `gofumpt -l internal/parser/errors.go`,
+  `golangci-lint run ./internal/parser/...`, `go test ./internal/parser/...`
+  all clean (Vedant ran and confirmed).
+**Deviations from plan (if any):** None — matches `plan.md`'s
+API/contracts block verbatim.
+**New open questions:** None.
+
+---
