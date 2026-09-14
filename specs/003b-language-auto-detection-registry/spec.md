@@ -134,13 +134,13 @@ but separate concern -- see Out of scope.
 
 ## Acceptance criteria
 
-- [ ] Given a real trace that only `typescriptParser.Detect()` returns
+- [x] Given a real trace that only `typescriptParser.Detect()` returns
       `true` for (e.g. a trace with a `.ts`-suffixed frame, such as
       `internal/parser/typescript/testdata/ts-native-execution.txt`) and
       both `javascriptParser`/`typescriptParser` as candidates, when
       `DetectLanguage` runs, then it returns `typescriptParser` and a
       `nil` error.
-- [ ] Given the real `bare-stack-fetch-cause.txt` content (literally
+- [x] Given the real `bare-stack-fetch-cause.txt` content (literally
       `"TypeError: fetch failed"` -- the confirmed real case where both
       `javascriptParser.Detect()` and `typescriptParser.Detect()` return
       `false`) with both as candidates, when `DetectLanguage` runs, then
@@ -148,15 +148,15 @@ but separate concern -- see Out of scope.
       `errors.Is(err, parser.ErrNoMatch)` is `true`, and the error's
       message names both checked candidates' `Language()` values
       (`javascript`, `typescript`).
-- [ ] Given two candidate parsers (hand-written fakes -- no real
+- [x] Given two candidate parsers (hand-written fakes -- no real
       two-language combination produces this today, see Out of scope)
       whose `Detect()` both return `true` for the same input, when
       `DetectLanguage` runs, then it returns a `nil` parser and an error
       for which `errors.Is(err, parser.ErrAmbiguous)` is `true`, and the
       error's message names both candidates' `Language()` values.
-- [ ] Given an empty `candidates` slice, when `DetectLanguage` runs, then
+- [x] Given an empty `candidates` slice, when `DetectLanguage` runs, then
       it panics rather than returning `ErrNoMatch`.
-- [ ] Given `internal/parser/detect.go` and the updated `errors.go`, when
+- [x] Given `internal/parser/detect.go` and the updated `errors.go`, when
       `gofumpt -l`, `golangci-lint run`, `go build ./...`, and
       `go test ./...` are run, then all pass cleanly.
 
