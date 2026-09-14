@@ -190,3 +190,24 @@ above, which is a lint-driven implementation detail, not a change to
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-14
+**Task(s):** T005 — Record the real cross-language ambiguity gap in `memory/known-gaps.md`.
+**What happened:**
+- Re-read `memory/known-gaps.md` fresh (not a cached copy), per the
+  file's own edit discipline, before editing.
+- Added one new row to the "Deferred acceptance criteria" table: source
+  feature `003b-language-auto-detection-registry`, criterion noting
+  `DetectLanguage`'s ambiguous (2+ match) branch is proven correct only
+  via hand-written fakes (T004) and that no real fixture can exercise it
+  because `javascriptParser`/`typescriptParser` (006a) are constructed to
+  never both match the same real trace, owner `005a`, status `pending`.
+- Verified the row reads correctly against the file's existing pipe-table
+  format by reading the file back after the edit, per the task's own
+  acceptance criterion.
+- Doc-only change — no Go code touched, so the usual 4 gate commands
+  don't apply; Vedant confirmed the doc content directly.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---

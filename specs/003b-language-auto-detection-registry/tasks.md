@@ -44,7 +44,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     `go test ./internal/parser/... -run TestDetectLanguage -v` shows all
     subtests passing.
 
-- [ ] **T005** — Record the real cross-language ambiguity gap in `memory/known-gaps.md`
+- [x] **T005** — Record the real cross-language ambiguity gap in `memory/known-gaps.md`
   - Depends on: T004
   - Acceptance: re-read `memory/known-gaps.md` fresh (per its own edit
     discipline), add one row to the "Deferred acceptance criteria" table:
