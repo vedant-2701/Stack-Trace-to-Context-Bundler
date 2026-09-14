@@ -9,7 +9,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     with doc comments matching `plan.md`'s API/contracts block; `go build
     ./...` passes; `gofumpt -l` reports no diff for the file.
 
-- [ ] **T002** — Implement `DetectLanguage` in new file `internal/parser/detect.go`
+- [x] **T002** — Implement `DetectLanguage` in new file `internal/parser/detect.go`
   - Depends on: T001
   - Acceptance: signature matches `spec.md` FR1 exactly
     (`func DetectLanguage(rawTrace string, candidates []LanguageParser) (LanguageParser, error)`);

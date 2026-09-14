@@ -115,3 +115,22 @@ API/contracts block verbatim.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-14
+**Task(s):** T002 — Implement `DetectLanguage` in new file `internal/parser/detect.go`.
+**What happened:**
+- Implemented `DetectLanguage(rawTrace string, candidates []LanguageParser) (LanguageParser, error)`
+  in `internal/parser/detect.go`, matching `plan.md`'s API/contracts block
+  verbatim: empty `candidates` panics; 0 matches wraps `ErrNoMatch` naming
+  every checked candidate's `Language()`; exactly 1 match returns that
+  parser; 2+ matches wraps `ErrAmbiguous` naming every matched candidate.
+  Confirmed against the actual `LanguageParser` interface in `registry.go`
+  before implementing — no drift from `plan.md`'s assumed shape.
+- Verified: `go build ./...`, `gofumpt -l internal/parser/detect.go`,
+  `golangci-lint run ./internal/parser/...`, `go test ./internal/parser/...`
+  all clean (Vedant ran and confirmed).
+**Deviations from plan (if any):** None — matches `plan.md`'s
+API/contracts block verbatim.
+**New open questions:** None.
+
+---
