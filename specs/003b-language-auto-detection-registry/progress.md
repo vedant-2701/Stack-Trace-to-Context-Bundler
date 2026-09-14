@@ -211,3 +211,28 @@ above, which is a lint-driven implementation detail, not a change to
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-14
+**Task(s):** T006 — Full gate run and `progress.md` close-out.
+**What happened:**
+- Ran `go build ./...`, `gofumpt -l .`, `golangci-lint run ./...`,
+  `go test ./...` unscoped across the whole repo (`cmd/all`, `cmd/java`,
+  `cmd/typescript`, `internal/cli`, `internal/codecontext`,
+  `internal/contract`, `internal/parser`,
+  `internal/parser/typescript`) — all clean, no regressions outside
+  `internal/parser` (Vedant ran and confirmed).
+- First attempt at this task used commands scoped to `internal/parser`
+  only (and one gofumpt invocation, `gofumpt -l internal/parser/...`,
+  errored outright — gofumpt doesn't accept a `go`-style `...` glob) —
+  caught before accepting the result; re-ran correctly unscoped from
+  repo root per the task's actual acceptance criterion.
+- All six of feature 003b's tasks (T001–T006) are now `[x]` in
+  `tasks.md`.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
+
+**Feature 003b-language-auto-detection-registry: COMPLETE.** All
+acceptance criteria in `spec.md` satisfied; full-repo gates clean;
+`specs/INDEX.md` status updated to `done`.

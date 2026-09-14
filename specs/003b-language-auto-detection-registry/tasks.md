@@ -56,7 +56,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     reads correctly against the file's existing table format (verify by
     reading the file back after the edit).
 
-- [ ] **T006** — Full gate run and `progress.md` close-out
+- [x] **T006** — Full gate run and `progress.md` close-out
   - Depends on: T005
   - Acceptance: `gofumpt -l ./...`, `golangci-lint run`, `go build
     ./...`, `go test ./...` all run clean across the whole repo (not just
