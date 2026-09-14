@@ -32,7 +32,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
       acceptance criterion.
     Both subtests pass; no other tests in the package regress.
 
-- [ ] **T004** — `detect_test.go`: ambiguous case (hand-written fakes) and empty-candidates panic
+- [x] **T004** — `detect_test.go`: ambiguous case (hand-written fakes) and empty-candidates panic
   - Depends on: T003
   - Acceptance: two hand-written fake `LanguageParser` types declared
     locally in `detect_test.go`, both `Detect()` hardcoded `true`,

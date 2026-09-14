@@ -163,3 +163,30 @@ strategy verbatim.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-14
+**Task(s):** T004 — `detect_test.go`: ambiguous case (hand-written fakes) and empty-candidates panic.
+**What happened:**
+- Added `fakeLanguageParser` (hand-written fake, no mocking framework, per
+  `CONVENTIONS.md`) to `internal/parser/detect_test.go`: a struct with a
+  configurable `lang` and `matches` field implementing `LanguageParser`.
+- `TestDetectLanguage_Ambiguous`: two `fakeLanguageParser` candidates,
+  both `Detect()` returning `true`, distinct `Language()` values
+  (`"fake-a"`, `"fake-b"`) — asserts `errors.Is(err,
+  parser.ErrAmbiguous)` and that the error message names both.
+- `TestDetectLanguage_EmptyCandidatesPanics`: calls `DetectLanguage(...,
+  nil)` inside a `recover()`, asserts a panic occurred.
+- First lint run flagged two `revive` unused-parameter issues
+  (`fakeLanguageParser.Detect`'s `rawTrace`, `.Parse`'s `ctx`) — fixed by
+  renaming both to `_`, since the fake never needs to inspect them
+  (`Detect` always returns the hardcoded `matches` field; `Parse` is
+  never called by `DetectLanguage` or these tests).
+- Verified: `go build ./...`, `gofumpt -l internal/parser/detect_test.go`,
+  `golangci-lint run ./internal/parser/...`, `go test ./internal/parser/...`
+  all clean (Vedant ran and confirmed) after the fix.
+**Deviations from plan (if any):** None beyond the unused-parameter fix
+above, which is a lint-driven implementation detail, not a change to
+`plan.md`'s Testing strategy itself.
+**New open questions:** None.
+
+---

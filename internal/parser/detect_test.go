@@ -1,6 +1,7 @@
 package parser_test
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -75,4 +76,52 @@ func TestDetectLanguage_RealNoMatch(t *testing.T) {
 			t.Errorf("error message %q does not name checked candidate %q", err.Error(), lang)
 		}
 	}
+}
+
+// fakeLanguageParser is a hand-written fake LanguageParser (no mocking
+// framework, per CONVENTIONS.md), used only to exercise DetectLanguage's
+// ambiguous (2+ match) branch. No real two-language combination produces
+// this today -- javascriptParser/typescriptParser are constructed to
+// never both match the same real trace (plan.md's Out of scope).
+type fakeLanguageParser struct {
+	lang    contract.Language
+	matches bool
+}
+
+func (f fakeLanguageParser) Language() contract.Language { return f.lang }
+
+func (f fakeLanguageParser) Detect(_ string) bool { return f.matches }
+
+func (f fakeLanguageParser) Parse(_ context.Context, _ string) ([]contract.ExceptionNode, contract.Runtime, error) {
+	return nil, contract.Runtime{}, nil
+}
+
+func TestDetectLanguage_Ambiguous(t *testing.T) {
+	candidates := []parser.LanguageParser{
+		fakeLanguageParser{lang: "fake-a", matches: true},
+		fakeLanguageParser{lang: "fake-b", matches: true},
+	}
+
+	got, err := parser.DetectLanguage("irrelevant trace content", candidates)
+	if got != nil {
+		t.Fatalf("DetectLanguage returned non-nil parser, want nil: %v", got)
+	}
+	if !errors.Is(err, parser.ErrAmbiguous) {
+		t.Fatalf("errors.Is(err, parser.ErrAmbiguous) = false, want true (err: %v)", err)
+	}
+	for _, lang := range []string{"fake-a", "fake-b"} {
+		if !strings.Contains(err.Error(), lang) {
+			t.Errorf("error message %q does not name matched candidate %q", err.Error(), lang)
+		}
+	}
+}
+
+func TestDetectLanguage_EmptyCandidatesPanics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("DetectLanguage(rawTrace, nil) did not panic, want panic")
+		}
+	}()
+
+	_, _ = parser.DetectLanguage("irrelevant trace content", nil)
 }
