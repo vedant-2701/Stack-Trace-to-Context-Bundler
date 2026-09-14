@@ -134,3 +134,32 @@ API/contracts block verbatim.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-14
+**Task(s):** T003 — `detect_test.go`: single real match and real no-match cases.
+**What happened:**
+- Added `internal/parser/detect_test.go` as `package parser_test`
+  (external test package, per `plan.md`'s Testing strategy — required to
+  import `internal/parser/typescript` without an import cycle).
+- `TestDetectLanguage_RealSingleMatch`: real `typescript.NewJavaScriptParser()`
+  + `typescript.NewTypeScriptParser()` as candidates against the real
+  `ts-native-execution.txt` content (inlined as a const string literal,
+  copied verbatim from disk) — asserts the returned parser's `Language()`
+  is `contract.LanguageTypeScript`.
+- `TestDetectLanguage_RealNoMatch`: same two real candidates against the
+  real `bare-stack-fetch-cause.txt` content (`"TypeError: fetch
+  failed\n"`, inlined verbatim) — asserts `errors.Is(err,
+  parser.ErrNoMatch)` and that the error message contains both
+  `"javascript"` and `"typescript"` (confirmed exact string values via
+  `internal/contract/types.go`'s `LanguageJavaScript`/`LanguageTypeScript`
+  constants before writing the assertion).
+- No fakes used — both cases exercise real, already-tested 006a
+  production code, per `plan.md`.
+- Verified: `go build ./...`, `gofumpt -l internal/parser/detect_test.go`,
+  `golangci-lint run ./internal/parser/...`, `go test ./internal/parser/...`
+  all clean (Vedant ran and confirmed).
+**Deviations from plan (if any):** None — matches `plan.md`'s Testing
+strategy verbatim.
+**New open questions:** None.
+
+---

@@ -16,7 +16,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     implements the 0/1/2+ branching (FR3-5) and the empty-`candidates`
     panic (FR6); `golangci-lint run` and `go build ./...` pass clean.
 
-- [ ] **T003** — `detect_test.go`: single real match and real no-match cases
+- [x] **T003** — `detect_test.go`: single real match and real no-match cases
   - Depends on: T002
   - Acceptance: new file `internal/parser/detect_test.go`, `package
     parser_test` (external test package — required to import
