@@ -46,7 +46,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
      requirement. See T003b and T004 for where T000 actually starts
      to matter. -->
 
-- [ ] **T002** — npm manifest parsing (`Direct`)
+- [x] **T002** — npm manifest parsing (`Direct`)
   - Depends on: none. Parses `package.json` into a plain
     `map[string]string` and touches no `internal/contract` type at
     all — can be worked in parallel with T000.

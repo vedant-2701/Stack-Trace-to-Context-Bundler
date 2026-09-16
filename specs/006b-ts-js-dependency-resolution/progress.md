@@ -164,3 +164,43 @@ tasks.md's own testability requirement for this task).
 **New open questions:** None. T002 is next.
 
 ---
+
+**Date:** 2026-09-16
+**Task(s):** T002 -- npm manifest parsing (`Direct`)
+**What happened:** Created the new `internal/dependency/typescript`
+package (parallel to `internal/parser/typescript`'s layout, per
+plan.md). Added `manifest.go`: unexported `npmManifest` struct scoped
+to only `dependencies`/`devDependencies`/`optionalDependencies` --
+`peerDependencies` has no field at all, not just an unused one, so it
+can never leak into `Direct` even via a careless future "range over
+every field" edit. `readManifest(path) (direct map[string]string, ok
+bool)` reads+parses `package.json`, merging all three sections into one
+map (no override-precedence logic needed -- npm itself doesn't allow a
+package in more than one section); missing file and invalid JSON both
+collapse to `ok=false` identically, matching spec.md FR7's "both outcomes
+are Bundle.Dependencies nil" treatment.
+
+The package doc comment (`// Package typescript ...`) currently lives on
+`manifest.go`, not `resolve.go` -- `resolve.go`, the package's actual
+orchestration entry point per plan.md, doesn't exist until T004. Flagged
+in manifest.go's own comment; will move it once T004 lands, per
+CONVENTIONS.md's "one file carries the doc comment, usually the file
+most central to the package" rule.
+
+Note: `readManifest` returns the UNSCOPED map (every package.json-declared
+package) -- filtering to only trace-referenced packages (spec.md FR9) is
+explicitly T004's job (`buildDirect` in resolve.go's pseudocode), not
+this function's.
+
+Added `manifest_test.go`: all-three-sections-merged, peerDependencies-
+excluded, malformed JSON, missing file -- table-style via a shared
+`writeManifest` helper (`t.TempDir()` + `os.WriteFile`, same pattern as
+`codecontext/snippet_test.go`'s `writeLines`).
+**Verification:** `go build ./...`, `go test
+./internal/dependency/typescript/...` (`ok`), `golangci-lint run
+./internal/dependency/typescript/...` (0 issues), and `gofumpt -l` on
+both new files -- all clean, confirmed by Vedant.
+**Deviations from plan (if any):** None.
+**New open questions:** None. T003a is next.
+
+---
