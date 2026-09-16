@@ -59,7 +59,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     missing file, peerDependencies-excluded case.
   - Acceptance: all 4 verification commands clean.
 
-- [ ] **T003a** — npm lockfile parsing
+- [x] **T003a** — npm lockfile parsing
   - Depends on: none. Pure JSON parsing/validation; touches no
     `internal/contract` type.
   - Add `internal/dependency/typescript/lockfile.go`: parse

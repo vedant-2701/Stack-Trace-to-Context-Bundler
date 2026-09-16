@@ -204,3 +204,33 @@ both new files -- all clean, confirmed by Vedant.
 **New open questions:** None. T003a is next.
 
 ---
+
+**Date:** 2026-09-16
+**Task(s):** T003a -- npm lockfile parsing
+**What happened:** Added `lockfile.go`: unexported `npmLockfile`
+(`LockfileVersion`, `Packages`) and `npmLockfilePackage` (`Version`
+only) structs, matching plan.md's Data model exactly. `readLockfile(path)
+(packages map[string]string, ok bool, reason string)` reads+parses
+`package-lock.json`, flattening `Packages` down to a plain `dirKey ->
+version` map -- the per-entry struct wrapper is discarded here since
+lookup.go/resolve.go (T003b/T004) only ever need the version string.
+Three distinct `ok=false` cases, each with its own `reason` string for
+a later `LockedDependency.Note`: file not found (also covers the
+"only yarn.lock exists" case, since this function only ever looks for
+`package-lock.json` by exact path and never inspects `yarn.lock` at
+all), malformed JSON, and `lockfileVersion` present but not 2 or 3
+(covers npm <=6's lockfileVersion 1 nested-tree format).
+
+Added `lockfile_test.go`: valid v2, valid v3 (including a scoped-
+package key), malformed JSON, missing file, `lockfileVersion: 1`, and
+yarn-only (confirms `yarn.lock`'s mere presence changes nothing) --
+same `t.TempDir()`-based table style as `manifest_test.go`, via a
+shared `writeLockfile` helper.
+**Verification:** `go build ./...`, `go test
+./internal/dependency/typescript/...` (`ok`), `golangci-lint run
+./internal/dependency/typescript/...` (0 issues), and `gofumpt -l` on
+both new files -- all clean, confirmed by Vedant.
+**Deviations from plan (if any):** None.
+**New open questions:** None. T003b is next.
+
+---
