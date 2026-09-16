@@ -83,3 +83,31 @@ func isInsideGitWorkTree(ctx context.Context, workDir string, runner gitRunner) 
 	}
 	return strings.TrimSpace(out) == "true"
 }
+
+// FindRepoRoot reports the absolute path to the git repository containing
+// workDir, for consumers that need an actual root path to resolve other
+// files against (006b-ts-js-dependency-resolution's manifest/lockfile
+// lookup) -- distinct from BuildGitMetadata's own detection call above,
+// which deliberately never needed a root path (see isInsideGitWorkTree's
+// doc comment) and stays untouched. Never returns an error: no repo
+// found, or the rev-parse call itself timing out, are both valid,
+// representable false outcomes (ok=false), not exceptional ones --
+// same shape as BuildGitMetadata. This is the production entry point;
+// it wraps the real gitRunner.
+func FindRepoRoot(ctx context.Context, workDir string) (root string, ok bool) {
+	return findRepoRoot(ctx, workDir, execGitRunner{})
+}
+
+// findRepoRoot is the runner-injectable implementation. Exercised
+// directly by this package's table-driven tests via fakeGitRunner, so
+// go test ./internal/codecontext/... never needs a real git binary.
+func findRepoRoot(ctx context.Context, workDir string, runner gitRunner) (string, bool) {
+	out, err := runner.Run(ctx, workDir, "rev-parse", "--show-toplevel")
+	if err != nil {
+		// Covers both "not a git repository" and a timeout identically,
+		// same reasoning as isInsideGitWorkTree above -- both collapse to
+		// ok=false, no separate branch needed.
+		return "", false
+	}
+	return strings.TrimSpace(out), true
+}

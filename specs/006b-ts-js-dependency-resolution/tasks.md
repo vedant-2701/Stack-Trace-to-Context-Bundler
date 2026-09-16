@@ -28,7 +28,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     `golangci-lint run ./internal/contract/...`, `gofumpt -l` on all
     changed files all clean; golden fixtures regenerated and reviewed.
 
-- [ ] **T001** — `codecontext.FindRepoRoot`
+- [x] **T001** — `codecontext.FindRepoRoot`
   - Depends on: T000 (not a hard dependency, but keeps the contract
     change isolated as its own reviewable commit first)
   - Add `FindRepoRoot(ctx context.Context, workDir string) (root string, ok bool)`

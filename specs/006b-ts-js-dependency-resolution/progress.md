@@ -133,3 +133,34 @@ history instead of hardcoding a value that will go stale again.
 **New open questions:** None. T001 is next.
 
 ---
+
+**Date:** 2026-09-16
+**Task(s):** T001 -- `codecontext.FindRepoRoot`
+**What happened:** Added `FindRepoRoot(ctx, workDir) (root string, ok bool)`
+to `internal/codecontext/gitmeta.go`, following the same public-wraps-
+injectable split `BuildGitMetadata`/`buildGitMetadata` already use
+(rather than plan.md's illustrative inline-`execGitRunner{}` snippet),
+so it's testable via the existing `fakeGitRunner` pattern with no real
+git binary needed. `findRepoRoot(ctx, workDir, runner)` runs `git
+rev-parse --show-toplevel`; any error (not-a-repo or a timeout, both
+indistinguishable, same reasoning `isInsideGitWorkTree` already uses)
+collapses to `ok=false` rather than a separate branch. Left
+`isInsideGitWorkTree`/`BuildGitMetadata`'s own detection call
+untouched -- `FindRepoRoot` is a second, independent detection call for
+006b's new need (an actual root path), not a replacement.
+Added `TestFindRepoRoot_Success`, `_NotARepo`, `_Timeout` to
+`gitmeta_test.go`, same fake-runner shape as the existing
+`TestBuildGitMetadata_NoRepoFound`/`_DetectionTimeout` tests.
+Deliberately left `internal/codecontext`'s package doc comment
+unchanged (still scoped to "own-code context") -- plan.md's Risks
+section already flags this as a known, non-blocking scope mismatch;
+not revisited here.
+**Verification:** `go build ./...`, `go test ./internal/codecontext/...`
+(`ok`), `golangci-lint run ./internal/codecontext/...` (0 issues), and
+`gofumpt -l` on both changed files -- all clean, confirmed by Vedant.
+**Deviations from plan (if any):** None (implementation detail only --
+injectable-runner split vs. plan.md's inline snippet -- required by
+tasks.md's own testability requirement for this task).
+**New open questions:** None. T002 is next.
+
+---
