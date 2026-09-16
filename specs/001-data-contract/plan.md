@@ -240,6 +240,11 @@ own stack needs, out of scope here.
     "uncommittedChanges": "boolean"
   },
 
+  // Optional at the bundle level as of schemaVersion "3.0.0" (bumped
+  // from "2.0.0" by 006b-ts-js-dependency-resolution): Bundle.Dependencies
+  // is *Dependencies (json:"dependencies,omitempty"), omitted entirely
+  // (not null) when no manifest is found or it could not be parsed --
+  // same pattern as gitMetadata above.
   "dependencies": {
     // Single manifest per bundle, no monorepo/workspace support in v1 --
     // an accepted v1 simplification (data-contract.md), not a hidden gap.
@@ -308,7 +313,10 @@ library consumed in-process by other features):
 
 - `contract.Bundle` -- top-level struct, the full shape from the Data
   model above.
-- `contract.SchemaVersion` -- exported constant, `"1.0.0"`.
+- `contract.SchemaVersion` -- exported constant, currently `"3.0.0"` (see
+  spec.md's functional requirement 6 and requirements 12/13 for the bump
+  history -- this constant has moved since it was first written here and
+  was not kept in sync at the time; flagging that gap now).
 - `contract.ComputeFingerprint(chain []contract.ExceptionNode) string`
 - `contract.TruncateRawInput(s string) (out string, truncated bool)`
 

@@ -147,6 +147,19 @@ generated, tested JSON fixture — the single source of truth for what a
     stay generic to whichever lockfile/resolution mechanism produced the
     value — which lockfile formats (npm/yarn/pnpm) actually get parsed is
     006b's scope, not this feature's.
+
+    As of `schemaVersion` `"3.0.0"`, `dependencies` is also optional at
+    the bundle level: `Bundle.Dependencies` is `*Dependencies`
+    (`json:"dependencies,omitempty"`), nil and omitted entirely from the
+    JSON when no manifest is found, or it could not be parsed (006b's
+    scope) — same pattern as `gitMetadata` in requirement 12. This
+    pointer change is a MAJOR breaking change under functional
+    requirement 6's own bump policy; it bumped `schemaVersion` from
+    `"2.0.0"` to `"3.0.0"`, landed as part of 006b. Separately,
+    `LockedDependency.note` may now accompany a present `version` too,
+    not only an absent one — flagging an inexact/fallback resolution
+    match (006b's top-level bare-name lookup case) rather than being
+    reserved solely for explaining an absent version.
 14. Any field that doesn't apply to a given language or case must be
     omitted from the JSON entirely (Go `omitempty`) — never `null`, never
     a zero value standing in for "not applicable." Zero/false values are

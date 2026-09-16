@@ -22,7 +22,7 @@ package contract
 // removed, or its type changed; an existing enum/status value's meaning
 // changed); MINOR for additive-only changes (a new optional field); no
 // bump for implementation changes that don't touch the shape at all.
-const SchemaVersion = "2.0.0"
+const SchemaVersion = "3.0.0"
 
 // Language identifies the source language of a stack trace. Closed for
 // v1: matches the two parser features in specs/INDEX.md (005a Java, 006a
@@ -177,7 +177,13 @@ type Bundle struct {
 	// When non-nil, all three inner fields are always populated.
 	GitMetadata *GitMetadata `json:"gitMetadata,omitempty"`
 
-	Dependencies Dependencies `json:"dependencies"`
+	// Dependencies is nil and omitted from the JSON entirely when no
+	// manifest (package.json/pom.xml/build.gradle) is found, or it could
+	// not be parsed (006b-ts-js-dependency-resolution's scope). Go's
+	// omitempty has no effect on a non-pointer struct field, so the
+	// pointer is required, not optional, to make omission work -- same
+	// pattern as GitMetadata above.
+	Dependencies *Dependencies `json:"dependencies,omitempty"`
 }
 
 // Runtime describes the execution engine (node/bun/deno/jvm), which is
@@ -371,9 +377,12 @@ type LockedDependency struct {
 	// cross-cutting omission rule -- not an empty string.
 	Version string `json:"version,omitempty"`
 
-	// Note is present only when Version is absent. E.g. "no local
-	// mvn/gradle cache on this checkout (constitution Article IX,
-	// decision 0001) -- expected on a fresh clone that hasn't been
-	// built locally yet, not a bug."
+	// Note may be present whether or not Version is set -- either
+	// explaining why Version is absent (e.g. "no local mvn/gradle cache
+	// on this checkout (constitution Article IX, decision 0001) --
+	// expected on a fresh clone that hasn't been built locally yet, not
+	// a bug"), or, when Version IS set via an inexact/fallback match
+	// (006b's top-level-lookup case), flagging that the match isn't tied
+	// to the exact frame path.
 	Note string `json:"note,omitempty"`
 }
