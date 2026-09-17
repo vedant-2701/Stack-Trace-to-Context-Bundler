@@ -284,3 +284,64 @@ confirmed before implementing, not a silent expansion.
 **New open questions:** None. T004 is next.
 
 ---
+
+**Date:** 2026-09-16
+**Task(s):** T004 -- `ResolveDependencies` orchestration
+**What happened:** Flagged and resolved a testability gap before
+writing the task's own code: plan.md's pseudocode has `ResolveDependencies`
+call `codecontext.FindRepoRoot` directly, which would force
+`resolve_test.go`'s root-resolution cases through a real git repo or
+the git binary, violating CONVENTIONS.md's "anything that shells out
+must be tested behind a fake" rule. Split it the same way
+`BuildGitMetadata`/`FindRepoRoot` are already split: public
+`ResolveDependencies` wraps a private `resolveDependencies` taking
+`findRepoRoot` as an injected function parameter, defaulting to
+`codecontext.FindRepoRoot` in production; tests pass stub functions
+instead.
+
+Added `resolve.go`: `referencedPackages` (every dependency-bucket
+frame's `PackageName`, keyed by name, every referencing frame's
+`FilePath` preserved -- not deduplicated); `buildDirect` (scopes
+manifest to referenced names, spec.md FR9); `buildLocked` (reads
+`package-lock.json` once, reuses its failure reason across every
+affected package rather than re-deriving it per package);
+`resolvePackage`/`unresolvedPackage`/`conflictingPackage`/`agreedPackage`
+implementing spec.md FR10-FR14's per-package decision after collecting
+every referencing frame's own `lookupFrame` result. `slog.Warn`/`Info`
+calls per plan.md's Logging section (manifest missing/invalid, lockfile
+unusable, per-package unresolved/conflict/fallback-only, final resolved
+count). Moved the package doc comment off `manifest.go` onto this file,
+per the placeholder flagged during T002.
+
+One judgment call flagged to Vedant and confirmed before implementing:
+spec.md doesn't say what happens when multiple frames agree on the same
+version via a MIX of exact and fallback matches. Resolved as: any
+contributing exact match confirms the package (no note) regardless of
+an agreeing fallback-only frame elsewhere; only an all-fallback
+agreement carries a note (reusing one representative frame's own note
+text, chosen deterministically by frame order). The multi-version
+conflict rule (FR13) itself needed no such call -- spec.md is explicit
+there.
+
+Added `resolve_test.go`: exact match, scoped exact match, top-level
+fallback, conflict (two frames, exact-vs-exact to different nested
+copies), one-resolves-one-doesn't (via `resolvePackage` directly, to
+genuinely isolate a true non-match from a same-package fallback),
+fully unresolved, lockfile missing/malformed/`lockfileVersion: 1`/
+yarn-only, manifest missing/malformed, all three root-resolution paths
+(`workDir` fallback success, `workDir` fallback failure with an
+explicit no-panic assertion, git-succeeds-but-no-manifest with no
+`workDir` retry), `Direct` scoping across dependencies/dev/optional
+(in) vs. peer (out) vs. transitive (Locked-only), and declared-but-
+unreferenced exclusion.
+**Verification:** `go build ./...`, `go test
+./internal/dependency/typescript/...` (`ok`), `golangci-lint run
+./internal/dependency/typescript/...` (0 issues), and `gofumpt -l` on
+all three touched files -- all clean, confirmed by Vedant.
+**Deviations from plan (if any):** The `findRepoRoot`-injection split
+(flagged and confirmed before implementing, required for testability,
+no behavior change in production since `ResolveDependencies` still
+defaults to the real `codecontext.FindRepoRoot`).
+**New open questions:** None. T005 (feature close-out) is next.
+
+---

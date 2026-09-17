@@ -92,7 +92,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
   - Acceptance: all 4 verification commands clean; every case above has
     a dedicated test.
 
-- [ ] **T004** — `ResolveDependencies` orchestration
+- [x] **T004** — `ResolveDependencies` orchestration
   - Depends on: T001, T002, T003a, T003b. Also design-coupled to T000
     (its return type `*contract.Dependencies` is shaped to match
     T000's contract change) but not compile-blocked by it:

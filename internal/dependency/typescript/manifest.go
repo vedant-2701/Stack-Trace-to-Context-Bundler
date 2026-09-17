@@ -1,14 +1,3 @@
-// Package typescript resolves concrete installed dependency versions for
-// TS/JS dependency-bucket frames, by parsing package.json and
-// package-lock.json directly at the repo root -- never shelling out to
-// npm/yarn/pnpm (constitution Article IX's own carve-out). See
-// specs/006b-ts-js-dependency-resolution for the full design.
-//
-// This package doc comment currently lives here (manifest.go) rather
-// than on resolve.go, the package's actual orchestration entry point --
-// resolve.go doesn't exist yet (T004). Move it there once resolve.go
-// lands, per CONVENTIONS.md's "one file carries the doc comment, usually
-// the file most central to the package" rule.
 package typescript
 
 import (
