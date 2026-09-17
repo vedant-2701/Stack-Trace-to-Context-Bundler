@@ -22,6 +22,32 @@ func normalizeFileURI(path string) string {
 	return strings.TrimPrefix(path, "file://")
 }
 
+// FindLastNodeModulesSegment normalizes path's separators to forward
+// slashes and reports the resulting segments plus the index of the LAST
+// "node_modules" segment within them -- shared by this package's own
+// splitAfterLastNodeModules below (which only wants the bare trailing
+// package name) and internal/dependency/typescript's packageDirKey
+// (006b; wants the full nested node_modules/.../node_modules/... prefix
+// chain instead). Extracted so a future fix to the normalization or
+// last-vs-first-occurrence logic lands in exactly one place rather than
+// two independently-maintained copies -- flagged as a risk in
+// specs/006b-ts-js-dependency-resolution/plan.md's "Risks & open
+// decisions" section, resolved here during 006b's T003b rather than
+// left open. lastIdx is -1 if no "node_modules" segment exists at all.
+// See splitAfterLastNodeModules's doc comment below for why the LAST
+// occurrence (not first) and why segment-equality rather than a raw
+// substring check.
+func FindLastNodeModulesSegment(path string) (segments []string, lastIdx int) {
+	segments = strings.Split(strings.ReplaceAll(path, "\\", "/"), "/")
+	lastIdx = -1
+	for i, s := range segments {
+		if s == "node_modules" {
+			lastIdx = i
+		}
+	}
+	return segments, lastIdx
+}
+
 // splitAfterLastNodeModules reports whether path contains a
 // "node_modules" path segment and, if so, the package name segment(s)
 // immediately following the LAST such occurrence (spec.md FR10 --
@@ -41,27 +67,22 @@ func normalizeFileURI(path string) string {
 // check costs nothing extra and avoids a class of bug the substring
 // check would silently invite.
 //
-// path's backslashes are normalized to forward slashes before
-// splitting, since contract.OS explicitly includes OSWindows (this tool
-// itself is meant to run there, not just parse traces about it) and a
-// Windows-style Node trace path uses "C:\...\node_modules\pkg\...".
-// Only a local copy is normalized for THIS function's own
+// Separator normalization and last-occurrence-finding are delegated to
+// FindLastNodeModulesSegment above (shared with 006b's packageDirKey);
+// this function only adds its own bare-trailing-name extraction on top.
+// Backslashes need normalizing since contract.OS explicitly includes
+// OSWindows (this tool itself is meant to run there, not just parse
+// traces about it) and a Windows-style Node trace path uses
+// "C:\...\node_modules\pkg\...". Only a local copy is normalized for
 // segment-finding purposes -- the path returned to and stored on
 // contract.Frame.FilePath elsewhere is untouched, since FilePath's own
-// separator style is 004's concern (git blame/snippet extraction),
-// not bucketing's. No real Windows-generated fixture exists to verify
-// this against (every real capture for this feature is from Linux/WSL,
-// per memory/known-gaps.md) -- flagged there as an accepted,
+// separator style is 004's concern (git blame/snippet extraction), not
+// bucketing's. No real Windows-generated fixture exists to verify this
+// against (every real capture for this feature is from Linux/WSL, per
+// memory/known-gaps.md) -- flagged there as an accepted,
 // unverified-but-low-risk fix, not silently presented as fully proven.
 func splitAfterLastNodeModules(path string) (packageName string, isDependency bool) {
-	segments := strings.Split(strings.ReplaceAll(path, "\\", "/"), "/")
-
-	lastIdx := -1
-	for i, s := range segments {
-		if s == "node_modules" {
-			lastIdx = i
-		}
-	}
+	segments, lastIdx := FindLastNodeModulesSegment(path)
 	if lastIdx == -1 {
 		return "", false
 	}

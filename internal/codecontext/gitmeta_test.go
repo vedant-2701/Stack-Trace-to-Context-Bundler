@@ -143,3 +143,57 @@ func TestBuildGitMetadata_RepoFoundButHEADUnresolvable(t *testing.T) {
 	got := buildGitMetadata(context.Background(), "/repo", fake)
 	assertGitMetadata(t, got, nil)
 }
+
+func TestFindRepoRoot_Success(t *testing.T) {
+	fake := &fakeGitRunner{fn: func(_ context.Context, _ string, args ...string) (string, error) {
+		if strings.Join(args, " ") == "rev-parse --show-toplevel" {
+			return "/repo/root\n", nil
+		}
+		t.Fatalf("unexpected git call: git %s", strings.Join(args, " "))
+		return "", nil
+	}}
+
+	root, ok := findRepoRoot(context.Background(), "/repo/root/sub", fake)
+	if !ok {
+		t.Fatalf("findRepoRoot() ok = false, want true")
+	}
+	if root != "/repo/root" {
+		t.Errorf("findRepoRoot() root = %q, want %q", root, "/repo/root")
+	}
+}
+
+func TestFindRepoRoot_NotARepo(t *testing.T) {
+	fake := &fakeGitRunner{fn: func(_ context.Context, _ string, args ...string) (string, error) {
+		if strings.Join(args, " ") == "rev-parse --show-toplevel" {
+			return "", errors.New("fatal: not a git repository (or any of the parent directories): .git")
+		}
+		t.Fatalf("unexpected git call: git %s", strings.Join(args, " "))
+		return "", nil
+	}}
+
+	root, ok := findRepoRoot(context.Background(), "/not-a-repo", fake)
+	if ok {
+		t.Fatalf("findRepoRoot() ok = true, want false")
+	}
+	if root != "" {
+		t.Errorf("findRepoRoot() root = %q, want empty", root)
+	}
+}
+
+func TestFindRepoRoot_Timeout(t *testing.T) {
+	fake := &fakeGitRunner{fn: func(_ context.Context, _ string, args ...string) (string, error) {
+		if strings.Join(args, " ") == "rev-parse --show-toplevel" {
+			return "", context.DeadlineExceeded
+		}
+		t.Fatalf("unexpected git call: git %s", strings.Join(args, " "))
+		return "", nil
+	}}
+
+	root, ok := findRepoRoot(context.Background(), "/repo", fake)
+	if ok {
+		t.Fatalf("findRepoRoot() ok = true, want false")
+	}
+	if root != "" {
+		t.Errorf("findRepoRoot() root = %q, want empty", root)
+	}
+}

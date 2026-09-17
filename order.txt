@@ -1,0 +1,13 @@
+Corrected order:
+
+1. **`004`** (own-code context extraction) — blocks both parsers, depends only on `001` (done)
+2. **`005a` and/or `006a`** (Java / TS-JS parsers) — pick one or both; either unblocks `003`
+3. **`003`** (language auto-detection) — now has a real parser to test against
+4. **`005b`/`006b`** (dependency resolution) — each only needs its own parser (`005a`→`005b`, `006a`→`006b`), no ordering relative to `003`
+5. **`007`, `008`, `009`** (renderers, clipboard) — each only depends on `001`, so these can slot in anywhere after `001`; no dependency on `003`/`004`/`005a`/`006a` at all, worth doing in parallel with the above rather than strictly after
+6. **`002b`** (pipeline wiring) — needs `002a` + `003` + `004` + `005a` + `006a` + `007` + `008` + `009` all done, so it's genuinely last among these
+7. **`010`** (distribution) — needs `002b` plus at least one working parser end-to-end
+
+So: `004` → `005a`/`006a` → `003` → `005b`/`006b` (and `007`/`008`/`009` interleaved whenever) → `002b` → `010`.
+
+---

@@ -11,8 +11,8 @@ import (
 )
 
 func TestSchemaVersion(t *testing.T) {
-	if SchemaVersion != "2.0.0" {
-		t.Errorf("SchemaVersion = %q, want %q", SchemaVersion, "2.0.0")
+	if SchemaVersion != "3.0.0" {
+		t.Errorf("SchemaVersion = %q, want %q", SchemaVersion, "3.0.0")
 	}
 }
 
@@ -189,7 +189,7 @@ func TestRoundTrip_Bundle(t *testing.T) {
 			},
 		},
 		GitMetadata: &GitMetadata{CurrentCommit: "abc123", Branch: "main"},
-		Dependencies: Dependencies{
+		Dependencies: &Dependencies{
 			ManifestFile: ManifestFilePomXML,
 			Direct:       map[string]string{},
 			Locked:       map[string]LockedDependency{},
@@ -295,7 +295,7 @@ func minimalBundle() Bundle {
 		Language:      LanguageJava,
 		OS:            OSLinux,
 		Runtime:       Runtime{VersionSource: VersionSourceUnknown},
-		Dependencies: Dependencies{
+		Dependencies: &Dependencies{
 			ManifestFile: ManifestFilePomXML,
 			Direct:       map[string]string{},
 			Locked:       map[string]LockedDependency{},
@@ -392,7 +392,7 @@ Caused by: java.sql.SQLException: Connection refused
 			Branch:             "main",
 			UncommittedChanges: false,
 		},
-		Dependencies: Dependencies{
+		Dependencies: &Dependencies{
 			ManifestFile: ManifestFilePomXML,
 			Direct:       map[string]string{"com.fasterxml.jackson.core:jackson-databind": "2.16.0", "org.postgresql:postgresql": "42.7.1"},
 			Locked:       map[string]LockedDependency{"com.fasterxml.jackson.core:jackson-databind": {Version: "2.16.0"}, "org.postgresql:postgresql": {Note: "no local mvn cache on this checkout (Article IX, decision 0001) -- expected on a fresh clone that hasn't been built locally yet, not a bug"}},
@@ -468,12 +468,12 @@ Node.js v20.11.0`
 			Branch:             "feature/query-fix",
 			UncommittedChanges: true,
 		},
-		Dependencies: Dependencies{
+		Dependencies: &Dependencies{
 			ManifestFile: ManifestFilePackageJSON,
 			Direct:       map[string]string{"lodash": "^4.17.21", "express": "^4.18.2"},
 			Locked: map[string]LockedDependency{
 				"lodash":  {Version: "4.17.21"},
-				"express": {Note: "no local npm cache on this checkout (Article IX, decision 0001) -- expected on a fresh clone that hasn't been built locally yet, not a bug"},
+				"express": {Note: "no package-lock.json entry found for this package"},
 			},
 		},
 	}

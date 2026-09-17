@@ -143,3 +143,32 @@ func TestAssignBucket(t *testing.T) {
 		})
 	}
 }
+
+// TestFindLastNodeModulesSegment exercises the exported helper directly
+// (006b's T003b extracted it from this file for internal/dependency/
+// typescript's packageDirKey to share -- see its doc comment). Coverage
+// of the normalize+find-last-index behavior in context of a full frame
+// path already exists above via TestAssignBucket; this only confirms
+// the extracted function's own two return values (segments, lastIdx)
+// directly, plus the no-node_modules-at-all case which TestAssignBucket
+// only observes indirectly (via Bucket, not lastIdx itself).
+func TestFindLastNodeModulesSegment(t *testing.T) {
+	segments, lastIdx := FindLastNodeModulesSegment("/home/vedant/project/node_modules/express/node_modules/statuses/index.js")
+	want := []string{"", "home", "vedant", "project", "node_modules", "express", "node_modules", "statuses", "index.js"}
+	if len(segments) != len(want) {
+		t.Fatalf("segments = %v, want %v", segments, want)
+	}
+	for i := range want {
+		if segments[i] != want[i] {
+			t.Errorf("segments[%d] = %q, want %q", i, segments[i], want[i])
+		}
+	}
+	if lastIdx != 6 {
+		t.Errorf("lastIdx = %d, want 6 (the LAST node_modules occurrence)", lastIdx)
+	}
+
+	_, lastIdx = FindLastNodeModulesSegment("/home/vedant/script.js")
+	if lastIdx != -1 {
+		t.Errorf("lastIdx = %d, want -1 for a path with no node_modules segment", lastIdx)
+	}
+}
