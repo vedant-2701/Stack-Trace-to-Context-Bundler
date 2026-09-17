@@ -393,3 +393,34 @@ resolution) and 002b (pipeline wiring) are the next specs/INDEX.md
 entries with 006b as a listed dependency.
 
 ---
+
+**Date:** 2026-09-17
+**Task(s):** Post-close-out fix -- `lookupFrame` empty-version handling
+**What happened:** GitHub Copilot's automated PR review caught a real
+gap `lookup_test.go`'s existing cases didn't exercise: a
+`package-lock.json` `packages` entry can legitimately have an empty/
+missing `version` (npm's own shape for a workspace `"link": true`
+entry, which points at a local sibling package rather than an
+installed copy). `lookupFrame` treated any map hit as a match
+regardless of the version string's content, so an empty-version exact
+key would have produced `LockedDependency{Version: "", Note: ""}` --
+indistinguishable from a silently resolved dependency, exactly the
+ambiguity FR12/Article VI exist to prevent.
+
+Fixed both branches of `lookupFrame` (exact match and top-level
+fallback) to require a non-empty version string before reporting a
+match; an empty-version exact hit now falls through to the fallback
+attempt rather than short-circuiting it, same as a key that's missing
+outright. Added `TestLookupFrame_EmptyVersionExactKey_TreatedAsNoMatch`
+and `TestLookupFrame_EmptyVersionExactKey_FallsThroughToRealFallback`.
+Not a spec.md change -- none of the 20 acceptance criteria mention this
+edge case specifically; it's a defensive correctness fix within FR12's
+existing "no match -> explained absence" framing, not new scope.
+**Verification:** `go build ./...`, `go test
+./internal/dependency/typescript/...` (`ok`), `golangci-lint run
+./internal/dependency/typescript/...` (0 issues), and `gofumpt -l` on
+both changed files -- all clean, confirmed by Vedant.
+**Deviations from plan (if any):** None -- bug fix, not a plan change.
+**New open questions:** None.
+
+---

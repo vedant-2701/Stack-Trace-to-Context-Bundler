@@ -66,14 +66,23 @@ func packageDirKey(filePath, repoRoot string) (key string, ok bool) {
 //     decides the final Note text for this case (FR12), since it also
 //     needs to know whether ANY other frame for the same packageName
 //     matched, for the conflict-vs-plain-miss distinction (FR13).
+//
+// An entry present in packages with an EMPTY version string (a real
+// npm shape: workspace "link": true entries omit version entirely,
+// unmarshaling to "") is treated as absent, not as a match -- an empty
+// Version with an empty Note would be indistinguishable from a silently
+// resolved dependency, which is exactly the ambiguity FR12/Article VI
+// exist to prevent. An empty-version exact-key hit still falls through
+// to the top-level fallback below, same as a key that's missing
+// outright.
 func lookupFrame(filePath, packageName, repoRoot string, packages map[string]string) (version, note string, matched bool) {
 	if key, ok := packageDirKey(filePath, repoRoot); ok {
-		if v, found := packages[key]; found {
+		if v, found := packages[key]; found && v != "" {
 			return v, "", true
 		}
 	}
 
-	if v, found := packages["node_modules/"+packageName]; found {
+	if v, found := packages["node_modules/"+packageName]; found && v != "" {
 		return v, fmt.Sprintf("resolved via top-level node_modules/%s, not necessarily the exact nested copy this frame uses", packageName), true
 	}
 

@@ -132,3 +132,43 @@ func TestLookupFrame_Unresolved(t *testing.T) {
 		t.Errorf("lookupFrame() = (%q, %q), want empty strings when unmatched", version, note)
 	}
 }
+
+func TestLookupFrame_EmptyVersionExactKey_TreatedAsNoMatch(t *testing.T) {
+	// A real npm shape: a workspace "link": true entry has no version
+	// field, unmarshaling to "". An exact key hit with an empty version
+	// must NOT be reported as a match -- Version="" with Note="" would
+	// be indistinguishable from a silently resolved dependency. Falls
+	// through to the top-level fallback, which here also has no usable
+	// entry, so the overall result is unmatched.
+	packages := map[string]string{"node_modules/workspace-pkg": ""}
+
+	version, note, matched := lookupFrame("/repo/node_modules/workspace-pkg/index.js", "workspace-pkg", "/repo", packages)
+	if matched {
+		t.Fatalf("lookupFrame() matched = true, want false for an empty-version exact key")
+	}
+	if version != "" || note != "" {
+		t.Errorf("lookupFrame() = (%q, %q), want empty strings when unmatched", version, note)
+	}
+}
+
+func TestLookupFrame_EmptyVersionExactKey_FallsThroughToRealFallback(t *testing.T) {
+	// Same empty-version exact key as above, but this time a DIFFERENT,
+	// non-empty top-level entry for the same package name exists too --
+	// confirms the empty-version exact hit doesn't short-circuit the
+	// fallback attempt.
+	packages := map[string]string{
+		"node_modules/some-tool/node_modules/workspace-pkg": "",
+		"node_modules/workspace-pkg":                        "1.2.3",
+	}
+
+	version, note, matched := lookupFrame("/repo/node_modules/some-tool/node_modules/workspace-pkg/index.js", "workspace-pkg", "/repo", packages)
+	if !matched {
+		t.Fatalf("lookupFrame() matched = false, want true via the top-level fallback")
+	}
+	if version != "1.2.3" {
+		t.Errorf("lookupFrame() version = %q, want %q", version, "1.2.3")
+	}
+	if note == "" {
+		t.Error("lookupFrame() note is empty, want a non-empty note flagging the inexact match")
+	}
+}
