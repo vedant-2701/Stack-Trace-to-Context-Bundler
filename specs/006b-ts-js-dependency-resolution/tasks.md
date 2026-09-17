@@ -71,7 +71,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     missing).
   - Acceptance: all 4 verification commands clean.
 
-- [ ] **T003b** — `packageDirKey` + exact/fallback lookup
+- [x] **T003b** — `packageDirKey` + exact/fallback lookup
   - Depends on: T003a (needs the parsed `packages` map to look
     anything up in). Also T000, but only as a documentation-
     consistency matter, not a compile dependency: this task's fallback

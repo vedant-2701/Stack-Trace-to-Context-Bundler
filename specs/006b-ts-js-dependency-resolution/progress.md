@@ -234,3 +234,53 @@ both new files -- all clean, confirmed by Vedant.
 **New open questions:** None. T003b is next.
 
 ---
+
+**Date:** 2026-09-16
+**Task(s):** T003b -- `packageDirKey` + exact/fallback lookup
+**What happened:** Before the task itself, resolved an open decision
+plan.md's Risks section flagged as due now, not deferrable: extracted
+a new exported `FindLastNodeModulesSegment(path) (segments []string,
+lastIdx int)` out of `internal/parser/typescript/bucket.go`'s
+`splitAfterLastNodeModules` (006a), so the normalize-backslashes +
+find-last-"node_modules"-occurrence logic lives in exactly one place
+rather than being duplicated a second time by this task. Refactored
+`splitAfterLastNodeModules` to call it; behavior unchanged (all
+existing `TestAssignBucket` cases still pass unmodified), added
+`TestFindLastNodeModulesSegment` directly against the new export.
+This touches a file from an already-completed feature (006a) --
+flagged to Vedant before implementing, confirmed.
+
+Added `internal/dependency/typescript/lookup.go`: `packageDirKey(filePath,
+repoRoot) (key, ok)` computes the lockfile key relative to repoRoot,
+preserving the FULL nested `node_modules/.../node_modules/...` chain
+(unlike bucket.go's bare-trailing-name want), reusing the shared helper
+above. `lookupFrame(filePath, packageName, repoRoot, packages)
+(version, note, matched)` resolves one frame's own contribution only:
+exact `packageDirKey` hit -> version, no note; else top-level
+`node_modules/<packageName>` fallback (tried regardless of why the
+exact match missed) -> version + a note flagging the inexact match;
+else `matched=false` -- deliberately not a final per-package outcome,
+since aggregating across a package's frames and applying the
+multi-frame conflict rule (spec.md FR13) needs every referenced frame
+at once, which is T004's job.
+
+Added `lookup_test.go`: `packageDirKey` (top-level, scoped, nested-
+duplicate preserving the full chain, no-node_modules-segment) and
+`lookupFrame` (exact match, scoped exact match, nested-duplicate-
+version proving the nested copy's version wins over a same-named
+top-level copy, top-level fallback, fully unresolved). Not tested:
+`packageDirKey`'s `filepath.Rel`-error branch (outside-repoRoot case)
+-- flagged to Vedant as realistically unreachable on Linux between two
+absolute paths (Rel produces a "../"-prefixed result rather than
+erroring), kept as a defensive check only.
+**Verification:** `go build ./...`, `go test
+./internal/parser/typescript/... ./internal/dependency/typescript/...`
+(both `ok`), `golangci-lint run` on both packages (0 issues), and
+`gofumpt -l` on all four touched/added files -- all clean, confirmed
+by Vedant.
+**Deviations from plan (if any):** Scope grew beyond this task's own
+files to include the `bucket.go` refactor above -- flagged and
+confirmed before implementing, not a silent expansion.
+**New open questions:** None. T004 is next.
+
+---
