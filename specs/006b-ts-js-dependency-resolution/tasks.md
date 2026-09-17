@@ -133,7 +133,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
     acceptance criterion has a corresponding test, cross-checked before
     marking this task done.
 
-- [ ] **T005** — Feature close-out
+- [x] **T005** — Feature close-out
   - Depends on: T000, T001, T002, T003a, T003b, T004
   - Cross-check all 15 functional requirements and all 20 acceptance
     criteria in `spec.md` against actual code/tests; check off each

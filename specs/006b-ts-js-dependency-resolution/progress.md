@@ -345,3 +345,51 @@ defaults to the real `codecontext.FindRepoRoot`).
 **New open questions:** None. T005 (feature close-out) is next.
 
 ---
+
+**Date:** 2026-09-17
+**Task(s):** T005 -- Feature close-out
+**What happened:** Cross-checked all 15 functional requirements and all
+20 acceptance criteria in `spec.md` against actual code/tests before
+checking anything off. Found and fixed a real bug during that pass, not
+after: `resolve_test.go`'s `TestResolveDependencies_OneResolvesOneDoesNot_NoConflictNoBlanking`
+(written during T004) reused `validLockfileV2`, which happens to include
+a top-level `node_modules/lodash` entry -- so its "non-matching" second
+frame actually matched via the top-level fallback too (same package
+name, fallback is keyed by name not path), meaning the test accidentally
+exercised the exact-overrides-agreeing-fallback judgment call instead of
+a genuine non-match. Fixed by rewriting it against a lockfile with only
+a nested entry and no top-level fallback target, so the second frame is
+a true non-match; split the judgment-call coverage the original test
+had accidentally provided out into its own explicit test,
+`TestResolveDependencies_ExactConfirmsDespiteAgreeingFallbackFrame`.
+Vedant re-ran verification after this fix; still clean.
+
+Checked off all 20 acceptance criteria in `spec.md`, each with a pointer
+to its satisfying test(s) -- same style as `001-data-contract/spec.md`'s
+own close-out pass. Updated `spec.md`'s Status line from "Spec'd" to
+"Implemented." Flagged (not silently skipped) that FR14 -- a package
+reaching `Direct`/`Locked` scope with no frame tying it to a path at
+all -- is vacuously satisfied by construction: `referencedPackages` can
+never produce such an entry, since it only ever adds a package when a
+frame is encountered, so there's no independent test for it.
+
+Updated `specs/INDEX.md`: 006b's status `in-progress` -> `done`.
+
+Updated `CONVENTIONS.md`'s File/folder layout diagram to add
+`internal/dependency/typescript/` (previously unlisted), with a note
+that `internal/dependency/java/` is expected once 005b lands, and why
+`dependency/` is a sibling to `parser/` rather than nested under it
+(006b never shells out, Article IX; 005b will) -- same practice 004
+already established for updating `001-data-contract`'s docs in place
+for a structural change.
+**Verification:** Documentation-only task; no code changed beyond the
+test fix above (already independently verified by Vedant). `spec.md`,
+`specs/INDEX.md`, and `CONVENTIONS.md` all reviewed for internal
+consistency against the actual shipped code.
+**Deviations from plan (if any):** None (the test fix was a bug found
+during the close-out cross-check itself, not a plan deviation).
+**New open questions:** None. 006b is complete; 005b (Java dependency
+resolution) and 002b (pipeline wiring) are the next specs/INDEX.md
+entries with 006b as a listed dependency.
+
+---

@@ -105,6 +105,13 @@ internal/
 │   ├── errors.go       Sentinel parse errors (e.g. ErrUnparseable)
 │   ├── java/
 │   └── typescript/
+├── dependency/   per-language dependency resolution (package.json+lockfile,
+│                 mvn/gradle shell-out) -- separate from parser/ since
+│                 006b's TS/JS resolution never shells out (Article IX)
+│                 while 005b's Java resolution does; a java/ sibling to
+│                 typescript/ below is expected once 005b lands
+│   └── typescript/  006b: package.json + package-lock.json parsing,
+│                     no npm/yarn/pnpm subprocess calls
 ├── render/       markdown.go, json.go
 └── clipboard/    OS-appropriate subprocess write
 ```
