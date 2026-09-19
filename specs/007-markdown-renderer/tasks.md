@@ -100,7 +100,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: unit tests pass for all three buckets and both
       omission cases; 4 verification commands clean.
 
-- [ ] **T007 — `renderChain`** (spec.md req. 3, 6, 7, 14, 15)
+- [x] **T007 — `renderChain`** (spec.md req. 3, 6, 7, 14, 15)
       - Depends on: T001 (`ExceptionNode.Message` escaping), T006
       Implement the `contract.FrameRef`-map lookup (plan.md's data model)
       from `CodeContexts` to their owning frame, the per-node

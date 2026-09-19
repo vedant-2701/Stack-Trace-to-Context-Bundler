@@ -430,3 +430,112 @@ func TestRenderFrame(t *testing.T) {
 		}
 	})
 }
+
+func TestRenderChain(t *testing.T) {
+	t.Run("single node, no transition, no elided line", func(t *testing.T) {
+		chain := []contract.ExceptionNode{
+			{
+				ClassName: "NullPointerException", Message: "boom",
+				Frames: []contract.Frame{
+					{FilePath: "/repo/src/foo.ts", MethodName: "bar", LineNumber: 1, Bucket: contract.BucketRuntime},
+				},
+			},
+		}
+		want := "### NullPointerException\n" +
+			"> boom\n" +
+			"at bar (/repo/src/foo.ts:1) — runtime\n"
+		if got := renderChain(chain, nil); got != want {
+			t.Errorf("renderChain(%+v, nil) = %q, want %q", chain, got, want)
+		}
+	})
+
+	t.Run("two-node chain has Caused by transition between, not after last", func(t *testing.T) {
+		chain := []contract.ExceptionNode{
+			{
+				ClassName: "RuntimeException", Message: "outer",
+				Frames: []contract.Frame{
+					{FilePath: "/repo/src/a.ts", MethodName: "a", LineNumber: 1, Bucket: contract.BucketRuntime},
+				},
+			},
+			{
+				ClassName: "IOException", Message: "inner",
+				Frames: []contract.Frame{
+					{FilePath: "/repo/src/b.ts", MethodName: "b", LineNumber: 2, Bucket: contract.BucketRuntime},
+				},
+			},
+		}
+		want := "### RuntimeException\n" +
+			"> outer\n" +
+			"at a (/repo/src/a.ts:1) — runtime\n" +
+			"\nCaused by ↓\n\n" +
+			"### IOException\n" +
+			"> inner\n" +
+			"at b (/repo/src/b.ts:2) — runtime\n"
+		if got := renderChain(chain, nil); got != want {
+			t.Errorf("renderChain(%+v, nil) = %q, want %q", chain, got, want)
+		}
+	})
+
+	t.Run("elided frame count renders language-neutral line", func(t *testing.T) {
+		chain := []contract.ExceptionNode{
+			{
+				ClassName: "Error", Message: "msg", ElidedFrameCount: 3,
+				Frames: []contract.Frame{
+					{FilePath: "/repo/src/a.ts", MethodName: "a", LineNumber: 1, Bucket: contract.BucketRuntime},
+				},
+			},
+		}
+		want := "### Error\n" +
+			"> msg\n" +
+			"at a (/repo/src/a.ts:1) — runtime\n" +
+			"... 3 more frames (shared with enclosing exception)\n"
+		if got := renderChain(chain, nil); got != want {
+			t.Errorf("renderChain(%+v, nil) = %q, want %q", chain, got, want)
+		}
+	})
+
+	t.Run("multiline message with embedded blank line stays one blockquote", func(t *testing.T) {
+		chain := []contract.ExceptionNode{
+			{
+				ClassName: "AssertionError",
+				Message:   "Expected values to be strictly equal:\n\nfoo !== bar",
+				Frames:    nil,
+			},
+		}
+		want := "### AssertionError\n" +
+			"> Expected values to be strictly equal:\n" +
+			">\n" +
+			"> foo \\!== bar\n"
+		if got := renderChain(chain, nil); got != want {
+			t.Errorf("renderChain(%+v, nil) = %q, want %q", chain, got, want)
+		}
+	})
+
+	t.Run("CodeContext lookup resolves by slice position, not Frame.Index field", func(t *testing.T) {
+		chain := []contract.ExceptionNode{
+			{
+				ClassName: "Error", Message: "msg",
+				Frames: []contract.Frame{
+					// Index field deliberately wrong (99) -- the lookup must
+					// still find this frame's CodeContext by its real slice
+					// position (0), not by this field's value.
+					{Index: 99, FilePath: "/repo/src/a.ts", MethodName: "a", LineNumber: 1, Bucket: contract.BucketOwn},
+				},
+			},
+		}
+		codeContexts := []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				Status:   contract.StatusNotFound,
+				Note:     "file not found",
+			},
+		}
+		want := "### Error\n" +
+			"> msg\n" +
+			"at a (/repo/src/a.ts:1) — own\n" +
+			"⚠ file not found\n"
+		if got := renderChain(chain, codeContexts); got != want {
+			t.Errorf("renderChain(%+v, %+v) = %q, want %q", chain, codeContexts, got, want)
+		}
+	})
+}

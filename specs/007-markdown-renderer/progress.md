@@ -242,3 +242,32 @@ entry.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-19
+**Task(s):** T007 — `renderChain`
+**What happened:** Added `renderExceptionNodeHeader` (private helper,
+same internal-decomposition pattern as T002's `renderRuntime`/`renderGit`
+-- not in plan.md's named list, flagged before implementation) for the
+`### ClassName` heading + `Message` blockquote, escaping each line of
+`Message` independently and rendering a wholly-empty line as a bare `>`
+rather than an actual blank line, since CommonMark ends a blockquote at
+the first `>`-less line. Added `renderChain`: builds the
+`map[contract.FrameRef]contract.CodeContext` once up front, looks up
+each own-bucket frame's context by `{ChainIndex, FrameIndex}` built from
+loop position (never `Frame.Index`'s field value -- defense in depth per
+plan.md, contract now guarantees the two agree), renders the
+elided-frames line only when `ElidedFrameCount > 0`, and inserts
+`\nCaused by ↓\n\n` between consecutive nodes only (never after the
+last).
+One test-authoring bug surfaced by the verification run (not a code
+bug, same class as T002's): the multiline-message test's expected string
+forgot `!` is itself in `escapeMarkdown`'s escape set, so "foo !== bar"
+renders as "foo \!== bar" -- fixed the test's `want` value, no
+production code changed.
+**Verified:** user ran `go build ./...`, `go test ./internal/render/...`,
+`golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/`
+on their machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---

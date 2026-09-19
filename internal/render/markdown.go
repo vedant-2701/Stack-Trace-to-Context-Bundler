@@ -175,6 +175,72 @@ func renderFrame(f contract.Frame, cc *contract.CodeContext) string {
 	return line
 }
 
+// renderExceptionNodeHeader renders one ExceptionNode's heading and
+// Message blockquote (spec.md req. 6-7): "### ClassName" -- never
+// "ClassName: Message" on one line, since Message carries no length or
+// newline restriction -- followed directly by Message as a blockquote,
+// each line escaped independently. A wholly empty line within Message
+// still gets its own bare ">" (no trailing space, no blank line with no
+// marker at all): CommonMark ends a block quote at the first line
+// lacking a ">" prefix, so an unmarked blank line would silently
+// fracture the blockquote.
+func renderExceptionNodeHeader(node contract.ExceptionNode) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "### %s\n", node.ClassName)
+	for _, line := range strings.Split(node.Message, "\n") {
+		if line == "" {
+			b.WriteString(">\n")
+		} else {
+			b.WriteString("> " + escapeMarkdown(line) + "\n")
+		}
+	}
+	return b.String()
+}
+
+// renderChain renders the full exception chain (spec.md req. 3, 6-8,
+// 14-15): one heading+blockquote+frame-list block per ExceptionNode, in
+// Chain order, separated by a "Caused by ↓" transition between
+// consecutive nodes (never after the last). Looks up each own-bucket
+// frame's CodeContext via a map built once up front, keyed by
+// contract.FrameRef{ChainIndex, FrameIndex} constructed from each
+// frame's loop position within node.Frames -- matching exactly how
+// internal/codecontext.buildCodeContexts constructs the same key --
+// rather than reading Frame.Index back off the struct. The contract now
+// guarantees the two always agree (Frame.Index/FrameRef doc comments),
+// so this is defense in depth against a future contract violation, not
+// a live ambiguity.
+func renderChain(chain []contract.ExceptionNode, codeContexts []contract.CodeContext) string {
+	ccByRef := make(map[contract.FrameRef]contract.CodeContext, len(codeContexts))
+	for _, cc := range codeContexts {
+		ccByRef[cc.FrameRef] = cc
+	}
+
+	var b strings.Builder
+	for chainIdx, node := range chain {
+		b.WriteString(renderExceptionNodeHeader(node))
+
+		for frameIdx, f := range node.Frames {
+			var cc *contract.CodeContext
+			if f.Bucket == contract.BucketOwn {
+				ref := contract.FrameRef{ChainIndex: chainIdx, FrameIndex: frameIdx}
+				if found, ok := ccByRef[ref]; ok {
+					cc = &found
+				}
+			}
+			b.WriteString(renderFrame(f, cc))
+		}
+
+		if node.ElidedFrameCount > 0 {
+			fmt.Fprintf(&b, "... %d more frames (shared with enclosing exception)\n", node.ElidedFrameCount)
+		}
+
+		if chainIdx < len(chain)-1 {
+			b.WriteString("\nCaused by ↓\n\n")
+		}
+	}
+	return b.String()
+}
+
 // renderCodeContext renders one own-bucket frame's code context (spec.md
 // req. 10-12). When Status is not_found or stale, only a flagged line
 // using Note (escaped) is rendered -- no snippet or blame table. When
