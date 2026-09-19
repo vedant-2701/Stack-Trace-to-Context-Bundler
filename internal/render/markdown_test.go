@@ -1,6 +1,7 @@
 package render
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/vedant-2701/stack-trace-bundler/internal/contract"
@@ -148,6 +149,65 @@ func TestRenderMetadata(t *testing.T) {
 			"- Fingerprint: cafebabe1234\n"
 		if got := renderMetadata(b); got != want {
 			t.Errorf("renderMetadata(%+v) = %q, want %q", b, got, want)
+		}
+	})
+}
+
+// buildSnippetCode joins lines with "\n" and appends exactly one further
+// trailing "\n", matching internal/codecontext.buildSnippet's own
+// construction exactly -- never a hand-typed string missing that
+// trailing newline, since that's the real off-by-one risk renderSnippet
+// has to guard against.
+func buildSnippetCode(lines ...string) string {
+	return strings.Join(lines, "\n") + "\n"
+}
+
+func TestRenderSnippet(t *testing.T) {
+	t.Run("exact line count and target marker", func(t *testing.T) {
+		s := contract.Snippet{
+			StartLine:  10,
+			EndLine:    12,
+			TargetLine: 11,
+			Code:       buildSnippetCode("func foo() {", "    bar()", "}"),
+		}
+		want := "```typescript\n" +
+			"  10 | func foo() {\n" +
+			"→ 11 |     bar()\n" +
+			"  12 | }\n" +
+			"```\n"
+		if got := renderSnippet(s, contract.LanguageTypeScript); got != want {
+			t.Errorf("renderSnippet(%+v) = %q, want %q", s, got, want)
+		}
+	})
+
+	t.Run("mixed digit-width line numbers stay aligned", func(t *testing.T) {
+		s := contract.Snippet{
+			StartLine:  8,
+			EndLine:    11,
+			TargetLine: 10,
+			Code:       buildSnippetCode("a", "b", "c", "d"),
+		}
+		want := "```typescript\n" +
+			"   8 | a\n" +
+			"   9 | b\n" +
+			"→ 10 | c\n" +
+			"  11 | d\n" +
+			"```\n"
+		if got := renderSnippet(s, contract.LanguageTypeScript); got != want {
+			t.Errorf("renderSnippet(%+v) = %q, want %q", s, got, want)
+		}
+	})
+
+	t.Run("java fence tag", func(t *testing.T) {
+		s := contract.Snippet{
+			StartLine:  1,
+			EndLine:    1,
+			TargetLine: 1,
+			Code:       buildSnippetCode("System.out.println(\"hi\");"),
+		}
+		got := renderSnippet(s, contract.LanguageJava)
+		if !strings.HasPrefix(got, "```java\n") {
+			t.Errorf("renderSnippet(%+v) with LanguageJava = %q, want prefix %q", s, got, "```java\n")
 		}
 	})
 }

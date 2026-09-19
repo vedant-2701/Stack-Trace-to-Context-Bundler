@@ -34,7 +34,7 @@ failing acceptance criterion later traces back to exactly one task.
       special characters in `Runtime.Note`/`GitMetadata.Branch` proving
       they come out escaped; 4 verification commands clean.
 
-- [ ] **T003 — `renderSnippet`** (spec.md req. 11, plan.md's language-tag
+- [x] **T003 — `renderSnippet`** (spec.md req. 11, plan.md's language-tag
       unit test)
       - Depends on: none (no dependency on T001 — snippet content is
       never escaped, per req. 19)

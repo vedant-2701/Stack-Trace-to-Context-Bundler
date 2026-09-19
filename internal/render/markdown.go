@@ -4,6 +4,7 @@ package render
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/vedant-2701/stack-trace-bundler/internal/contract"
@@ -72,4 +73,32 @@ func renderGit(g *contract.GitMetadata) string {
 		commit = commit[:7]
 	}
 	return fmt.Sprintf("Git: %s @ %s (%s)", escapeMarkdown(g.Branch), commit, status)
+}
+
+// renderSnippet renders s as a fenced code block tagged with lang, each
+// line prefixed with its real source line number (StartLine + offset)
+// and the line matching TargetLine marked with a leading → (spec.md
+// req. 11). s.Code is never escaped -- the fence protects it (req. 19).
+//
+// internal/codecontext.buildSnippet always appends exactly one trailing
+// "\n" to Code beyond its real lines, regardless of whether the window's
+// last source line is itself blank, so that trailing newline is trimmed
+// before splitting rather than naively splitting and rendering every
+// element -- otherwise a bogus blank EndLine+1 line would be appended to
+// every rendered snippet.
+func renderSnippet(s contract.Snippet, lang contract.Language) string {
+	lines := strings.Split(strings.TrimSuffix(s.Code, "\n"), "\n")
+	numWidth := len(strconv.Itoa(s.EndLine))
+
+	rendered := make([]string, len(lines))
+	for i, line := range lines {
+		lineNum := s.StartLine + i
+		marker := "  "
+		if lineNum == s.TargetLine {
+			marker = "→ "
+		}
+		rendered[i] = fmt.Sprintf("%s%*d | %s", marker, numWidth, lineNum, line)
+	}
+
+	return fmt.Sprintf("```%s\n%s\n```\n", lang, strings.Join(rendered, "\n"))
 }

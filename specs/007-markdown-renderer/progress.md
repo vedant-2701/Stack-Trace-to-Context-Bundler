@@ -113,6 +113,30 @@ behavior, or the requirements it satisfies.
 ---
 
 **Date:** 2026-09-19
+**Task(s):** T003 — `renderSnippet`
+**What happened:** Added `renderSnippet(s contract.Snippet, lang
+contract.Language) string`: trims `Code`'s one unconditional trailing
+`\n` before splitting (per `buildSnippet`'s own construction, rather than
+splitting raw and discarding the last element -- equivalent result,
+chosen for readability), computes line-number column width from
+`EndLine`'s digit count so numbers stay aligned across the block, and
+marks the `TargetLine` row with a leading `→ ` (two-space-wide non-target
+marker keeping columns aligned). No escaping applied -- snippet content
+is exempt (req. 19), the fence protects it.
+Format chosen (not fully dictated by spec.md, which only requires
+line-number prefixing + target marker + language fence): `<marker><right
+-aligned line number> | <line content>`, e.g. `→ 11 |     bar()`.
+**Verified:** user ran `go build ./...`, `go test ./internal/render/...`,
+`golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/`
+on their machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None — matches T003's scope; the
+exact line-rendering format was an open implementation choice spec.md
+left to the renderer, not a deviation from anything specified.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-19
 **Task(s):** Second pre-implementation audit pass (before T001)
 **What happened:** A follow-up audit, re-verifying the prior pass's four
 fixes and looking for anything else, found two more issues:
