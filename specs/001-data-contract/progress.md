@@ -334,3 +334,80 @@ changed files, all clean.
 **Deviations from plan (if any):** None -- corrections to existing work,
 not new scope.
 **New open questions:** None.
+
+---
+
+**Date:** 2026-09-18
+**Task(s):** Cross-feature fix, requested by 007-markdown-renderer's
+pre-implementation audit
+**What happened:** `007-markdown-renderer/spec.md` requirement 18 needed
+to format a raw-input-truncation note that names the 512 KB cap, but that
+constant was unexported (`rawInputCapBytes`), so no other package could
+read the real value -- 007 would have had to hardcode the literal "512
+KB" in its own spec/implementation, duplicating a fact this package
+already owns, with no link between the two if the cap ever changes.
+Renamed `rawInputCapBytes` -> `RawInputCapBytes` (export only, no
+behavior change) in `rawinput.go`, updated its doc comment and the two
+other stale lowercase references inside it, and fixed all six lowercase
+references in `rawinput_test.go` accordingly. Same reasoning as
+`BlameEntry.CommitDate` being pre-formatted once here rather than each
+renderer deriving it independently (constitution Article V) -- one
+renderer-facing fact, one place it's actually defined.
+Verified: not run by the user directly in this session (edit made via
+the Filesystem connector while assisting 007's planning, not a live
+coding session) -- `go build ./...`/`go test ./internal/contract/...`/
+`golangci-lint run ./internal/contract/...`/`gofumpt -l` on both changed
+files should be run before this is committed, same gate as any other
+change to this package.
+**Deviations from plan (if any):** None to `001`'s own shape/behavior --
+Go API surface only (one constant newly exported), no JSON contract
+change, no schemaVersion bump warranted.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-19
+**Task(s):** Cross-feature fix, requested by a second pass of
+007-markdown-renderer's pre-implementation audit
+**What happened:** The prior entry (2026-09-18) exported
+`RawInputCapBytes` but didn't add it to this file's own "API /
+contracts" section, which still listed only `Bundle`, `SchemaVersion`,
+`ComputeFingerprint`, and `TruncateRawInput` -- the exact kind of
+doc-drifts-from-code gap this project's audits exist to catch, this time
+self-inflicted one entry up. Added `contract.RawInputCapBytes` as a
+fifth bullet, pointing back to this progress log for why it exists.
+Doc-only change, no code touched, no gate to run.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-19
+**Task(s):** Cross-feature fix, requested by a third pass of
+007-markdown-renderer's pre-implementation audit
+**What happened:** That audit flagged that `Frame.Index` and
+`FrameRef.FrameIndex` are only equal by coincidence of 006a's
+implementation choice (`frame.Index = len(frames)` before appending),
+not by any stated contract guarantee -- risking a silent bug in any
+future consumer (starting with 007's `renderChain`) that builds a
+Frame-to-CodeContext lookup keyed one way while a producer populates it
+the other way. Formalized the equivalence as a contract-level
+invariant rather than an implementation detail: added doc comments to
+`Frame.Index` and `FrameRef` in `types.go` stating every parser MUST
+assign `Index` as the frame's zero-based position within its node's
+`Frames` slice, and that `FrameRef.FrameIndex` is defined as that same
+value. Mirrored the clarification into `spec.md` (requirements 9 and
+10) and `plan.md`'s Data model JSONC comments (the `frames[].index` and
+`codeContexts[].frameRef` fields), so all three documents agree with
+the struct. Pure documentation -- no field renamed, removed, or
+retyped, no enum meaning changed, so no `schemaVersion` bump per
+requirement 6's own bump-trigger rule (this doesn't touch the shape,
+only names an invariant the one existing parser already upholds).
+**Verified:** not run by the user directly in this session (doc-only
+edit made via the Filesystem connector while assisting 007's planning);
+no gate applies since no code or test file changed.
+**Deviations from plan (if any):** None to `001`'s own shape/behavior
+-- documentation only, no JSON contract change.
+**New open questions:** None. Note for whoever specs 005a (Java
+parser): this invariant now applies there too -- 005a's frame-building
+code must assign `Index` as slice position, same as 006a does.

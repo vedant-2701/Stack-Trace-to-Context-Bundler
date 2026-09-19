@@ -235,6 +235,16 @@ type ExceptionNode struct {
 
 // Frame is a single stack frame within an ExceptionNode.
 type Frame struct {
+	// Index is this frame's zero-based position within its
+	// ExceptionNode's Frames slice -- not a free-standing identifier.
+	// Every parser (005a/006a) MUST assign it as exactly that position
+	// (006a does so via `frame.Index = len(frames)` immediately before
+	// appending, in internal/parser/typescript/engine.go). This is a
+	// contract-level guarantee, not an implementation coincidence:
+	// CodeContext.FrameRef.FrameIndex is defined in terms of this same
+	// position (see FrameRef's doc comment), so a consumer building a
+	// Frame-to-CodeContext lookup may use either a frame's slice
+	// position or its Index field -- they are required to always agree.
 	Index int `json:"index"`
 
 	// FilePath is a normalized absolute filesystem path, never a URI --
@@ -270,6 +280,11 @@ type Frame struct {
 }
 
 // FrameRef points from a CodeContext back to the Frame it describes.
+// ChainIndex is the referenced ExceptionNode's zero-based position
+// within Bundle.Chain. FrameIndex is the referenced Frame's zero-based
+// position within that node's Frames slice -- equivalently, always
+// equal to that Frame's own Index field (see Frame.Index's doc
+// comment); the two are required to agree, not merely likely to.
 type FrameRef struct {
 	ChainIndex int `json:"chainIndex"`
 	FrameIndex int `json:"frameIndex"`
