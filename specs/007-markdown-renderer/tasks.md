@@ -124,7 +124,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: all unit tests pass, including the
       Index-vs-position case; 4 verification commands clean.
 
-- [ ] **T008 — `renderDependencies`** (spec.md req. 4, 16)
+- [x] **T008 — `renderDependencies`** (spec.md req. 4, 16)
       - Depends on: T001 (`LockedDependency.Note` escaping)
       Implement the `## Dependencies` section from `*contract.Dependencies`
       (nil → `""`). `d.Locked` is a Go map, and Go randomizes `range`

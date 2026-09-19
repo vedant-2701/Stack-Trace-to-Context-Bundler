@@ -539,3 +539,85 @@ func TestRenderChain(t *testing.T) {
 		}
 	})
 }
+
+func TestRenderDependencies(t *testing.T) {
+	t.Run("nil Dependencies renders nothing", func(t *testing.T) {
+		if got := renderDependencies(nil); got != "" {
+			t.Errorf("renderDependencies(nil) = %q, want %q", got, "")
+		}
+	})
+
+	t.Run("exact-match package", func(t *testing.T) {
+		d := &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct:       map[string]string{"react": "^18.2.0"},
+			Locked: map[string]contract.LockedDependency{
+				"react": {Version: "18.2.5"},
+			},
+		}
+		want := "## Dependencies\n" +
+			"- react — declared ^18.2.0, resolved 18.2.5\n"
+		if got := renderDependencies(d); got != want {
+			t.Errorf("renderDependencies(%+v) = %q, want %q", d, got, want)
+		}
+	})
+
+	t.Run("fallback-match package with note, no Direct entry", func(t *testing.T) {
+		d := &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct:       map[string]string{},
+			Locked: map[string]contract.LockedDependency{
+				"lodash": {
+					Version: "4.17.21",
+					Note:    "resolved via top-level lookup, not tied to this exact frame path",
+				},
+			},
+		}
+		want := "## Dependencies\n" +
+			"- lodash — resolved 4.17.21 (resolved via top\\-level lookup, not tied to this exact frame path)\n"
+		if got := renderDependencies(d); got != want {
+			t.Errorf("renderDependencies(%+v) = %q, want %q", d, got, want)
+		}
+	})
+
+	t.Run("fully-unresolved package", func(t *testing.T) {
+		d := &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePomXML,
+			Direct:       map[string]string{},
+			Locked: map[string]contract.LockedDependency{
+				"com.example:leftpad": {
+					Note: "no local mvn/gradle cache on this checkout",
+				},
+			},
+		}
+		want := "## Dependencies\n" +
+			"- com.example:leftpad — resolved unresolved (no local mvn/gradle cache on this checkout)\n"
+		if got := renderDependencies(d); got != want {
+			t.Errorf("renderDependencies(%+v) = %q, want %q", d, got, want)
+		}
+	})
+
+	t.Run("multi-entry map renders identically and alphabetically every time", func(t *testing.T) {
+		d := &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct: map[string]string{
+				"react": "^18.2.0",
+				"zod":   "^3.22.0",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"react":  {Version: "18.2.5"},
+				"lodash": {Version: "4.17.21"},
+				"zod":    {Version: "3.22.4"},
+			},
+		}
+		want := "## Dependencies\n" +
+			"- lodash — resolved 4.17.21\n" +
+			"- react — declared ^18.2.0, resolved 18.2.5\n" +
+			"- zod — declared ^3.22.0, resolved 3.22.4\n"
+		for i := 0; i < 5; i++ {
+			if got := renderDependencies(d); got != want {
+				t.Fatalf("renderDependencies(%+v) iteration %d = %q, want %q", d, i, got, want)
+			}
+		}
+	})
+}

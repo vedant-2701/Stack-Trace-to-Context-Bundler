@@ -4,6 +4,7 @@ package render
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -135,6 +136,50 @@ func renderBlameTable(entries []contract.BlameEntry) string {
 			lines, commit, escapeMarkdown(e.Author), date, escapeMarkdown(e.Summary))
 	}
 
+	return b.String()
+}
+
+// renderDependencies renders the "## Dependencies" section (spec.md
+// req. 4, 16). d == nil renders nothing at all -- no heading, no
+// content -- rather than an empty section. d.Locked is a Go map and Go
+// deliberately randomizes range order over maps on every iteration, so
+// keys are collected and sorted ascending lexically before iterating;
+// a bare `range d.Locked` would make the golden-file tests this feature
+// depends on flaky rather than reliably passing or failing. The
+// "declared <...>, " clause is omitted entirely (not left dangling)
+// when pkg has no Direct entry. LockedDependency.Note is escaped (it's
+// in req. 19's list); pkg, Direct's value, and Version are not
+// developer-arbitrary prose and are rendered verbatim.
+func renderDependencies(d *contract.Dependencies) string {
+	if d == nil {
+		return ""
+	}
+
+	keys := make([]string, 0, len(d.Locked))
+	for pkg := range d.Locked {
+		keys = append(keys, pkg)
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	b.WriteString("## Dependencies\n")
+	for _, pkg := range keys {
+		locked := d.Locked[pkg]
+
+		line := "- " + pkg + " — "
+		if direct, ok := d.Direct[pkg]; ok {
+			line += "declared " + direct + ", "
+		}
+		if locked.Version != "" {
+			line += "resolved " + locked.Version
+		} else {
+			line += "resolved unresolved"
+		}
+		if locked.Note != "" {
+			line += " (" + escapeMarkdown(locked.Note) + ")"
+		}
+		b.WriteString(line + "\n")
+	}
 	return b.String()
 }
 

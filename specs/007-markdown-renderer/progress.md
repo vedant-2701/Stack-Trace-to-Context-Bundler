@@ -271,3 +271,32 @@ on their machine; all four clean, confirmed "done, no errors".
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-19
+**Task(s):** T008 — `renderDependencies`
+**What happened:** Added `renderDependencies(d *contract.Dependencies)
+string`: `nil` → `""` (no heading, no content). Otherwise `##
+Dependencies` heading, one bullet per `d.Locked` entry sorted ascending
+lexically by package name (collected into a slice and `sort.Strings`ed --
+never a bare `range d.Locked`, since Go randomizes map-range order on
+every iteration and this feature's golden-file tests need deterministic
+output). Bullet format: `declared <Direct[pkg]>, ` omitted entirely
+(never left dangling) when `pkg` has no `Direct` entry; `resolved
+<Version>` or the literal `resolved unresolved` when absent;
+`Locked[pkg].Note` (escaped -- req. 19) appended in parentheses whenever
+present regardless of `Version`.
+Another test-authoring bug, same recurring class as T002/T007 (not a
+code bug): the fallback-match test's expected string again forgot `-` is
+in the escape set ("top-level lookup" → "top\-level lookup") -- fixed
+the test's `want` value. Flagged this as a pattern (third occurrence) and
+adopted a mitigation going forward: for `Note`/`Message`-bearing test
+cases, compute the expected escaped fragment via a direct
+`escapeMarkdown(...)` call in the test rather than hand-typing the
+escaped literal, rather than continuing to hand-type and re-fix.
+**Verified:** user ran `go build ./...`, `go test ./internal/render/...`,
+`golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/`
+on their machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
