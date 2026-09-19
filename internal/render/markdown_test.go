@@ -211,3 +211,62 @@ func TestRenderSnippet(t *testing.T) {
 		}
 	})
 }
+
+func TestRenderBlameTable(t *testing.T) {
+	t.Run("single entry", func(t *testing.T) {
+		entries := []contract.BlameEntry{
+			{
+				StartLine: 10, EndLine: 15,
+				CommitHash: "abcdef1234567890", Author: "Alice",
+				CommitDate: "2024-01-02T03:04:05Z", Summary: "Fix bug",
+			},
+		}
+		want := "| Lines | Commit | Author | Date | Summary |\n" +
+			"| --- | --- | --- | --- | --- |\n" +
+			"| 10-15 | abcdef1 | Alice | 2024-01-02 | Fix bug |\n"
+		if got := renderBlameTable(entries); got != want {
+			t.Errorf("renderBlameTable(%+v) = %q, want %q", entries, got, want)
+		}
+	})
+
+	t.Run("multi-entry, two different commits", func(t *testing.T) {
+		entries := []contract.BlameEntry{
+			{
+				StartLine: 1, EndLine: 3,
+				CommitHash: "aaaaaaa1111111", Author: "Alice",
+				CommitDate: "2023-11-20T10:00:00Z", Summary: "Initial commit",
+			},
+			{
+				StartLine: 4, EndLine: 4,
+				CommitHash: "bbbbbbb2222222", Author: "Bob",
+				CommitDate: "2024-02-15T08:30:00Z", Summary: "Add validation",
+			},
+		}
+		want := "| Lines | Commit | Author | Date | Summary |\n" +
+			"| --- | --- | --- | --- | --- |\n" +
+			"| 1-3 | aaaaaaa | Alice | 2023-11-20 | Initial commit |\n" +
+			"| 4 | bbbbbbb | Bob | 2024-02-15 | Add validation |\n"
+		if got := renderBlameTable(entries); got != want {
+			t.Errorf("renderBlameTable(%+v) = %q, want %q", entries, got, want)
+		}
+	})
+
+	t.Run("pipe in summary does not corrupt table", func(t *testing.T) {
+		entries := []contract.BlameEntry{
+			{
+				StartLine: 5, EndLine: 5,
+				CommitHash: "ccccccc3333333", Author: "Carol",
+				CommitDate: "2024-03-01T00:00:00Z", Summary: "Fix a | b bug",
+			},
+		}
+		got := renderBlameTable(entries)
+		rows := strings.Split(strings.TrimRight(got, "\n"), "\n")
+		if len(rows) != 3 {
+			t.Fatalf("renderBlameTable(%+v) produced %d rows, want 3 (header + separator + 1 data row): %q", entries, len(rows), got)
+		}
+		wantDataRow := "| 5 | ccccccc | Carol | 2024-03-01 | Fix a \\| b bug |"
+		if rows[2] != wantDataRow {
+			t.Errorf("data row = %q, want %q", rows[2], wantDataRow)
+		}
+	})
+}

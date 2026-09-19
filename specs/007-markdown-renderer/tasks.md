@@ -58,7 +58,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: unit tests pass including the `java` fence-tag case
       and the exact-line-count assertion; 4 verification commands clean.
 
-- [ ] **T004 — `renderBlameTable`** (spec.md req. 12)
+- [x] **T004 — `renderBlameTable`** (spec.md req. 12)
       - Depends on: T001 (`BlameEntry.Author`/`Summary` must be passed
       through `escapeMarkdown`)
       Implement the `Lines | Commit | Author | Date | Summary` table from

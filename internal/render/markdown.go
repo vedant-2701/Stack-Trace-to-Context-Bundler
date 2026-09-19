@@ -102,3 +102,38 @@ func renderSnippet(s contract.Snippet, lang contract.Language) string {
 
 	return fmt.Sprintf("```%s\n%s\n```\n", lang, strings.Join(rendered, "\n"))
 }
+
+// renderBlameTable renders entries as a Markdown table with columns
+// Lines | Commit | Author | Date | Summary, one row per entry (spec.md
+// req. 12) -- never one row per line, matching how `git blame -L` itself
+// groups contiguous ranges under one last-touching commit. Commit is the
+// short (first 7 characters) hash. Date is CommitDate's date-only
+// portion (YYYY-MM-DD): ISO 8601 is fixed-width up to that point, so a
+// straight substring is safe regardless of what follows it. Author and
+// Summary are developer-arbitrary text and go through escapeMarkdown --
+// this is also what keeps a `|` in Summary from corrupting the table
+// structure, since `|` is itself in the escaped character set.
+func renderBlameTable(entries []contract.BlameEntry) string {
+	var b strings.Builder
+	b.WriteString("| Lines | Commit | Author | Date | Summary |\n")
+	b.WriteString("| --- | --- | --- | --- | --- |\n")
+
+	for _, e := range entries {
+		lines := strconv.Itoa(e.StartLine)
+		if e.EndLine != e.StartLine {
+			lines += "-" + strconv.Itoa(e.EndLine)
+		}
+		commit := e.CommitHash
+		if len(commit) > 7 {
+			commit = commit[:7]
+		}
+		date := e.CommitDate
+		if len(date) > 10 {
+			date = date[:10]
+		}
+		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s |\n",
+			lines, commit, escapeMarkdown(e.Author), date, escapeMarkdown(e.Summary))
+	}
+
+	return b.String()
+}

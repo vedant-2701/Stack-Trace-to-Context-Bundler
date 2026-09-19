@@ -137,6 +137,27 @@ left to the renderer, not a deviation from anything specified.
 ---
 
 **Date:** 2026-09-19
+**Task(s):** T004 — `renderBlameTable`
+**What happened:** Added `renderBlameTable(entries []contract.BlameEntry)
+string`: a Markdown table with columns `Lines | Commit | Author | Date |
+Summary`, one row per entry. `Lines` renders as a single number when
+`StartLine == EndLine`, else `Start-End` (format not dictated by spec.md
+beyond "one row per contiguous range"). `Commit` is the first 7
+characters of `CommitHash`; `Date` is the first 10 characters of
+`CommitDate` (safe since ISO 8601 is fixed-width up to `YYYY-MM-DD`).
+`Author`/`Summary` go through `escapeMarkdown`, which is also what
+satisfies the acceptance criterion that a `|` in `Summary` can't corrupt
+the table -- `|` is already in the escaped character set, so no
+table-specific escaping logic was needed beyond the existing helper.
+**Verified:** user ran `go build ./...`, `go test ./internal/render/...`,
+`golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/`
+on their machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-19
 **Task(s):** Second pre-implementation audit pass (before T001)
 **What happened:** A follow-up audit, re-verifying the prior pass's four
 fixes and looking for anything else, found two more issues:
