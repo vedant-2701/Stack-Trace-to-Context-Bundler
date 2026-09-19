@@ -138,6 +138,43 @@ func renderBlameTable(entries []contract.BlameEntry) string {
 	return b.String()
 }
 
+// renderFrame renders one Frame as a single line
+// "at [ClassName.]MethodName (FilePath:LineNumber[:ColumnNumber]) —
+// <bucket-suffix>" (spec.md req. 8), followed by that frame's own-code
+// context (req. 9) when it's an own-bucket frame with a non-nil cc --
+// cc is nil for every other bucket. FilePath is rendered verbatim, never
+// escaped -- it's a normalized path, not developer-arbitrary prose
+// (req. 19's escape list doesn't include it). The dependency suffix
+// shows PackageName identity only, never a version (req. 13) -- that
+// belongs solely to the Dependencies section.
+func renderFrame(f contract.Frame, cc *contract.CodeContext) string {
+	name := f.MethodName
+	if f.ClassName != "" {
+		name = f.ClassName + "." + name
+	}
+
+	location := fmt.Sprintf("%s:%d", f.FilePath, f.LineNumber)
+	if f.ColumnNumber != 0 {
+		location += fmt.Sprintf(":%d", f.ColumnNumber)
+	}
+
+	var suffix string
+	switch f.Bucket {
+	case contract.BucketOwn:
+		suffix = "own"
+	case contract.BucketDependency:
+		suffix = "dependency: " + f.PackageName
+	case contract.BucketRuntime:
+		suffix = "runtime"
+	}
+
+	line := fmt.Sprintf("at %s (%s) — %s\n", name, location, suffix)
+	if f.Bucket == contract.BucketOwn && cc != nil {
+		line += renderCodeContext(*cc)
+	}
+	return line
+}
+
 // renderCodeContext renders one own-bucket frame's code context (spec.md
 // req. 10-12). When Status is not_found or stale, only a flagged line
 // using Note (escaped) is rendered -- no snippet or blame table. When

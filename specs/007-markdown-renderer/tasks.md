@@ -88,7 +88,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: all four status-branch unit tests pass plus the
       Java-language pass-through case; 4 verification commands clean.
 
-- [ ] **T006 — `renderFrame`** (spec.md req. 8-9, 13)
+- [x] **T006 — `renderFrame`** (spec.md req. 8-9, 13)
       - Depends on: T005
       Implement per-frame line rendering: `ClassName.`-prefix omission
       rule, `:ColumnNumber` inclusion rule, verbatim `FilePath`, the three

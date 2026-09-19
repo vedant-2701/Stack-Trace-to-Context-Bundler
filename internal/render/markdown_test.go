@@ -347,3 +347,86 @@ func TestRenderCodeContext(t *testing.T) {
 		}
 	})
 }
+
+func TestRenderFrame(t *testing.T) {
+	t.Run("own bucket with code context", func(t *testing.T) {
+		f := contract.Frame{
+			FilePath: "/repo/src/foo.ts", ClassName: "Foo", MethodName: "bar",
+			LineNumber: 42, Bucket: contract.BucketOwn,
+		}
+		cc := &contract.CodeContext{
+			Status: contract.StatusNotFound,
+			Note:   "file not found",
+		}
+		want := "at Foo.bar (/repo/src/foo.ts:42) — own\n⚠ file not found\n"
+		if got := renderFrame(f, cc); got != want {
+			t.Errorf("renderFrame(%+v, %+v) = %q, want %q", f, cc, got, want)
+		}
+	})
+
+	t.Run("own bucket with nil code context appends nothing", func(t *testing.T) {
+		f := contract.Frame{
+			FilePath: "/repo/src/foo.ts", MethodName: "bar",
+			LineNumber: 42, Bucket: contract.BucketOwn,
+		}
+		want := "at bar (/repo/src/foo.ts:42) — own\n"
+		if got := renderFrame(f, nil); got != want {
+			t.Errorf("renderFrame(%+v, nil) = %q, want %q", f, got, want)
+		}
+	})
+
+	t.Run("dependency bucket shows package name only", func(t *testing.T) {
+		f := contract.Frame{
+			FilePath: "/repo/node_modules/lodash/index.js", MethodName: "map",
+			LineNumber: 10, Bucket: contract.BucketDependency, PackageName: "lodash",
+		}
+		want := "at map (/repo/node_modules/lodash/index.js:10) — dependency: lodash\n"
+		if got := renderFrame(f, nil); got != want {
+			t.Errorf("renderFrame(%+v, nil) = %q, want %q", f, got, want)
+		}
+	})
+
+	t.Run("runtime bucket", func(t *testing.T) {
+		f := contract.Frame{
+			FilePath: "node:internal/process", MethodName: "processTicksAndRejections",
+			LineNumber: 95, Bucket: contract.BucketRuntime,
+		}
+		want := "at processTicksAndRejections (node:internal/process:95) — runtime\n"
+		if got := renderFrame(f, nil); got != want {
+			t.Errorf("renderFrame(%+v, nil) = %q, want %q", f, got, want)
+		}
+	})
+
+	t.Run("class name absent", func(t *testing.T) {
+		f := contract.Frame{
+			FilePath: "/repo/src/foo.ts", MethodName: "bareFunc",
+			LineNumber: 5, Bucket: contract.BucketOwn,
+		}
+		want := "at bareFunc (/repo/src/foo.ts:5) — own\n"
+		if got := renderFrame(f, nil); got != want {
+			t.Errorf("renderFrame(%+v, nil) = %q, want %q", f, got, want)
+		}
+	})
+
+	t.Run("column number present", func(t *testing.T) {
+		f := contract.Frame{
+			FilePath: "/repo/src/foo.ts", MethodName: "bar",
+			LineNumber: 5, ColumnNumber: 12, Bucket: contract.BucketOwn,
+		}
+		want := "at bar (/repo/src/foo.ts:5:12) — own\n"
+		if got := renderFrame(f, nil); got != want {
+			t.Errorf("renderFrame(%+v, nil) = %q, want %q", f, got, want)
+		}
+	})
+
+	t.Run("column number absent (java)", func(t *testing.T) {
+		f := contract.Frame{
+			FilePath: "/repo/src/Foo.java", ClassName: "Foo", MethodName: "bar",
+			LineNumber: 5, Bucket: contract.BucketOwn,
+		}
+		want := "at Foo.bar (/repo/src/Foo.java:5) — own\n"
+		if got := renderFrame(f, nil); got != want {
+			t.Errorf("renderFrame(%+v, nil) = %q, want %q", f, got, want)
+		}
+	})
+}

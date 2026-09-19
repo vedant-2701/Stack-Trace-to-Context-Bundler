@@ -183,6 +183,26 @@ on their machine; all four clean, confirmed "done, no errors".
 ---
 
 **Date:** 2026-09-19
+**Task(s):** T006 — `renderFrame`
+**What happened:** Added `renderFrame(f contract.Frame, cc
+*contract.CodeContext) string`: `at [ClassName.]MethodName
+(FilePath:LineNumber[:ColumnNumber]) — <suffix>\n`, `ClassName.` prefix
+omitted cleanly when absent, `:ColumnNumber` omitted when 0 (Java never
+carries one). `FilePath` rendered verbatim, never escaped -- it's a
+normalized path, not developer-arbitrary prose (req. 19's escape list
+doesn't include it). Suffix by bucket: `own`, `dependency: <PackageName>`
+(identity only, no version -- req. 13), `runtime`. When `f.Bucket ==
+BucketOwn && cc != nil`, appends `renderCodeContext(*cc)` right after the
+frame line (req. 9); nil `cc` or a non-own bucket appends nothing.
+**Verified:** user ran `go build ./...`, `go test ./internal/render/...`,
+`golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/`
+on their machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-19
 **Task(s):** Second pre-implementation audit pass (before T001)
 **What happened:** A follow-up audit, re-verifying the prior pass's four
 fixes and looking for anything else, found two more issues:
