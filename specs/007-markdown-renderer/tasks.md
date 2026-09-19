@@ -155,7 +155,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: unit tests pass for all four cases; 4 verification
       commands clean.
 
-- [ ] **T010 — `Markdown()` composition**
+- [x] **T010 — `Markdown()` composition**
       - Depends on: T002, T003, T004, T005, T006, T007, T008, T009
       Wire T002-T009's helpers together in `Markdown(b contract.Bundle)
       string`, in the document order spec.md req. 1-5 specifies. No new

@@ -325,3 +325,25 @@ on their machine; all four clean, confirmed "done, no errors".
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-19
+**Task(s):** T010 — `Markdown()` composition
+**What happened:** Replaced the stub with the real `Markdown(b
+contract.Bundle) string`: `renderPreamble` → `renderMetadata` → (blank
+line) → `renderChain` → (blank line, only when non-empty) →
+`renderDependencies` → (blank line) → `renderRawInput`, matching spec.md
+req. 1-5's document order. The blank-line placement around Dependencies
+and before the chain/raw-input sections is a readability judgment call,
+not something spec.md pins down exactly -- flagged to the user before
+implementation; T011's hand-review of the first golden fixture against
+spec.md's own rendered mockup is where this actually gets checked, not
+this task. Pure composition -- no new rendering logic.
+**Verified:** user ran `go build ./...`, `go vet ./...`, `go test
+./internal/render/...`, `golangci-lint run ./internal/render/...`,
+`gofumpt -l ./internal/render/` on their machine; all clean, confirmed
+"done, no errors". No new test added, per this task's own acceptance
+criteria -- T011 is the first end-to-end assertion.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---

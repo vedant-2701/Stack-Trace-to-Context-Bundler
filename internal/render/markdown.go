@@ -11,9 +11,26 @@ import (
 	"github.com/vedant-2701/stack-trace-bundler/internal/contract"
 )
 
-// Markdown renders the bundle as a single, self-contained Markdown document.
-func Markdown(_ contract.Bundle) string {
-	return ""
+// Markdown renders the bundle as a single, self-contained Markdown
+// document, in the order spec.md requirements 1-5 specify: preamble,
+// metadata, exception chain, Dependencies (only when present), raw
+// input (always last). Pure composition of the render* helpers below --
+// no rendering logic of its own.
+func Markdown(b contract.Bundle) string {
+	var sb strings.Builder
+	sb.WriteString(renderPreamble())
+	sb.WriteString(renderMetadata(b))
+	sb.WriteString("\n")
+	sb.WriteString(renderChain(b.Chain, b.CodeContexts))
+
+	if deps := renderDependencies(b.Dependencies); deps != "" {
+		sb.WriteString("\n")
+		sb.WriteString(deps)
+	}
+
+	sb.WriteString("\n")
+	sb.WriteString(renderRawInput(b.RawInput, b.RawInputTruncated))
+	return sb.String()
 }
 
 // renderPreamble returns the fixed, one-line blockquote that orients a
