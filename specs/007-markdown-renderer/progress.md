@@ -80,6 +80,39 @@ on their machine after the `revive` fix; all four clean, confirmed
 ---
 
 **Date:** 2026-09-19
+**Task(s):** T002 — `renderPreamble` + `renderMetadata`
+**What happened:** Added `renderPreamble` (static one-line blockquote,
+wording not specified by spec.md beyond "orient the reader", not
+load-bearing for any test), `renderMetadata` (Language/OS/Runtime/Git/
+Fingerprint bullet list, Git line omitted when `GitMetadata` is nil), and
+two private sub-helpers not named in plan.md's Architecture section —
+`renderRuntime` and `renderGit` — to keep req. 20/21's branching logic
+testable in isolation rather than inlined in `renderMetadata` (flagged to
+and accepted by the user before implementation; not a change to the
+public/traceable helper surface, just internal decomposition).
+`renderRuntime` handles all four `VersionSource`-non-`trace` x
+`Note`-present/absent combinations uniformly (Version and Note each
+appended independently when present; falls back to "(version unknown)"
+only when both are absent), rather than branching separately per
+VersionSource enum value.
+One test-authoring bug surfaced by the first lint/test run (not a code
+bug): the `local-environment with note` test's expected string forgot
+that `-` is itself in `escapeMarkdown`'s escape set, so "node -v" inside
+the note renders as "node \-v" — fixed the test's `want` value, no
+production code changed.
+**Verified:** user ran `go build ./...`, `go test ./internal/render/...`,
+`golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/`
+on their machine after the test-string fix; all four clean, confirmed
+"done, no errors".
+**Deviations from plan (if any):** Two unexported helpers
+(`renderRuntime`, `renderGit`) added beyond plan.md's named helper list—
+internal decomposition only, no change to `renderMetadata`'s signature,
+behavior, or the requirements it satisfies.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-19
 **Task(s):** Second pre-implementation audit pass (before T001)
 **What happened:** A follow-up audit, re-verifying the prior pass's four
 fixes and looking for anything else, found two more issues:

@@ -20,7 +20,7 @@ failing acceptance criterion later traces back to exactly one task.
       generic-type case; `go build`, `go test ./internal/render/...`,
       `golangci-lint run ./internal/render/...`, `gofumpt -l` all clean.
 
-- [ ] **T002 — `renderMetadata`** (spec.md req. 2, 20, 21)
+- [x] **T002 — `renderMetadata`** (spec.md req. 2, 20, 21)
       - Depends on: T001 (`Runtime.Note` and `GitMetadata.Branch` must
       be passed through `escapeMarkdown`)
       Implement `renderPreamble` (static string, req. 1) and
