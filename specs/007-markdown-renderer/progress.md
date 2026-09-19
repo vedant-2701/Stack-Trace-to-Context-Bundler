@@ -158,6 +158,31 @@ on their machine; all four clean, confirmed "done, no errors".
 ---
 
 **Date:** 2026-09-19
+**Task(s):** T005 — `renderCodeContext`
+**What happened:** Added `renderCodeContext(cc contract.CodeContext)
+string`, branching on `Status`: `not_found`/`stale` → a single flagged
+`⚠ <Note>` line, nothing else; `ok` → always renders the snippet
+(`renderSnippet(cc.Snippet, cc.Language)`), followed by
+`renderBlameTable(cc.Blame)` when non-empty, or a flagged `⚠ <Note>` line
+in its place when empty. Tests cover all four branches plus a fifth
+case (`ok` status, `Language: contract.LanguageJava`) asserting the
+rendered output opens with `` ```java `` -- this is the case that
+actually proves `CodeContext.Language` reaches `renderSnippet` through
+`renderCodeContext`'s real call path, since T003's own tests pass the
+language directly and can't catch a hardcoded tag here. The two `ok`-
+status tests assert against `renderSnippet(...)`+`renderBlameTable(...)`/
+`"⚠ <Note>\n"` composed at test time rather than a separate literal
+string -- appropriate here since this task is pure composition of
+already-tested helpers, not new rendering logic of its own.
+**Verified:** user ran `go build ./...`, `go test ./internal/render/...`,
+`golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/`
+on their machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-19
 **Task(s):** Second pre-implementation audit pass (before T001)
 **What happened:** A follow-up audit, re-verifying the prior pass's four
 fixes and looking for anything else, found two more issues:

@@ -70,7 +70,7 @@ failing acceptance criterion later traces back to exactly one task.
       `Summary` proving it doesn't corrupt the table; 4 verification
       commands clean.
 
-- [ ] **T005 — `renderCodeContext`** (spec.md req. 10-12, combining T003+T004)
+- [x] **T005 — `renderCodeContext`** (spec.md req. 10-12, combining T003+T004)
       - Depends on: T001, T003, T004
       Implement full `CodeContext` status branching: `not_found`/`stale`
       → flagged `⚠ <Note>` line only; `ok` + non-empty `Blame` → snippet +

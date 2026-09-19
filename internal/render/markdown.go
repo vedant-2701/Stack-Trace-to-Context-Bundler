@@ -137,3 +137,24 @@ func renderBlameTable(entries []contract.BlameEntry) string {
 
 	return b.String()
 }
+
+// renderCodeContext renders one own-bucket frame's code context (spec.md
+// req. 10-12). When Status is not_found or stale, only a flagged line
+// using Note (escaped) is rendered -- no snippet or blame table. When
+// Status is ok, the snippet always renders; a non-empty Blame renders as
+// a table below it, otherwise a flagged Note line takes the table's
+// place (e.g. no git repo found, or `git blame` itself failed/timed out).
+func renderCodeContext(cc contract.CodeContext) string {
+	if cc.Status == contract.StatusNotFound || cc.Status == contract.StatusStale {
+		return fmt.Sprintf("⚠ %s\n", escapeMarkdown(cc.Note))
+	}
+
+	var b strings.Builder
+	b.WriteString(renderSnippet(cc.Snippet, cc.Language))
+	if len(cc.Blame) > 0 {
+		b.WriteString(renderBlameTable(cc.Blame))
+	} else {
+		fmt.Fprintf(&b, "⚠ %s\n", escapeMarkdown(cc.Note))
+	}
+	return b.String()
+}

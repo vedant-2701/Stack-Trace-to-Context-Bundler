@@ -270,3 +270,80 @@ func TestRenderBlameTable(t *testing.T) {
 		}
 	})
 }
+
+func TestRenderCodeContext(t *testing.T) {
+	t.Run("not_found", func(t *testing.T) {
+		cc := contract.CodeContext{
+			Status: contract.StatusNotFound,
+			Note:   "file not found in current checkout",
+		}
+		want := "⚠ file not found in current checkout\n"
+		if got := renderCodeContext(cc); got != want {
+			t.Errorf("renderCodeContext(%+v) = %q, want %q", cc, got, want)
+		}
+	})
+
+	t.Run("stale", func(t *testing.T) {
+		cc := contract.CodeContext{
+			Status: contract.StatusStale,
+			Note:   "file has uncommitted local changes",
+		}
+		want := "⚠ file has uncommitted local changes\n"
+		if got := renderCodeContext(cc); got != want {
+			t.Errorf("renderCodeContext(%+v) = %q, want %q", cc, got, want)
+		}
+	})
+
+	t.Run("ok with blame", func(t *testing.T) {
+		cc := contract.CodeContext{
+			Status:   contract.StatusOK,
+			Language: contract.LanguageTypeScript,
+			Snippet: contract.Snippet{
+				StartLine: 1, EndLine: 1, TargetLine: 1,
+				Code: buildSnippetCode("foo();"),
+			},
+			Blame: []contract.BlameEntry{
+				{StartLine: 1, EndLine: 1, CommitHash: "abcdef1234567890", Author: "Alice", CommitDate: "2024-01-02T00:00:00Z", Summary: "Add foo"},
+			},
+		}
+		want := renderSnippet(cc.Snippet, cc.Language) + renderBlameTable(cc.Blame)
+		if got := renderCodeContext(cc); got != want {
+			t.Errorf("renderCodeContext(%+v) = %q, want %q", cc, got, want)
+		}
+	})
+
+	t.Run("ok with empty blame falls back to note", func(t *testing.T) {
+		cc := contract.CodeContext{
+			Status:   contract.StatusOK,
+			Language: contract.LanguageTypeScript,
+			Snippet: contract.Snippet{
+				StartLine: 1, EndLine: 1, TargetLine: 1,
+				Code: buildSnippetCode("foo();"),
+			},
+			Blame: nil,
+			Note:  "no git repo found",
+		}
+		want := renderSnippet(cc.Snippet, cc.Language) + "⚠ no git repo found\n"
+		if got := renderCodeContext(cc); got != want {
+			t.Errorf("renderCodeContext(%+v) = %q, want %q", cc, got, want)
+		}
+	})
+
+	t.Run("ok status with java language passes through to renderSnippet", func(t *testing.T) {
+		cc := contract.CodeContext{
+			Status:   contract.StatusOK,
+			Language: contract.LanguageJava,
+			Snippet: contract.Snippet{
+				StartLine: 1, EndLine: 1, TargetLine: 1,
+				Code: buildSnippetCode("System.out.println(\"hi\");"),
+			},
+			Blame: []contract.BlameEntry{
+				{StartLine: 1, EndLine: 1, CommitHash: "abcdef1234567890", Author: "Alice", CommitDate: "2024-01-02T00:00:00Z", Summary: "Add main"},
+			},
+		}
+		got := renderCodeContext(cc)
+		if !strings.HasPrefix(got, "```java\n") {
+			t.Errorf("renderCodeContext(%+v) = %q, want prefix %q", cc, got, "```java\n")
+		}
+	})
+}
