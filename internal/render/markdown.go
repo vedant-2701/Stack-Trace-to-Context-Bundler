@@ -183,6 +183,49 @@ func renderDependencies(d *contract.Dependencies) string {
 	return b.String()
 }
 
+// longestBacktickRun returns the length of the longest run of
+// consecutive backtick characters anywhere in s, or 0 if none.
+func longestBacktickRun(s string) int {
+	longest, current := 0, 0
+	for _, r := range s {
+		if r == '`' {
+			current++
+			if current > longest {
+				longest = current
+			}
+		} else {
+			current = 0
+		}
+	}
+	return longest
+}
+
+// renderRawInput renders the collapsed <details> raw-input section
+// (spec.md req. 5, 17-18). raw is never escaped -- the fence protects it
+// (req. 19). The fence used is always one backtick longer than the
+// longest backtick run found anywhere in raw, minimum 3, so pathological
+// input (raw itself containing a backtick fence) cannot corrupt the
+// enclosing document. The truncation note, present only when truncated
+// is true, formats its KB figure from contract.RawInputCapBytes rather
+// than a hardcoded number, so it can't drift out of sync if the cap ever
+// changes.
+func renderRawInput(raw string, truncated bool) string {
+	fenceLen := longestBacktickRun(raw) + 1
+	if fenceLen < 3 {
+		fenceLen = 3
+	}
+	fence := strings.Repeat("`", fenceLen)
+
+	var b strings.Builder
+	b.WriteString("<details><summary>Raw input</summary>\n\n")
+	if truncated {
+		fmt.Fprintf(&b, "⚠ input truncated at the %d KB cap\n\n", contract.RawInputCapBytes/1024)
+	}
+	fmt.Fprintf(&b, "%s\n%s\n%s\n", fence, raw, fence)
+	b.WriteString("</details>\n")
+	return b.String()
+}
+
 // renderFrame renders one Frame as a single line
 // "at [ClassName.]MethodName (FilePath:LineNumber[:ColumnNumber]) —
 // <bucket-suffix>" (spec.md req. 8), followed by that frame's own-code

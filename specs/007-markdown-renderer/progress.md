@@ -300,3 +300,28 @@ on their machine; all four clean, confirmed "done, no errors".
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-19
+**Task(s):** T009 — `renderRawInput`
+**What happened:** Added `longestBacktickRun` (private helper, scans for
+the longest consecutive-backtick run) and `renderRawInput(raw string,
+truncated bool) string`: fence length is always `longestBacktickRun(raw)
++ 1`, minimum 3 (req. 17); truncation note appears only when `truncated`
+is true, its KB figure computed from `contract.RawInputCapBytes / 1024`
+rather than hardcoded (req. 18); `raw` itself is never escaped
+(fence-exempt, req. 19).
+While inserting this via a targeted edit, an anchor match accidentally
+consumed the first line of `renderFrame`'s existing doc comment,
+leaving it truncated mid-sentence -- caught immediately on re-reading the
+file before writing tests, fixed with one more edit restoring the
+missing line, no functional code affected.
+Applied the T008 mitigation for the first time: the truncation-note test
+asserts against a string built with `fmt.Sprintf(...,
+contract.RawInputCapBytes/1024)` rather than a hand-typed KB figure.
+**Verified:** user ran `go build ./...`, `go test ./internal/render/...`,
+`golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/`
+on their machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---

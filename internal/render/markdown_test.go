@@ -1,6 +1,7 @@
 package render
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -618,6 +619,46 @@ func TestRenderDependencies(t *testing.T) {
 			if got := renderDependencies(d); got != want {
 				t.Fatalf("renderDependencies(%+v) iteration %d = %q, want %q", d, i, got, want)
 			}
+		}
+	})
+}
+
+func TestRenderRawInput(t *testing.T) {
+	t.Run("plain input uses minimum 3-backtick fence", func(t *testing.T) {
+		want := "<details><summary>Raw input</summary>\n\n" +
+			"```\n" +
+			"Error: boom\n    at foo (/repo/src/a.ts:1:1)\n" +
+			"```\n" +
+			"</details>\n"
+		if got := renderRawInput("Error: boom\n    at foo (/repo/src/a.ts:1:1)", false); got != want {
+			t.Errorf("renderRawInput(...) = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("input containing a 3-backtick run gets a 4-backtick fence", func(t *testing.T) {
+		raw := "some text with ``` a fenced block inside it"
+		want := "<details><summary>Raw input</summary>\n\n" +
+			"````\n" +
+			raw + "\n" +
+			"````\n" +
+			"</details>\n"
+		if got := renderRawInput(raw, false); got != want {
+			t.Errorf("renderRawInput(%q, false) = %q, want %q", raw, got, want)
+		}
+	})
+
+	t.Run("truncated true includes note with correct KB figure", func(t *testing.T) {
+		got := renderRawInput("some input", true)
+		wantNote := fmt.Sprintf("⚠ input truncated at the %d KB cap\n\n", contract.RawInputCapBytes/1024)
+		if !strings.Contains(got, wantNote) {
+			t.Errorf("renderRawInput(..., true) = %q, want it to contain %q", got, wantNote)
+		}
+	})
+
+	t.Run("truncated false has no note", func(t *testing.T) {
+		got := renderRawInput("some input", false)
+		if strings.Contains(got, "truncated") {
+			t.Errorf("renderRawInput(..., false) = %q, want no truncation note", got)
 		}
 	})
 }

@@ -143,7 +143,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: unit tests pass for all five cases, including the
       repeated-render determinism check; 4 verification commands clean.
 
-- [ ] **T009 — `renderRawInput`** (spec.md req. 5, 17, 18)
+- [x] **T009 — `renderRawInput`** (spec.md req. 5, 17, 18)
       - Depends on: none (`RawInput` is never escaped — fenced content is
       exempt per req. 19)
       Implement the collapsed `<details>` block: fence-length calculation
