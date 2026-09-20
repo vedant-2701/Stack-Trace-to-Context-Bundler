@@ -691,6 +691,9 @@ func TestMarkdown(t *testing.T) {
 		{"multiline_message", multilineMessageBundle, filepath.Join("testdata", "golden", "multiline_message.golden.md")},
 		{"markdown_special_chars", markdownSpecialCharsBundle, filepath.Join("testdata", "golden", "markdown_special_chars.golden.md")},
 		{"backtick_run_in_raw_input", backtickRunInRawInputBundle, filepath.Join("testdata", "golden", "backtick_run_in_raw_input.golden.md")},
+		{"raw_input_truncated", rawInputTruncatedBundle, filepath.Join("testdata", "golden", "raw_input_truncated.golden.md")},
+		{"dependency_states", dependencyStatesBundle, filepath.Join("testdata", "golden", "dependency_states.golden.md")},
+		{"runtime_version_states", runtimeVersionStatesBundle, filepath.Join("testdata", "golden", "runtime_version_states.golden.md")},
 	}
 
 	for _, tt := range tests {

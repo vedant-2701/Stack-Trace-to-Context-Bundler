@@ -217,7 +217,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: both golden tests pass, including the generic-type
       `<`/`>` case; 4 verification commands clean.
 
-- [ ] **T016 — Golden fixtures: `raw_input_truncated`,
+- [x] **T016 — Golden fixtures: `raw_input_truncated`,
       `dependency_states`, `runtime_version_states`**
       - Depends on: T011
       (spec.md acceptance criteria for req. 18, req. 16, req. 20)

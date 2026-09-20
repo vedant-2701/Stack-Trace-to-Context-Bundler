@@ -540,3 +540,36 @@ machine; all four clean, confirmed "done, no errors".
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-19
+**Task(s):** T016 — Golden fixtures: `raw_input_truncated`,
+`dependency_states`, `runtime_version_states`
+**What happened:** Added `rawInputTruncatedBundle` (`RawInputTruncated:
+true`) confirming the truncation note's correct KB figure end-to-end
+(T009 already unit-tests `renderRawInput` on this flag directly).
+Added `dependencyStatesBundle` (all three per-package dependency states
+-- `react` exact-match, `lodash` fallback-match, `leftpad`
+fully-unresolved -- in one bundle, sorted alphabetically) confirming all
+three coexist correctly, extending T008's per-state unit tests to a full
+render. Added `runtimeVersionStatesBundle` (`VersionSourceUnknown`, no
+`Version`/`Note`) -- the one `Runtime` state no fixture so far had shown
+(every prior fixture used `Trace` or `LocalEnvironment`+`Note`) --
+rendering the bare `(version unknown)` literal end-to-end; used Java
+since `types.go`'s own doc comment on `VersionSourceTrace` states Java's
+`printStackTrace()` never includes JVM version, so Java is always
+`LocalEnvironment` or `Unknown` -- a real case for this state, not a
+contrived one. This is the last of T012-T016's golden fixtures.
+Three new `TestMarkdown` table entries, no harness changes.
+**Verified:** user ran `go test ./internal/render/... -run TestMarkdown
+-update` to generate all three fixtures; all hand-reviewed by Claude
+against spec.md req. 18, req. 16, and req. 20 (clean -- confirmed the
+truncation note's KB figure, all three dependency states' formatting and
+alphabetical ordering with correct dash-escaping in both Notes, and the
+bare `(version unknown)` literal); approved, then user ran `go build
+./...`, `go test ./internal/render/...`, `golangci-lint run
+./internal/render/...`, `gofumpt -l ./internal/render/` on their
+machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---

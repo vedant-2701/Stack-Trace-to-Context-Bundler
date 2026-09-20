@@ -695,6 +695,275 @@ func noDependenciesBundle(t *testing.T) contract.Bundle {
 	}
 }
 
+// rawInputTruncatedBundle isolates spec.md req. 18 end-to-end:
+// RawInputTruncated: true, proving the truncation note renders with the
+// correct KB figure through a full Markdown() render -- T009 already
+// unit-tests renderRawInput directly on this flag.
+func rawInputTruncatedBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageTypeScript,
+		OS:                contract.OSLinux,
+		Fingerprint:       "ee66ff77aa88bb99",
+		RawInputTruncated: true,
+		RawInput: `Error: input too large to fully capture
+    at handleLargeRequest (/repo/src/handler.ts:17:9)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)`,
+		Runtime: contract.Runtime{
+			Name: "node", Version: "20.11.0", VersionSource: contract.VersionSourceTrace,
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "Error",
+				Message:   "input too large to fully capture",
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "/repo/src/handler.ts", MethodName: "handleLargeRequest",
+						LineNumber: 17, ColumnNumber: 9, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "node:internal/process/task_queues", MethodName: "processTicksAndRejections",
+						LineNumber: 95, ColumnNumber: 5, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "/repo/src/handler.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 10, EndLine: 20, TargetLine: 17,
+					Code: `export function handleLargeRequest(req: Request) {
+  const body = req.rawBody;
+
+  if (!body) {
+    throw new Error('missing body');
+  }
+
+  const parsed = JSON.parse(body);
+  return parsed;
+}
+
+`,
+				},
+				Blame: []contract.BlameEntry{
+					{
+						StartLine: 10, EndLine: 20,
+						CommitHash: "7788990011223344556677889900112233445566",
+						Author:     "vedant",
+						CommitDate: "2026-01-18T10:00:00Z",
+						Summary:    "handle large request bodies",
+					},
+				},
+			},
+		},
+		GitMetadata: &contract.GitMetadata{
+			CurrentCommit:      "7788990011223344556677889900112233445566",
+			Branch:             "main",
+			UncommittedChanges: false,
+		},
+		Dependencies: &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct: map[string]string{
+				"lodash": "^4.17.21",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"lodash": {Version: "4.17.21"},
+			},
+		},
+	}
+}
+
+// dependencyStatesBundle isolates spec.md req. 16 end-to-end: all three
+// per-package dependency states in one bundle -- "react" (Direct entry +
+// resolved Version, exact-match), "lodash" (resolved Version + Note, no
+// Direct entry, fallback-match), "leftpad" (Note only, no Version, no
+// Direct entry, fully-unresolved) -- sorted alphabetically
+// (leftpad, lodash, react). T008 already unit-tests each state
+// individually; this proves all three coexist correctly through a full
+// Markdown() render.
+func dependencyStatesBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageTypeScript,
+		OS:                contract.OSLinux,
+		Fingerprint:       "ff77aa88bb99cc00",
+		RawInputTruncated: false,
+		RawInput: `Error: dependency resolution issue
+    at bootstrap (/repo/src/app.ts:5:3)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)`,
+		Runtime: contract.Runtime{
+			Name: "node", Version: "20.11.0", VersionSource: contract.VersionSourceTrace,
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "Error",
+				Message:   "dependency resolution issue",
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "/repo/src/app.ts", MethodName: "bootstrap",
+						LineNumber: 5, ColumnNumber: 3, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "node:internal/process/task_queues", MethodName: "processTicksAndRejections",
+						LineNumber: 95, ColumnNumber: 5, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "/repo/src/app.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 1, EndLine: 11, TargetLine: 5,
+					Code: `import React from 'react';
+import _ from 'lodash';
+
+export function bootstrap() {
+  const config = _.merge({}, defaults, overrides);
+  return config;
+}
+
+export function teardown() {
+  console.log('shutting down');
+  return true;
+`,
+				},
+				Blame: []contract.BlameEntry{
+					{
+						StartLine: 1, EndLine: 11,
+						CommitHash: "8899001122334455667788990011223344556677",
+						Author:     "vedant",
+						CommitDate: "2026-01-22T15:45:00Z",
+						Summary:    "wire up app bootstrap",
+					},
+				},
+			},
+		},
+		GitMetadata: &contract.GitMetadata{
+			CurrentCommit:      "8899001122334455667788990011223344556677",
+			Branch:             "main",
+			UncommittedChanges: false,
+		},
+		Dependencies: &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct: map[string]string{
+				"react": "^18.2.0",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"react": {Version: "18.2.5"},
+				"lodash": {
+					Version: "4.17.21",
+					Note:    "resolved via top-level lookup, not tied to this exact frame path",
+				},
+				"leftpad": {
+					Note: "no package-lock.json entry found for this package",
+				},
+			},
+		},
+	}
+}
+
+// runtimeVersionStatesBundle isolates the one Runtime.VersionSource
+// state no fixture so far has shown: VersionSourceUnknown with neither
+// Version nor Note, rendering the bare "(version unknown)" literal
+// (spec.md req. 20) end-to-end. Java, matching types.go's own note that
+// Java is always VersionSourceLocalEnvironment or VersionSourceUnknown
+// since printStackTrace() never includes JVM version -- a real case for
+// this state, not a contrived one. A single Bundle only carries one
+// Runtime value, so this fixture picks this one remaining state rather
+// than trying to show several Runtime states in one bundle.
+func runtimeVersionStatesBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageJava,
+		OS:                contract.OSLinux,
+		Fingerprint:       "aa88bb99cc00dd11",
+		RawInputTruncated: false,
+		RawInput: `java.lang.RuntimeException: unsupported configuration detected
+	at com.example.Loader.load(Loader.java:9)
+	at java.base/java.lang.Thread.run(Thread.java:840)`,
+		Runtime: contract.Runtime{
+			Name: "jvm", VersionSource: contract.VersionSourceUnknown,
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "java.lang.RuntimeException",
+				Message:   "unsupported configuration detected",
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "src/main/java/com/example/Loader.java",
+						ClassName: "Loader", MethodName: "load",
+						LineNumber: 9, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "java.base/java.lang.Thread", MethodName: "run",
+						LineNumber: 840, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "src/main/java/com/example/Loader.java",
+				Language: contract.LanguageJava,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 4, EndLine: 14, TargetLine: 9,
+					Code: `public class Loader {
+
+  private final Config config;
+
+  public void load() {
+    if (config == null) {
+      throw new RuntimeException("unsupported configuration detected");
+    }
+  }
+
+  public Loader(Config config) {
+`,
+				},
+				Blame: []contract.BlameEntry{
+					{
+						StartLine: 4, EndLine: 14,
+						CommitHash: "9900112233445566778899001122334455667788",
+						Author:     "vedant",
+						CommitDate: "2026-01-25T12:15:00Z",
+						Summary:    "add config loader",
+					},
+				},
+			},
+		},
+		GitMetadata: &contract.GitMetadata{
+			CurrentCommit:      "9900112233445566778899001122334455667788",
+			Branch:             "main",
+			UncommittedChanges: false,
+		},
+		Dependencies: &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePomXML,
+			Direct: map[string]string{
+				"com.example:config-lib": "1.2.0",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"com.example:config-lib": {Version: "1.2.0"},
+			},
+		},
+	}
+}
+
 // codeContextNotFoundBundle is deliberately minimal, isolating one
 // CodeContext outcome (spec.md req. 10): Status == not_found renders
 // only a flagged "⚠ <Note>" line -- no snippet, no blame table --
