@@ -224,7 +224,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: all three golden tests pass; 4 verification commands
       clean.
 
-- [ ] **T017 — Acceptance criteria review pass**
+- [x] **T017 — Acceptance criteria review pass**
       - Depends on: T001-T016
       Re-read `spec.md`'s Acceptance criteria list top to bottom; confirm
       each has an exact corresponding passing test from T001-T016 (record

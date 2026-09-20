@@ -573,3 +573,54 @@ machine; all four clean, confirmed "done, no errors".
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-19
+**Task(s):** T017 — Acceptance criteria review pass
+**What happened:** Re-read `spec.md`'s 16 acceptance criteria top to
+bottom against T001-T016's actual tests. Found three real issues, all
+surfaced by the same root cause -- T011's mid-task course-correction --
+and resolved before checking any boxes:
+1. Criterion 16 still said the golden test reads
+   `internal/contract/testdata/example_ts.json`; nothing does anymore
+   since T011 moved to a hand-authored `contract.Bundle` literal.
+   Reworded to describe the actual `ts_basic` fixture.
+2. `spec.md`'s Out-of-scope section still said a hand-constructed
+   Java-shaped `contract.Bundle` "was considered and explicitly
+   rejected" -- but T012's `noDependenciesBundle` and T016's
+   `runtimeVersionStatesBundle` are both exactly that, built as a
+   mechanical side effect of T011's literal-everywhere correction, with
+   nobody (Claude included) noticing the collision with this earlier
+   decision until this review pass. Flagged to the user with a
+   recommendation (keep the fixtures -- render's Non-functional
+   requirements already confine Language-dependence to the one
+   fence-tag branch, T003/T005 unit-test that in isolation, and 001's
+   own `exampleJavaBundle()` is repo precedent for hand-built Java
+   fixtures) rather than deciding unilaterally; user confirmed. Reworded
+   the bullet to describe the reconsidered position instead of deleting
+   it outright, so the original caution (this isn't a stand-in for
+   005a's own parser-correctness testing) stays on record.
+3. Criterion 1's "(own/dependency/runtime frames in each)" parenthetical
+   read ambiguously -- literally, every node would need all three bucket
+   types, which no fixture does (e.g. `ts_basic`'s second node has only
+   an own frame). Flagged with a recommendation (adopt the looser
+   "represented across the chain" reading -- bucket-suffix rendering is
+   a per-frame concern, already fully unit-tested in T006, not a
+   per-node one, so requiring every node to duplicate all three types
+   would add repetition, not coverage); user confirmed. Reworded the
+   criterion accordingly.
+   All 16 criteria then checked off with the specific `TestMarkdown`/
+   unit-test name(s) satisfying each, as inline comments in `spec.md`.
+   Updated `spec.md`'s header from "Planned" to "Done" and
+   `specs/INDEX.md`'s 007 row from `in-progress` to `done`.
+**Verified:** N/A -- doc-only changes to `spec.md`/`tasks.md`/
+`specs/INDEX.md`, no code touched, no build/test/lint gate applies.
+**Deviations from plan (if any):** None -- T017's own task description
+anticipated exactly this outcome ("any criterion found uncovered gets
+its own fixture/test added here"), though in this case the fix was
+spec-wording corrections rather than new tests, since the underlying
+behavior was already correctly implemented and tested; only the
+documentation had drifted.
+**New open questions:** None. Feature 007 is now fully done -- all 17
+tasks complete, all 16 acceptance criteria checked off with named tests.
+
+---

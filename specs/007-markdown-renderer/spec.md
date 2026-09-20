@@ -1,6 +1,7 @@
 # Spec: Markdown renderer
 
-**Status:** Planned (plan.md + tasks.md complete)
+**Status:** Done — all acceptance criteria checked off with named tests
+(see Acceptance criteria section)
 **Folder:** specs/007-markdown-renderer
 **Depends on:** 001-data-contract (done)
 
@@ -274,13 +275,15 @@ Out of scope).
   clipboard — 002b (`idea`) and 009 (`idea`).
 - A `--verbose` mode or any other alternate rendering mode — v1 has
   exactly one Markdown output shape.
-- Full Java-shaped golden-fixture bundles for testing — no real parser
-  (005a, `idea`) can produce one yet; a hand-constructed synthetic
-  Java-shaped `contract.Bundle` was considered and explicitly rejected
-  (see progress.md) in favor of a narrow unit test covering only the one
-  genuinely language-dependent branch (the fenced-code-block language
-  tag, requirement 11) using a bare `contract.Snippet` value and a
-  `contract.Language` of `"java"`, not a full bundle.
+- Testing against real Java-parser output shapes is 005a's own concern
+  once built; this feature's Java-shaped fixtures (T012's
+  `noDependenciesBundle`, T016's `runtimeVersionStatesBundle`) only need
+  to be shape-valid `contract.Bundle` values exercising already
+  language-agnostic code paths (per this spec's own Non-functional
+  requirements: the only Language-dependent logic is the fenced-code-
+  block tag, requirement 11, already unit-tested in isolation in T003/
+  T005) -- not stand-ins for parser correctness, which they don't claim
+  to be.
 - Monorepo/multi-repo bundles, branching (`AggregateError`/`Suppressed`)
   chains — both already out of scope at the contract level (001), so
   nothing here needs to render them.
@@ -290,70 +293,86 @@ Out of scope).
 
 ## Acceptance criteria
 
-- [ ] Given a `Bundle` with a two-node linear chain (own/dependency/runtime
-      frames in each), when rendered, then the output shows each node as
-      an independent `### ClassName` block with its `Message` in a
-      blockquote below, separated by a `Caused by ↓` transition, in
-      `Chain` order.
-- [ ] Given an `own`-bucket frame with `CodeContext.Status == "ok"` and
+- [x] Given a `Bundle` with a two-node linear chain, with own, dependency,
+      and runtime frames represented across the chain, when rendered,
+      then the output shows each node as an independent `### ClassName`
+      block with its `Message` in a blockquote below, separated by a
+      `Caused by ↓` transition, in `Chain` order.
+      (`TestMarkdown/ts_basic`; `TestRenderChain/two-node_chain_has_Caused_by_transition_between,_not_after_last`)
+- [x] Given an `own`-bucket frame with `CodeContext.Status == "ok"` and
       non-empty `Blame`, when rendered, then the frame's line is
       immediately followed by a line-numbered fenced snippet (target line
       marked `→`) and a blame table with one row per `BlameEntry`.
-- [ ] Given an `own`-bucket frame with `CodeContext.Status == "ok"` and
+      (`TestMarkdown/ts_basic`; `TestRenderCodeContext/ok_with_blame`)
+- [x] Given an `own`-bucket frame with `CodeContext.Status == "ok"` and
       empty `Blame` (e.g. no git repo found), when rendered, then the
       snippet still renders, and `⚠ <Note>` appears in place of a blame
       table.
-- [ ] Given an `own`-bucket frame with `CodeContext.Status` of
+      (`TestMarkdown/code_context_ok_no_blame`; `TestRenderCodeContext/ok_with_empty_blame_falls_back_to_note`)
+- [x] Given an `own`-bucket frame with `CodeContext.Status` of
       `"not_found"` or `"stale"`, when rendered, then no snippet or blame
       table appears — only the frame line followed by `⚠ <Note>`.
-- [ ] Given a `dependency`-bucket frame, when rendered, then its line shows
+      (`TestMarkdown/code_context_not_found`, `TestMarkdown/code_context_stale`; `TestRenderCodeContext/not_found`, `/stale`)
+- [x] Given a `dependency`-bucket frame, when rendered, then its line shows
       only `PackageName` (no version, no note) — resolution detail appears
       exclusively in the `## Dependencies` section.
-- [ ] Given `Bundle.Dependencies` with one exact-match package
+      (`TestMarkdown/ts_basic`; `TestRenderFrame/dependency_bucket_shows_package_name_only`)
+- [x] Given `Bundle.Dependencies` with one exact-match package
       (`Locked[pkg].Version` set, no `Note`) and one fully-unresolved
       package (`Version` absent, `Note` present), when rendered, then the
       `## Dependencies` section shows the exact package with just its
       resolved version, and the unresolved package with the literal
       `unresolved` plus its `Note` text.
-- [ ] Given `Bundle.Dependencies == nil`, when rendered, then no
+      (`TestMarkdown/dependency_states`; `TestRenderDependencies/exact-match_package`, `/fully-unresolved_package`)
+- [x] Given `Bundle.Dependencies == nil`, when rendered, then no
       `## Dependencies` heading or content appears anywhere in the output.
-- [ ] Given `Bundle.GitMetadata == nil`, when rendered, then no `Git:` line
+      (`TestMarkdown/no_dependencies`; `TestRenderDependencies/nil_Dependencies_renders_nothing`)
+- [x] Given `Bundle.GitMetadata == nil`, when rendered, then no `Git:` line
       appears in the metadata block (no placeholder).
-- [ ] Given an `ExceptionNode` with `ElidedFrameCount > 0`, when rendered,
+      (`TestMarkdown/no_git_metadata`; `TestRenderMetadata/nil_GitMetadata_omits_Git_line`)
+- [x] Given an `ExceptionNode` with `ElidedFrameCount > 0`, when rendered,
       then a single language-neutral `... N more frames (shared with
       enclosing exception)` line appears after that node's frames —
       regardless of whether the source language was Java or JS/TS.
-- [ ] Given `Runtime.VersionSource == "trace"`, when rendered, then the
+      (`TestMarkdown/elided_frames`; `TestRenderChain/elided_frame_count_renders_language-neutral_line`)
+- [x] Given `Runtime.VersionSource == "trace"`, when rendered, then the
       `Runtime:` line shows name+version with no parenthetical caveat.
       Given `VersionSource` of `"local-environment"` or `"unknown"`, when
       rendered, then `Runtime.Note`'s text (when present) appears as a
       parenthetical, and the literal enum value itself never appears in
       the output.
-- [ ] Given an `ExceptionNode.Message` containing embedded newlines (e.g. a
+      (`TestMarkdown/ts_basic` [trace], `/no_dependencies` [local-environment+Note], `/runtime_version_states` [unknown]; `TestRenderRuntime`'s five cases)
+- [x] Given an `ExceptionNode.Message` containing embedded newlines (e.g. a
       multi-line assertion diff), when rendered, then the heading contains
       only `ClassName`, and the full multi-line message appears intact in
       the blockquote below it — no content dropped or merged onto one
       line.
-- [ ] Given a message, note, or commit summary containing Markdown special
+      (`TestMarkdown/multiline_message`; `TestRenderChain/multiline_message_with_embedded_blank_line_stays_one_blockquote`)
+- [x] Given a message, note, or commit summary containing Markdown special
       characters (e.g. `_`, `` ` ``, `|`, `#`, `<` as in a generic type
       like `List<String>`), when rendered, then those characters are
       escaped in prose context and do not corrupt surrounding
       heading/table/blockquote structure.
-- [ ] Given `Bundle.RawInput` containing a run of backticks as long as or
+      (`TestMarkdown/markdown_special_chars`; `TestEscapeMarkdown`'s generic-type cases)
+- [x] Given `Bundle.RawInput` containing a run of backticks as long as or
       longer than 3, when rendered, then the raw-input fenced code block
       uses a longer fence and remains valid, unbroken Markdown.
-- [ ] Given `Bundle.RawInputTruncated == true`, when rendered, then a
+      (`TestMarkdown/backtick_run_in_raw_input`; `TestRenderRawInput/input_containing_a_3-backtick_run_gets_a_4-backtick_fence`)
+- [x] Given `Bundle.RawInputTruncated == true`, when rendered, then a
       truncation note appears alongside the raw input section; given
       `false`, no such note appears.
-- [ ] Given a `CodeContext.Language` of `"java"` on an otherwise-ordinary
+      (`TestMarkdown/raw_input_truncated` [true; every other `TestMarkdown` case exercises `false`]; `TestRenderRawInput/truncated_true...`, `/truncated_false...`)
+- [x] Given a `CodeContext.Language` of `"java"` on an otherwise-ordinary
       `ok`-status snippet, when rendered, then the fenced snippet block
       uses a `java` fence tag rather than `typescript`/`javascript` — the
       one genuinely language-dependent behavior this renderer has,
       verified without needing a full Java-shaped bundle.
-- [ ] Given the checked-in `internal/contract/testdata/example_ts.json`
-      fixture, when rendered, then the output matches a checked-in golden
-      Markdown fixture exactly (golden-file test, per `CONVENTIONS.md`'s
-      testing section for `internal/render/*`).
+      (`TestRenderSnippet/java_fence_tag`; `TestRenderCodeContext/ok_status_with_java_language_passes_through_to_renderSnippet`)
+- [x] Given a hand-authored `contract.Bundle` fixture (`ts_basic`), when
+      rendered, then the output matches a checked-in golden Markdown
+      fixture exactly (golden-file test, per `CONVENTIONS.md`'s testing
+      section for `internal/render/*`).
+      (`TestMarkdown/ts_basic`)
 
 ## Open questions
 
