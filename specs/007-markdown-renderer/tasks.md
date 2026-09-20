@@ -206,7 +206,7 @@ failing acceptance criterion later traces back to exactly one task.
       line case staying inside one continuous blockquote; 4 verification
       commands clean.
 
-- [ ] **T015 — Golden fixtures: `markdown_special_chars`,
+- [x] **T015 — Golden fixtures: `markdown_special_chars`,
       `backtick_run_in_raw_input`**
       - Depends on: T011
       (spec.md acceptance criteria for req. 19 and req. 17).

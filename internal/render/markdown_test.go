@@ -689,6 +689,8 @@ func TestMarkdown(t *testing.T) {
 		{"code_context_ok_no_blame", codeContextOKNoBlameBundle, filepath.Join("testdata", "golden", "code_context_ok_no_blame.golden.md")},
 		{"elided_frames", elidedFramesBundle, filepath.Join("testdata", "golden", "elided_frames.golden.md")},
 		{"multiline_message", multilineMessageBundle, filepath.Join("testdata", "golden", "multiline_message.golden.md")},
+		{"markdown_special_chars", markdownSpecialCharsBundle, filepath.Join("testdata", "golden", "markdown_special_chars.golden.md")},
+		{"backtick_run_in_raw_input", backtickRunInRawInputBundle, filepath.Join("testdata", "golden", "backtick_run_in_raw_input.golden.md")},
 	}
 
 	for _, tt := range tests {

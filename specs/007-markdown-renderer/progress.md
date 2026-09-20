@@ -509,3 +509,34 @@ machine; all four clean, confirmed "done, no errors".
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-19
+**Task(s):** T015 — Golden fixtures: `markdown_special_chars`,
+`backtick_run_in_raw_input`
+**What happened:** Added `markdownSpecialCharsBundle` (`Message`
+contains `Map<string, number>` and `List<String>` together) proving
+`<`/`>` escaping survives a full end-to-end render -- T001 already
+unit-tests `escapeMarkdown` directly on this shape, this confirms it
+through the real `renderChain`/`Markdown()` path, and separately confirms
+the snippet's own `<T>`/generic syntax stays unescaped inside the fence
+(fence-exempt). Added `backtickRunInRawInputBundle` (`RawInput` contains
+an embedded 3-backtick run wrapping "some embedded code block") proving
+the enclosing fence upgrades to 4 backticks end-to-end -- T009 already
+unit-tests `renderRawInput` directly on this shape.
+`backtickRunInRawInputBundle`'s `RawInput` is a regular quoted Go string,
+not a raw string literal, specifically because it needs to contain
+literal backtick characters, which a Go raw string can't hold.
+Two new `TestMarkdown` table entries, no harness changes.
+**Verified:** user ran `go test ./internal/render/... -run TestMarkdown
+-update` to generate both fixtures; both hand-reviewed by Claude against
+spec.md req. 19 and req. 17 (clean -- confirmed both `<`/`>` occurrences
+escaped in Message while the snippet's own generics render unescaped,
+and the fence correctly escalating to 4 backticks around the embedded
+``` run without prematurely closing); approved, then user ran `go build
+./...`, `go test ./internal/render/...`, `golangci-lint run
+./internal/render/...`, `gofumpt -l ./internal/render/` on their
+machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---

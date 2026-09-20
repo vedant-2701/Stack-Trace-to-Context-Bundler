@@ -446,6 +446,176 @@ export function assertNotEqual(a: unknown, b: unknown) {
 	}
 }
 
+// markdownSpecialCharsBundle isolates spec.md req. 19 end-to-end: a
+// generic-type expression ("Map<string, number>", "List<String>")
+// together in Message, proving `<`/`>` escaping survives a full
+// Markdown() render -- T001 already unit-tests escapeMarkdown directly
+// on this exact shape of input.
+func markdownSpecialCharsBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageTypeScript,
+		OS:                contract.OSLinux,
+		Fingerprint:       "cc44dd55ee66ff77",
+		RawInputTruncated: false,
+		RawInput: `TypeError: Expected Map<string, number> but got List<String>
+    at convert (/repo/src/converter.ts:12:4)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)`,
+		Runtime: contract.Runtime{
+			Name: "node", Version: "20.11.0", VersionSource: contract.VersionSourceTrace,
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "TypeError",
+				Message:   "Expected Map<string, number> but got List<String>",
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "/repo/src/converter.ts", MethodName: "convert",
+						LineNumber: 12, ColumnNumber: 4, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "node:internal/process/task_queues", MethodName: "processTicksAndRejections",
+						LineNumber: 95, ColumnNumber: 5, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "/repo/src/converter.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 7, EndLine: 17, TargetLine: 12,
+					Code: `export function convert<T>(input: List<T>): Map<string, T> {
+  const result = new Map<string, T>();
+  let index = 0;
+
+  for (const item of input) {
+    result.set(String(index), item);
+    index++;
+  }
+
+  return result;
+}
+`,
+				},
+				Blame: []contract.BlameEntry{
+					{
+						StartLine: 7, EndLine: 17,
+						CommitHash: "5566778899001122334455667788990011223344",
+						Author:     "vedant",
+						CommitDate: "2026-02-10T11:30:00Z",
+						Summary:    "add generic type converter",
+					},
+				},
+			},
+		},
+		GitMetadata: &contract.GitMetadata{
+			CurrentCommit:      "5566778899001122334455667788990011223344",
+			Branch:             "main",
+			UncommittedChanges: false,
+		},
+		Dependencies: &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct: map[string]string{
+				"lodash": "^4.17.21",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"lodash": {Version: "4.17.21"},
+			},
+		},
+	}
+}
+
+// backtickRunInRawInputBundle isolates spec.md req. 17 end-to-end:
+// RawInput itself contains an embedded 3-backtick run, proving the
+// enclosing fence upgrades to 4 backticks through a full Markdown()
+// render -- T009 already unit-tests renderRawInput directly on this
+// exact shape of input. RawInput is a regular quoted string (not a raw
+// string literal) specifically because it must contain literal
+// backticks, which a Go raw string cannot hold.
+func backtickRunInRawInputBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageTypeScript,
+		OS:                contract.OSLinux,
+		Fingerprint:       "dd55ee66ff77aa88",
+		RawInputTruncated: false,
+		RawInput:          "Error: bad markdown in error message\n```\nsome embedded code block\n```\n    at render (/repo/src/render.ts:9:2)\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)",
+		Runtime: contract.Runtime{
+			Name: "node", Version: "20.11.0", VersionSource: contract.VersionSourceTrace,
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "Error",
+				Message:   "bad markdown in error message",
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "/repo/src/render.ts", MethodName: "render",
+						LineNumber: 9, ColumnNumber: 2, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "node:internal/process/task_queues", MethodName: "processTicksAndRejections",
+						LineNumber: 95, ColumnNumber: 5, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "/repo/src/render.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 4, EndLine: 14, TargetLine: 9,
+					Code: `import { formatOutput } from './format';
+
+export function render(input: string): string {
+  const trimmed = input.trim();
+
+  return formatOutput(trimmed);
+}
+
+export function renderRaw(input: string): string {
+  return input;
+}
+`,
+				},
+				Blame: []contract.BlameEntry{
+					{
+						StartLine: 4, EndLine: 14,
+						CommitHash: "6677889900112233445566778899001122334455",
+						Author:     "vedant",
+						CommitDate: "2026-02-14T13:00:00Z",
+						Summary:    "add render helpers",
+					},
+				},
+			},
+		},
+		GitMetadata: &contract.GitMetadata{
+			CurrentCommit:      "6677889900112233445566778899001122334455",
+			Branch:             "main",
+			UncommittedChanges: false,
+		},
+		Dependencies: &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct: map[string]string{
+				"lodash": "^4.17.21",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"lodash": {Version: "4.17.21"},
+			},
+		},
+	}
+}
+
 // noDependenciesBundle is deliberately minimal, same reasoning as
 // noGitMetadataBundle -- it isolates the other T012 concern:
 // Dependencies == nil must omit the whole "## Dependencies" heading, not
