@@ -371,9 +371,9 @@ Caused by: java.sql.SQLException: Connection refused
 				FilePath: "/repo/src/main/java/com/example/Handler.java",
 				Language: LanguageJava,
 				Status:   StatusOK,
-				Snippet:  Snippet{StartLine: 40, EndLine: 44, TargetLine: 42, Code: "    public Response handle(Request req) {\n        var payload = req.body();\n        return repository.query(payload.id());\n    }\n"},
+				Snippet:  Snippet{StartLine: 40, EndLine: 43, TargetLine: 42, Code: "    public Response handle(Request req) {\n        var payload = req.body();\n        return repository.query(payload.id());\n    }\n"},
 				Blame: []BlameEntry{
-					{StartLine: 40, EndLine: 44, CommitHash: "0123456789abcdef0123456789abcdef01234567", Author: "vedant", CommitDate: "2026-07-28T09:15:00Z", Summary: "handle request payload validation"},
+					{StartLine: 40, EndLine: 43, CommitHash: "0123456789abcdef0123456789abcdef01234567", Author: "vedant", CommitDate: "2026-07-28T09:15:00Z", Summary: "handle request payload validation"},
 				},
 			},
 			{
@@ -381,9 +381,9 @@ Caused by: java.sql.SQLException: Connection refused
 				FilePath: "/repo/src/main/java/com/example/Repository.java",
 				Language: LanguageJava,
 				Status:   StatusOK,
-				Snippet:  Snippet{StartLine: 86, EndLine: 90, TargetLine: 88, Code: "    public Response query(String id) {\n        var conn = pool.getConnection();\n        return conn.execute(id);\n    }\n"},
+				Snippet:  Snippet{StartLine: 86, EndLine: 89, TargetLine: 88, Code: "    public Response query(String id) {\n        var conn = pool.getConnection();\n        return conn.execute(id);\n    }\n"},
 				Blame: []BlameEntry{
-					{StartLine: 86, EndLine: 90, CommitHash: "fedcba9876543210fedcba9876543210fedcba98", Author: "vedant", CommitDate: "2026-07-30T14:02:00Z", Summary: "add connection pooling"},
+					{StartLine: 86, EndLine: 89, CommitHash: "fedcba9876543210fedcba9876543210fedcba98", Author: "vedant", CommitDate: "2026-07-30T14:02:00Z", Summary: "add connection pooling"},
 				},
 			},
 		},
@@ -447,9 +447,9 @@ Node.js v20.11.0`
 				FilePath: "/repo/src/handler.ts",
 				Language: LanguageTypeScript,
 				Status:   StatusOK,
-				Snippet:  Snippet{StartLine: 25, EndLine: 29, TargetLine: 27, Code: "export function handleRequest(req: Request) {\n  const payload = req.body;\n  return service.queryDatabase(payload.id);\n}\n"},
+				Snippet:  Snippet{StartLine: 25, EndLine: 28, TargetLine: 27, Code: "export function handleRequest(req: Request) {\n  const payload = req.body;\n  return service.queryDatabase(payload.id);\n}\n"},
 				Blame: []BlameEntry{
-					{StartLine: 25, EndLine: 29, CommitHash: "89abcdef0123456789abcdef0123456789abcdef", Author: "vedant", CommitDate: "2026-07-29T11:40:00Z", Summary: "validate request payload before dispatch"},
+					{StartLine: 25, EndLine: 28, CommitHash: "89abcdef0123456789abcdef0123456789abcdef", Author: "vedant", CommitDate: "2026-07-29T11:40:00Z", Summary: "validate request payload before dispatch"},
 				},
 			},
 			{
@@ -457,9 +457,9 @@ Node.js v20.11.0`
 				FilePath: "/repo/src/service.ts",
 				Language: LanguageTypeScript,
 				Status:   StatusOK,
-				Snippet:  Snippet{StartLine: 61, EndLine: 65, TargetLine: 63, Code: "export async function queryDatabase(id: string) {\n  const conn = await pool.connect();\n  return conn.query(id);\n}\n"},
+				Snippet:  Snippet{StartLine: 61, EndLine: 64, TargetLine: 63, Code: "export async function queryDatabase(id: string) {\n  const conn = await pool.connect();\n  return conn.query(id);\n}\n"},
 				Blame: []BlameEntry{
-					{StartLine: 61, EndLine: 65, CommitHash: "76543210fedcba9876543210fedcba9876543210", Author: "vedant", CommitDate: "2026-08-01T16:20:00Z", Summary: "add connection pooling for query path"},
+					{StartLine: 61, EndLine: 64, CommitHash: "76543210fedcba9876543210fedcba9876543210", Author: "vedant", CommitDate: "2026-08-01T16:20:00Z", Summary: "add connection pooling for query path"},
 				},
 			},
 		},

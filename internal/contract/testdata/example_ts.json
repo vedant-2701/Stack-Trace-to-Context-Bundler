@@ -68,14 +68,14 @@
       "status": "ok",
       "snippet": {
         "startLine": 25,
-        "endLine": 29,
+        "endLine": 28,
         "targetLine": 27,
         "code": "export function handleRequest(req: Request) {\n  const payload = req.body;\n  return service.queryDatabase(payload.id);\n}\n"
       },
       "blame": [
         {
           "startLine": 25,
-          "endLine": 29,
+          "endLine": 28,
           "commitHash": "89abcdef0123456789abcdef0123456789abcdef",
           "author": "vedant",
           "commitDate": "2026-07-29T11:40:00Z",
@@ -93,14 +93,14 @@
       "status": "ok",
       "snippet": {
         "startLine": 61,
-        "endLine": 65,
+        "endLine": 64,
         "targetLine": 63,
         "code": "export async function queryDatabase(id: string) {\n  const conn = await pool.connect();\n  return conn.query(id);\n}\n"
       },
       "blame": [
         {
           "startLine": 61,
-          "endLine": 65,
+          "endLine": 64,
           "commitHash": "76543210fedcba9876543210fedcba9876543210",
           "author": "vedant",
           "commitDate": "2026-08-01T16:20:00Z",

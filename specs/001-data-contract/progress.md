@@ -411,3 +411,38 @@ no gate applies since no code or test file changed.
 **New open questions:** None. Note for whoever specs 005a (Java
 parser): this invariant now applies there too -- 005a's frame-building
 code must assign `Index` as slice position, same as 006a does.
+
+---
+
+**Date:** 2026-09-19
+**Task(s):** Cross-feature fix, found during 007-markdown-renderer's
+T011 hand-review and fixed on the user's request
+**What happened:** All four `Snippet`/`BlameEntry` windows across
+`exampleJavaBundle()` and `exampleTSBundle()` (`types_test.go`) had an
+off-by-one: each window's `Code` contains exactly 4 real lines, but
+`EndLine` was one higher than `StartLine+3` in every case (e.g.
+Handler.java `StartLine:40, EndLine:44` for 4 real lines, should be
+`EndLine:43`), so `EndLine-StartLine+1` never actually matched the real
+line count `internal/render`'s `renderSnippet` (007) depends on
+(req. 11's own invariant). Fixed all four: Handler.java `44→43`,
+Repository.java `90→89`, handler.ts `29→28`, service.ts `65→64` --
+and the matching `BlameEntry.EndLine` in each of the four (which had
+mirrored the wrong `Snippet.EndLine`, so needed the same correction to
+stay consistent with it). `TargetLine` values were already within the
+corrected ranges in all four cases, so none needed to change.
+Regenerated both `testdata/example_java.json` and
+`testdata/example_ts.json` via `-update`; diffed by eye against the
+previous versions to confirm only the eight `endLine` occurrences (four
+snippets + four blame entries) changed, nothing else.
+**Verified:** user ran `go test ./internal/contract/... -run TestGolden
+-update` to regenerate both fixtures; diff hand-reviewed by Claude
+(clean -- only the expected `endLine` values shifted); user then ran
+`go build ./...`, `go test ./internal/contract/...`, `golangci-lint run
+./internal/contract/...`, `gofumpt -l ./internal/contract/` on their
+machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None -- fixture-data correction only,
+no field added/removed/retyped, no enum meaning changed, so no
+`schemaVersion` bump per requirement 6's bump-trigger rule.
+**New open questions:** None.
+
+---
