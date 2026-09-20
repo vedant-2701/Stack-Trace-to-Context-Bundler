@@ -229,6 +229,223 @@ func noGitMetadataBundle(t *testing.T) contract.Bundle {
 	}
 }
 
+// elidedFramesBundle isolates spec.md req. 14: a node's
+// ElidedFrameCount > 0 renders a single "... N more frames (shared
+// with enclosing exception)" line immediately after that node's frame
+// list. Only the second (Caused-by) node carries a nonzero count here,
+// so this also implicitly confirms the first node's ElidedFrameCount ==
+// 0 renders no such line.
+func elidedFramesBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageTypeScript,
+		OS:                contract.OSLinux,
+		Fingerprint:       "aa22bb33cc44dd55",
+		RawInputTruncated: false,
+		RawInput: `RuntimeException: top-level failure
+    at run (/repo/src/main.ts:10:5)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+Caused by: IOException: disk read failed
+    at readFile (/repo/src/io.ts:22:8)
+    ... 6 more frames (shared with enclosing exception)`,
+		Runtime: contract.Runtime{
+			Name: "node", Version: "20.11.0", VersionSource: contract.VersionSourceTrace,
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "RuntimeException",
+				Message:   "top-level failure",
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "/repo/src/main.ts", MethodName: "run",
+						LineNumber: 10, ColumnNumber: 5, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "node:internal/process/task_queues", MethodName: "processTicksAndRejections",
+						LineNumber: 95, ColumnNumber: 5, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+			{
+				ClassName:        "IOException",
+				Message:          "disk read failed",
+				ElidedFrameCount: 6,
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "/repo/src/io.ts", MethodName: "readFile",
+						LineNumber: 22, ColumnNumber: 8, Bucket: contract.BucketOwn,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "/repo/src/main.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 5, EndLine: 15, TargetLine: 10,
+					Code: `import { readFile } from './io';
+
+export async function run() {
+  try {
+    const data = await readFile('/tmp/input.txt');
+    console.log(data);
+  } catch (err) {
+    throw err;
+  }
+}
+
+`,
+				},
+				Blame: []contract.BlameEntry{
+					{
+						StartLine: 5, EndLine: 15,
+						CommitHash: "2233445566778899001122334455667788990011",
+						Author:     "vedant",
+						CommitDate: "2026-04-11T14:20:00Z",
+						Summary:    "wire up main entrypoint",
+					},
+				},
+			},
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 1, FrameIndex: 0},
+				FilePath: "/repo/src/io.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 17, EndLine: 27, TargetLine: 22,
+					Code: `import * as fs from 'fs/promises';
+
+export async function readFile(path: string): Promise<string> {
+  const buffer = await fs.readFile(path);
+
+  return buffer.toString('utf-8');
+}
+
+export async function writeFile(path: string, data: string) {
+  await fs.writeFile(path, data);
+}
+`,
+				},
+				Blame: []contract.BlameEntry{
+					{
+						StartLine: 17, EndLine: 27,
+						CommitHash: "3344556677889900112233445566778899001122",
+						Author:     "vedant",
+						CommitDate: "2026-04-15T09:05:00Z",
+						Summary:    "add file IO helpers",
+					},
+				},
+			},
+		},
+		GitMetadata: &contract.GitMetadata{
+			CurrentCommit:      "3344556677889900112233445566778899001122",
+			Branch:             "main",
+			UncommittedChanges: false,
+		},
+		Dependencies: &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct: map[string]string{
+				"lodash": "^4.17.21",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"lodash": {Version: "4.17.21"},
+			},
+		},
+	}
+}
+
+// multilineMessageBundle isolates spec.md req. 6-7 end-to-end (T007
+// already unit-tests renderChain's blockquote logic directly; this
+// proves it also survives a full Markdown() render): Message contains a
+// wholly empty line in its middle, which must render as a bare ">"
+// rather than an actual blank line, keeping the blockquote unbroken.
+func multilineMessageBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageTypeScript,
+		OS:                contract.OSLinux,
+		Fingerprint:       "bb33cc44dd55ee66",
+		RawInputTruncated: false,
+		RawInput: `ValidationError: Expected values to be strictly equal:
+
+foo !== bar
+    at assertEqual (/repo/src/assert.ts:6:7)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)`,
+		Runtime: contract.Runtime{
+			Name: "node", Version: "20.11.0", VersionSource: contract.VersionSourceTrace,
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "ValidationError",
+				Message:   "Expected values to be strictly equal:\n\nfoo !== bar",
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "/repo/src/assert.ts", MethodName: "assertEqual",
+						LineNumber: 6, ColumnNumber: 7, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "node:internal/process/task_queues", MethodName: "processTicksAndRejections",
+						LineNumber: 95, ColumnNumber: 5, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "/repo/src/assert.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 3, EndLine: 13, TargetLine: 6,
+					Code: `export function assertEqual(a: unknown, b: unknown) {
+  if (a !== b) {
+    throw new ValidationError(
+      'Expected values to be strictly equal: ' + a + ' !== ' + b
+    );
+  }
+}
+
+export function assertNotEqual(a: unknown, b: unknown) {
+  if (a === b) {
+    throw new ValidationError('Expected values to differ');
+`,
+				},
+				Blame: []contract.BlameEntry{
+					{
+						StartLine: 3, EndLine: 13,
+						CommitHash: "4455667788990011223344556677889900112233",
+						Author:     "vedant",
+						CommitDate: "2026-03-20T16:40:00Z",
+						Summary:    "add assertion helpers",
+					},
+				},
+			},
+		},
+		GitMetadata: &contract.GitMetadata{
+			CurrentCommit:      "4455667788990011223344556677889900112233",
+			Branch:             "main",
+			UncommittedChanges: false,
+		},
+		Dependencies: &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct: map[string]string{
+				"lodash": "^4.17.21",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"lodash": {Version: "4.17.21"},
+			},
+		},
+	}
+}
+
 // noDependenciesBundle is deliberately minimal, same reasoning as
 // noGitMetadataBundle -- it isolates the other T012 concern:
 // Dependencies == nil must omit the whole "## Dependencies" heading, not

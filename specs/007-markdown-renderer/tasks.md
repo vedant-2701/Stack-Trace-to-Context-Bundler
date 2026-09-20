@@ -195,7 +195,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: all three golden tests pass; 4 verification commands
       clean.
 
-- [ ] **T014 — Golden fixtures: `elided_frames`, `multiline_message`**
+- [x] **T014 — Golden fixtures: `elided_frames`, `multiline_message`**
       - Depends on: T011
       (spec.md acceptance criteria for req. 14 and req. 6-7).
       `multiline_message`'s `Message` must include at least one wholly

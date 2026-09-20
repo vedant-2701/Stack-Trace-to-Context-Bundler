@@ -480,3 +480,32 @@ machine; all four clean, confirmed "done, no errors".
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-19
+**Task(s):** T014 — Golden fixtures: `elided_frames`, `multiline_message`
+**What happened:** Added `elidedFramesBundle` (two-node chain; node 0's
+frames normal, `ElidedFrameCount: 0`; node 1's own frame carries
+`ElidedFrameCount: 6`) proving the elided-frames line renders only for
+the node with a nonzero count, placed immediately after that node's
+frame list; and `multilineMessageBundle` (single node, `Message` with a
+wholly empty line embedded in the middle) proving req. 6-7's blockquote
+behavior -- already unit-tested directly in T007 -- also survives a full
+end-to-end `Markdown()` render, not just `renderChain` in isolation.
+Both snippets' line counts (11 each, `EndLine-StartLine+1`) and target-
+line positions were manually recounted against the raw string literals
+before running anything, per the T011/T013 lesson -- no authoring bugs
+this time.
+Two new `TestMarkdown` table entries, no harness changes.
+**Verified:** user ran `go test ./internal/render/... -run TestMarkdown
+-update` to generate both fixtures; both hand-reviewed by Claude against
+spec.md req. 14 and req. 6-7 (clean -- confirmed the elided-frames line's
+correct placement relative to the last node and the `Caused by ↓`
+transition, and the embedded-blank-line blockquote staying unbroken with
+correct escaping and target-line alignment); approved, then user ran `go
+build ./...`, `go test ./internal/render/...`, `golangci-lint run
+./internal/render/...`, `gofumpt -l ./internal/render/` on their
+machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
