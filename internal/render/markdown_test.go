@@ -1,7 +1,10 @@
 package render
 
 import (
+	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -661,4 +664,56 @@ func TestRenderRawInput(t *testing.T) {
 			t.Errorf("renderRawInput(..., false) = %q, want no truncation note", got)
 		}
 	})
+}
+
+// --- T011: golden fixture tests ---
+//
+// Run `go test ./internal/render/... -run TestMarkdown -update` after a
+// deliberate change to Markdown()'s output shape, to regenerate the
+// affected golden file(s). Hand-review the diff before committing --
+// this flag is how a fixture is ever produced or updated, never by
+// hand-editing a .golden.md file directly.
+var updateGolden = flag.Bool("update", false, "regenerate golden testdata fixtures")
+
+func TestMarkdown(t *testing.T) {
+	tests := []struct {
+		name       string
+		bundle     func(t *testing.T) contract.Bundle
+		goldenPath string
+	}{
+		{"ts_basic", tsBasicBundle, filepath.Join("testdata", "golden", "ts_basic.golden.md")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Markdown(tt.bundle(t))
+			assertGoldenMarkdown(t, got, tt.goldenPath)
+		})
+	}
+}
+
+// assertGoldenMarkdown compares got byte-for-byte against the fixture at
+// path. With -update, it (re)writes the fixture from got instead of
+// comparing -- mirrors internal/contract/types_test.go's assertGolden.
+func assertGoldenMarkdown(t *testing.T, got, path string) {
+	t.Helper()
+
+	if *updateGolden {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("MkdirAll: %v", err)
+		}
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatalf("WriteFile: %v", err)
+		}
+		return
+	}
+
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s): %v -- run with -update to generate it", path, err)
+	}
+
+	if got != string(want) {
+		t.Errorf("%s is out of date with Markdown()'s current output -- run:\n  go test ./internal/render/... -run TestMarkdown -update\nto regenerate it, then review the diff", path)
+	}
 }

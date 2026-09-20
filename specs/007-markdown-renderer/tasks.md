@@ -164,13 +164,19 @@ failing acceptance criterion later traces back to exactly one task.
       added in this task (T011 covers the first real end-to-end
       assertion).
 
-- [ ] **T011 — Golden fixture: `ts_basic`** (first end-to-end proof)
+- [x] **T011 — Golden fixture: `ts_basic`** (first end-to-end proof)
       - Depends on: T010
       Add the golden-file test harness (table-driven, `-update` flag per
-      plan.md) and the first fixture, reusing
-      `internal/contract/testdata/example_ts.json` verbatim as input.
-      Hand-verify the generated `.golden.md` once by eye against
-      `spec.md`'s rendered mockup from interrogation before committing it.
+      plan.md) and the first fixture: a hand-authored `contract.Bundle{...}`
+      Go literal in `fixtures_test.go` (no dependency on
+      `internal/contract/testdata/example_ts.json` -- matches how every
+      other fixture in T012-T016 is built). Own-code snippet windows use
+      the real ±5-line convention (`specs/INDEX.md`'s 011 row), 11 total
+      lines each. Hand-verify the generated `.golden.md` once by eye
+      against `spec.md`'s functional requirements (reqs. 1-22) before
+      committing it -- there is no separate rendered-mockup artifact
+      anywhere in this repo; the requirements list itself is the review
+      baseline.
       - Acceptance: `TestMarkdown/ts_basic` (or equivalent) passes;
       golden file hand-reviewed and committed; 4 verification commands
       clean.

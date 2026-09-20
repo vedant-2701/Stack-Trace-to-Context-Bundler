@@ -347,3 +347,73 @@ criteria -- T011 is the first end-to-end assertion.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-19
+**Task(s):** T011 — Golden fixture: `ts_basic`
+**What happened:** Built the golden-test harness (`-update` flag,
+table-driven `TestMarkdown`, `assertGoldenMarkdown`, cloned from
+`internal/contract/types_test.go`'s own `assertGolden` pattern) and the
+first fixture -- but the fixture's design changed mid-task from what
+`plan.md` had specified, on the user's pushback, and that pushback was
+right:
+1. Original plan (from the earlier pre-implementation audit) had
+   `ts_basic` unmarshal `internal/contract/testdata/example_ts.json`
+   rather than a hand-authored `contract.Bundle{...}` literal, citing
+   constitution Article IV. The user objected: production code never
+   round-trips a `Bundle` through JSON before rendering it -- `Markdown()`
+   is always called on an in-memory Go value -- so testing via JSON is
+   both unrealistic and, concretely, masked a real bug (below) that a
+   freshly-authored fixture wouldn't have. Re-reading Article IV's actual
+   text on request confirmed it: the article is about never hand-writing
+   a second copy of the bundle *shape* (a JSON Schema, a mirror struct),
+   not about which format other features' fixtures must be built in. A
+   `contract.Bundle{...}` literal is an instance of the one canonical
+   shape, compile-checked -- exactly what T012-T016's fixtures were
+   already planned to be. Rewrote `tsBasicBundle` as a hand-authored
+   literal and fixed `plan.md`'s File/module-layout and Testing-strategy
+   sections, which had documented the JSON-reuse special-case as if
+   Article IV required it.
+2. While reviewing the (now-superseded) JSON-backed golden output by eye
+   against `spec.md`'s requirements 1-22, found a real bug in
+   `internal/contract/types_test.go`'s `exampleTSBundle()` (001's own
+   fixture, not 007's code): both `CodeContext.Snippet` entries had
+   `EndLine` one higher than their `Code`'s actual line count (e.g.
+   `StartLine:25, EndLine:29` but only 4 real lines, 25-28). Moot once
+   the fixture stopped depending on that JSON file -- left alone, not
+   fixed, since it's now out of 007's scope; flagged to the user as a
+   latent 001 bug they may want addressed separately.
+3. The user also specified the real own-code snippet window size --
+   ±5 lines around the target (11 total) -- which was verified (not
+   taken on faith) against `specs/INDEX.md`'s 011 row ("fixed at ±5/side
+   in 004") before use. The new fixture's two snippets (22-32 target 27;
+   58-68 target 63) both use this real window size, replacing the
+   original fixture's inconsistent 4-5 line windows.
+One authoring bug caught before running anything: the raw string
+literals for both `Snippet.Code` values already end with exactly one
+trailing newline (from the line break before the closing backtick), and
+an extra `+ "\n"` was mistakenly appended on top -- would have produced
+a spurious 12th blank line once `renderSnippet` trimmed only one trailing
+newline. Caught and fixed before the first test run.
+**Verified:** user ran `go test ./internal/render/... -run TestMarkdown
+-update` to generate the fixture from the new literal; content
+hand-reviewed by Claude against spec.md reqs. 1-22 (all clean: preamble,
+metadata order/omission, chain structure, frame-line formats including
+dependency PackageName-only suffix, snippet exact-line-count with correct
+target markers, blame table, `Caused by ↓` placement, Dependencies
+formatting, raw-input fence, escaping) -- approved, then user ran `go
+build ./...`, `go test ./internal/render/...`, `golangci-lint run
+./internal/render/...`, `gofumpt -l ./internal/render/` on their
+machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** `fixtures_test.go`'s `ts_basic` builder
+and `plan.md`'s File/module-layout + Testing-strategy sections were
+rewritten mid-task per the user's correction above -- not a deviation
+from the *confirmed* T011 plan (which was updated to match before
+implementation), but a correction to an earlier session's
+pre-implementation-audit decision that turned out to rest on a
+misreading of Article IV.
+**New open questions:** Whether to fix `exampleTSBundle()`'s `EndLine`
+off-by-one in `internal/contract/types_test.go` (001's own fixture) --
+out of 007's scope, left to the user's discretion, not filed to
+`known-gaps.md` yet.
+
+---
