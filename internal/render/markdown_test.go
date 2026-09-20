@@ -684,6 +684,9 @@ func TestMarkdown(t *testing.T) {
 		{"ts_basic", tsBasicBundle, filepath.Join("testdata", "golden", "ts_basic.golden.md")},
 		{"no_git_metadata", noGitMetadataBundle, filepath.Join("testdata", "golden", "no_git_metadata.golden.md")},
 		{"no_dependencies", noDependenciesBundle, filepath.Join("testdata", "golden", "no_dependencies.golden.md")},
+		{"code_context_not_found", codeContextNotFoundBundle, filepath.Join("testdata", "golden", "code_context_not_found.golden.md")},
+		{"code_context_stale", codeContextStaleBundle, filepath.Join("testdata", "golden", "code_context_stale.golden.md")},
+		{"code_context_ok_no_blame", codeContextOKNoBlameBundle, filepath.Join("testdata", "golden", "code_context_ok_no_blame.golden.md")},
 	}
 
 	for _, tt := range tests {

@@ -187,7 +187,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: both golden tests pass; 4 verification commands
       clean.
 
-- [ ] **T013 — Golden fixtures: `code_context_not_found`,
+- [x] **T013 — Golden fixtures: `code_context_not_found`,
       `code_context_stale`, `code_context_ok_no_blame`**
       - Depends on: T011
       (spec.md acceptance criteria for all three non-table `CodeContext`

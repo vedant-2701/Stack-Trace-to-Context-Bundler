@@ -307,3 +307,203 @@ func noDependenciesBundle(t *testing.T) contract.Bundle {
 		Dependencies: nil,
 	}
 }
+
+// codeContextNotFoundBundle is deliberately minimal, isolating one
+// CodeContext outcome (spec.md req. 10): Status == not_found renders
+// only a flagged "⚠ <Note>" line -- no snippet, no blame table --
+// regardless of what Snippet/Blame happen to hold (left zero-value
+// here to make that explicit). GitMetadata/Dependencies are present and
+// ordinary so neither is also under test in this fixture.
+func codeContextNotFoundBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageTypeScript,
+		OS:                contract.OSLinux,
+		Fingerprint:       "cc11dd22ee33ff44",
+		RawInputTruncated: false,
+		RawInput: `Error: legacy path removed
+    at parseLegacy (/repo/src/legacy/oldParser.ts:5:3)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)`,
+		Runtime: contract.Runtime{
+			Name: "node", Version: "20.11.0", VersionSource: contract.VersionSourceTrace,
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "Error",
+				Message:   "legacy path removed",
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "/repo/src/legacy/oldParser.ts", MethodName: "parseLegacy",
+						LineNumber: 5, ColumnNumber: 3, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "node:internal/process/task_queues", MethodName: "processTicksAndRejections",
+						LineNumber: 95, ColumnNumber: 5, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "/repo/src/legacy/oldParser.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusNotFound,
+				Note:     "file not found in current checkout (deleted or renamed since the trace was captured)",
+			},
+		},
+		GitMetadata: &contract.GitMetadata{
+			CurrentCommit:      "1234567890abcdef1234567890abcdef12345678",
+			Branch:             "main",
+			UncommittedChanges: false,
+		},
+		Dependencies: &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct: map[string]string{
+				"lodash": "^4.17.21",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"lodash": {Version: "4.17.21"},
+			},
+		},
+	}
+}
+
+// codeContextStaleBundle mirrors codeContextNotFoundBundle exactly,
+// isolating the other non-rendering CodeContext outcome: Status ==
+// stale behaves identically to not_found -- flagged Note line only.
+func codeContextStaleBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageTypeScript,
+		OS:                contract.OSLinux,
+		Fingerprint:       "dd22ee33ff44aa11",
+		RawInputTruncated: false,
+		RawInput: `Error: stale checkout mismatch
+    at formatDate (/repo/src/utils/formatDate.ts:8:5)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)`,
+		Runtime: contract.Runtime{
+			Name: "node", Version: "20.11.0", VersionSource: contract.VersionSourceTrace,
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "Error",
+				Message:   "stale checkout mismatch",
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "/repo/src/utils/formatDate.ts", MethodName: "formatDate",
+						LineNumber: 8, ColumnNumber: 5, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "node:internal/process/task_queues", MethodName: "processTicksAndRejections",
+						LineNumber: 95, ColumnNumber: 5, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "/repo/src/utils/formatDate.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusStale,
+				Note:     "file has uncommitted local changes; snippet may not match the trace",
+			},
+		},
+		GitMetadata: &contract.GitMetadata{
+			CurrentCommit:      "1234567890abcdef1234567890abcdef12345678",
+			Branch:             "main",
+			UncommittedChanges: true,
+		},
+		Dependencies: &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct: map[string]string{
+				"lodash": "^4.17.21",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"lodash": {Version: "4.17.21"},
+			},
+		},
+	}
+}
+
+// codeContextOKNoBlameBundle isolates the third non-table CodeContext
+// outcome: Status == ok with Blame empty still renders the snippet, but
+// the blame table is replaced by a flagged "⚠ <Note>" line explaining
+// why (e.g. no git repository found).
+func codeContextOKNoBlameBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageTypeScript,
+		OS:                contract.OSLinux,
+		Fingerprint:       "ee33ff44aa11bb22",
+		RawInputTruncated: false,
+		RawInput: `Error: missing repo context
+    at slugify (/repo/src/utils/slugify.ts:10:3)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)`,
+		Runtime: contract.Runtime{
+			Name: "node", Version: "20.11.0", VersionSource: contract.VersionSourceTrace,
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "Error",
+				Message:   "missing repo context",
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "/repo/src/utils/slugify.ts", MethodName: "slugify",
+						LineNumber: 10, ColumnNumber: 3, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "node:internal/process/task_queues", MethodName: "processTicksAndRejections",
+						LineNumber: 95, ColumnNumber: 5, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "/repo/src/utils/slugify.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 5, EndLine: 15, TargetLine: 10,
+					Code: `export function slugify(input: string): string {
+  const trimmed = input.trim();
+  const lower = trimmed.toLowerCase();
+
+  return lower
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+export function unslugify(slug: string): string {
+  return slug.replace(/-/g, ' ');
+`,
+				},
+				Blame: nil,
+				Note:  "no git repository found at this path",
+			},
+		},
+		GitMetadata: &contract.GitMetadata{
+			CurrentCommit:      "1234567890abcdef1234567890abcdef12345678",
+			Branch:             "main",
+			UncommittedChanges: false,
+		},
+		Dependencies: &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct: map[string]string{
+				"lodash": "^4.17.21",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"lodash": {Version: "4.17.21"},
+			},
+		},
+	}
+}

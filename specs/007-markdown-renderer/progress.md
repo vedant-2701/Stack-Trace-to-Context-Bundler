@@ -445,3 +445,38 @@ confirmed "done, no errors".
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-19
+**Task(s):** T013 — Golden fixtures: `code_context_not_found`,
+`code_context_stale`, `code_context_ok_no_blame`
+**What happened:** Added three deliberately minimal `contract.Bundle{...}`
+literals, same T012 pattern (single node, one own-bucket frame carrying
+the `CodeContext` under test, one runtime frame, `GitMetadata`/
+`Dependencies` present and ordinary so neither is also under test),
+each isolating one of spec.md req. 10's three non-table `CodeContext`
+outcomes: `codeContextNotFoundBundle` (`Status: not_found`, zero-value
+`Snippet`/`Blame`) and `codeContextStaleBundle` (`Status: stale`, same
+shape) both prove only a flagged `⚠ <Note>` line renders; `codeContext
+OKNoBlameBundle` (`Status: ok`, real 11-line snippet, `Blame: nil`,
+`Note` set) proves the snippet still renders but the table is replaced
+by a flagged `⚠ <Note>` line.
+One authoring bug caught before running anything, same class as T011's:
+the `codeContextOKNoBlameBundle` snippet (`StartLine:5, EndLine:15`)
+was first written with 12 real lines instead of 11 -- caught by manually
+recounting the raw string against `EndLine-StartLine+1` before running
+any command, fixed by dropping the window's trailing closing brace
+(matching `ts_basic`'s own precedent of a window ending mid-function).
+Three new `TestMarkdown` table entries, no harness changes.
+**Verified:** user ran `go test ./internal/render/... -run TestMarkdown
+-update` to generate all three fixtures; all hand-reviewed by Claude
+against spec.md req. 10 (clean -- confirmed `stale` behaves identically
+to `not_found`, parens/semicolon escaping stayed consistent with earlier
+tasks, and the `ok`+empty-`Blame` case's snippet-then-Note-line ordering
+matched `renderCodeContext`'s real branching); approved, then user ran
+`go build ./...`, `go test ./internal/render/...`, `golangci-lint run
+./internal/render/...`, `gofumpt -l ./internal/render/` on their
+machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
