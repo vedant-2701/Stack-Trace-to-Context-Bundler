@@ -147,3 +147,163 @@ export function closePool(): void {
 		},
 	}
 }
+
+// noGitMetadataBundle is deliberately minimal (single exception node,
+// one own-bucket frame, one runtime frame) -- it exists to isolate one
+// concern only: GitMetadata == nil must omit the "Git: ..." metadata
+// line entirely, not render it empty. Dependencies is present (normal)
+// so this fixture doesn't also exercise T012's other concern.
+func noGitMetadataBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageTypeScript,
+		OS:                contract.OSLinux,
+		Fingerprint:       "aa11bb22cc33dd44",
+		RawInputTruncated: false,
+		RawInput: `RangeError: Invalid array length
+    at buildMatrix (/repo/src/matrix.ts:14:10)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)`,
+		Runtime: contract.Runtime{
+			Name: "node", Version: "20.11.0", VersionSource: contract.VersionSourceTrace,
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "RangeError",
+				Message:   "Invalid array length",
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "/repo/src/matrix.ts", MethodName: "buildMatrix",
+						LineNumber: 14, ColumnNumber: 10, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "node:internal/process/task_queues", MethodName: "processTicksAndRejections",
+						LineNumber: 95, ColumnNumber: 5, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "/repo/src/matrix.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 9, EndLine: 19, TargetLine: 14,
+					Code: `export function buildMatrix(rows: number, cols: number) {
+  if (rows < 0 || cols < 0) {
+    throw new RangeError('Invalid array length');
+  }
+
+  const matrix = new Array(rows * cols);
+  for (let i = 0; i < matrix.length; i++) {
+    matrix[i] = 0;
+  }
+  return matrix;
+}
+`,
+				},
+				Blame: []contract.BlameEntry{
+					{
+						StartLine: 9, EndLine: 19,
+						CommitHash: "11223344556677889900aabbccddeeff0011223",
+						Author:     "vedant",
+						CommitDate: "2026-06-10T12:00:00Z",
+						Summary:    "add matrix builder utility",
+					},
+				},
+			},
+		},
+		GitMetadata: nil,
+		Dependencies: &contract.Dependencies{
+			ManifestFile: contract.ManifestFilePackageJSON,
+			Direct: map[string]string{
+				"lodash": "^4.17.21",
+			},
+			Locked: map[string]contract.LockedDependency{
+				"lodash": {Version: "4.17.21"},
+			},
+		},
+	}
+}
+
+// noDependenciesBundle is deliberately minimal, same reasoning as
+// noGitMetadataBundle -- it isolates the other T012 concern:
+// Dependencies == nil must omit the whole "## Dependencies" heading, not
+// render it with no content. GitMetadata is present (normal) so this
+// fixture doesn't also exercise T012's other concern.
+func noDependenciesBundle(t *testing.T) contract.Bundle {
+	t.Helper()
+
+	return contract.Bundle{
+		SchemaVersion:     contract.SchemaVersion,
+		Language:          contract.LanguageJava,
+		OS:                contract.OSLinux,
+		Fingerprint:       "ee55ff66aa77bb88",
+		RawInputTruncated: false,
+		RawInput: `java.lang.NullPointerException: Cannot invoke "String.length()" because "name" is null
+	at com.example.Greeter.greet(Greeter.java:18)
+	at java.base/java.lang.Thread.run(Thread.java:840)`,
+		Runtime: contract.Runtime{
+			Name: "jvm", Version: "17.0.9", VersionSource: contract.VersionSourceLocalEnvironment,
+			Note: "inferred from local `java -version`",
+		},
+		Chain: []contract.ExceptionNode{
+			{
+				ClassName: "java.lang.NullPointerException",
+				Message:   `Cannot invoke "String.length()" because "name" is null`,
+				Frames: []contract.Frame{
+					{
+						Index: 0, FilePath: "src/main/java/com/example/Greeter.java",
+						ClassName: "Greeter", MethodName: "greet",
+						LineNumber: 18, Bucket: contract.BucketOwn,
+					},
+					{
+						Index: 1, FilePath: "java.base/java.lang.Thread", MethodName: "run",
+						LineNumber: 840, Bucket: contract.BucketRuntime,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "src/main/java/com/example/Greeter.java",
+				Language: contract.LanguageJava,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 13, EndLine: 23, TargetLine: 18,
+					Code: `public class Greeter {
+
+  private final String prefix;
+
+  public String greet(String name) {
+    return prefix + name.length();
+  }
+
+  public Greeter(String prefix) {
+    this.prefix = prefix;
+  }
+`,
+				},
+				Blame: []contract.BlameEntry{
+					{
+						StartLine: 13, EndLine: 23,
+						CommitHash: "aabbccddeeff00112233445566778899aabbccd",
+						Author:     "vedant",
+						CommitDate: "2026-05-02T08:30:00Z",
+						Summary:    "add greeter service",
+					},
+				},
+			},
+		},
+		GitMetadata: &contract.GitMetadata{
+			CurrentCommit:      "aabbccddeeff00112233445566778899aabbccd",
+			Branch:             "main",
+			UncommittedChanges: false,
+		},
+		Dependencies: nil,
+	}
+}

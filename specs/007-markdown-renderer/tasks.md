@@ -181,7 +181,7 @@ failing acceptance criterion later traces back to exactly one task.
       golden file hand-reviewed and committed; 4 verification commands
       clean.
 
-- [ ] **T012 — Golden fixtures: `no_git_metadata`, `no_dependencies`**
+- [x] **T012 — Golden fixtures: `no_git_metadata`, `no_dependencies`**
       - Depends on: T011
       (spec.md acceptance criteria for nil `GitMetadata`/`Dependencies`)
       - Acceptance: both golden tests pass; 4 verification commands

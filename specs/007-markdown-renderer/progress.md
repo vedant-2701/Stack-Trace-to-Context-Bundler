@@ -417,3 +417,31 @@ out of 007's scope, left to the user's discretion, not filed to
 `known-gaps.md` yet.
 
 ---
+
+**Date:** 2026-09-19
+**Task(s):** T012 — Golden fixtures: `no_git_metadata`, `no_dependencies`
+**What happened:** Added two deliberately minimal `contract.Bundle{...}`
+literals (single exception node, one own-bucket frame with an 11-line
+snippet + single blame row, one runtime frame each) rather than reusing
+`ts_basic`'s larger two-node shape -- each fixture isolates exactly one
+concern: `noGitMetadataBundle` (`GitMetadata: nil`, `Dependencies`
+present) proves the `Git:` line is omitted from metadata without
+disturbing anything else; `noDependenciesBundle` (`Dependencies: nil`,
+`GitMetadata` present) proves the whole `## Dependencies` heading is
+absent, not rendered empty. No harness changes needed -- two new
+`TestMarkdown` table entries reusing T011's `assertGoldenMarkdown`.
+**Verified:** user ran `go test ./internal/render/... -run TestMarkdown
+-update` to generate both fixtures; both hand-reviewed by Claude against
+spec.md reqs. 1-22 (clean -- confirmed the `Git:` line's clean omission,
+the `## Dependencies` heading's complete absence with the unconditional
+pre-raw-input blank line still intact so no double-blank/missing-blank
+artifact appears where the section would have been, and that
+`LocalEnvironment`+`Note` Runtime formatting and Message escaping stayed
+consistent with earlier tasks); approved, then user ran `go build ./...`,
+`go test ./internal/render/...`, `golangci-lint run ./internal/render/...`,
+`gofumpt -l ./internal/render/` on their machine; all four clean,
+confirmed "done, no errors".
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---

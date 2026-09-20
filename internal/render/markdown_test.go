@@ -682,6 +682,8 @@ func TestMarkdown(t *testing.T) {
 		goldenPath string
 	}{
 		{"ts_basic", tsBasicBundle, filepath.Join("testdata", "golden", "ts_basic.golden.md")},
+		{"no_git_metadata", noGitMetadataBundle, filepath.Join("testdata", "golden", "no_git_metadata.golden.md")},
+		{"no_dependencies", noDependenciesBundle, filepath.Join("testdata", "golden", "no_dependencies.golden.md")},
 	}
 
 	for _, tt := range tests {
