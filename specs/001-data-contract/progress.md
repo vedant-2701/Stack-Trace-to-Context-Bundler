@@ -334,3 +334,115 @@ changed files, all clean.
 **Deviations from plan (if any):** None -- corrections to existing work,
 not new scope.
 **New open questions:** None.
+
+---
+
+**Date:** 2026-09-18
+**Task(s):** Cross-feature fix, requested by 007-markdown-renderer's
+pre-implementation audit
+**What happened:** `007-markdown-renderer/spec.md` requirement 18 needed
+to format a raw-input-truncation note that names the 512 KB cap, but that
+constant was unexported (`rawInputCapBytes`), so no other package could
+read the real value -- 007 would have had to hardcode the literal "512
+KB" in its own spec/implementation, duplicating a fact this package
+already owns, with no link between the two if the cap ever changes.
+Renamed `rawInputCapBytes` -> `RawInputCapBytes` (export only, no
+behavior change) in `rawinput.go`, updated its doc comment and the two
+other stale lowercase references inside it, and fixed all six lowercase
+references in `rawinput_test.go` accordingly. Same reasoning as
+`BlameEntry.CommitDate` being pre-formatted once here rather than each
+renderer deriving it independently (constitution Article V) -- one
+renderer-facing fact, one place it's actually defined.
+Verified: not run by the user directly in this session (edit made via
+the Filesystem connector while assisting 007's planning, not a live
+coding session) -- `go build ./...`/`go test ./internal/contract/...`/
+`golangci-lint run ./internal/contract/...`/`gofumpt -l` on both changed
+files should be run before this is committed, same gate as any other
+change to this package.
+**Deviations from plan (if any):** None to `001`'s own shape/behavior --
+Go API surface only (one constant newly exported), no JSON contract
+change, no schemaVersion bump warranted.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-19
+**Task(s):** Cross-feature fix, requested by a second pass of
+007-markdown-renderer's pre-implementation audit
+**What happened:** The prior entry (2026-09-18) exported
+`RawInputCapBytes` but didn't add it to this file's own "API /
+contracts" section, which still listed only `Bundle`, `SchemaVersion`,
+`ComputeFingerprint`, and `TruncateRawInput` -- the exact kind of
+doc-drifts-from-code gap this project's audits exist to catch, this time
+self-inflicted one entry up. Added `contract.RawInputCapBytes` as a
+fifth bullet, pointing back to this progress log for why it exists.
+Doc-only change, no code touched, no gate to run.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-19
+**Task(s):** Cross-feature fix, requested by a third pass of
+007-markdown-renderer's pre-implementation audit
+**What happened:** That audit flagged that `Frame.Index` and
+`FrameRef.FrameIndex` are only equal by coincidence of 006a's
+implementation choice (`frame.Index = len(frames)` before appending),
+not by any stated contract guarantee -- risking a silent bug in any
+future consumer (starting with 007's `renderChain`) that builds a
+Frame-to-CodeContext lookup keyed one way while a producer populates it
+the other way. Formalized the equivalence as a contract-level
+invariant rather than an implementation detail: added doc comments to
+`Frame.Index` and `FrameRef` in `types.go` stating every parser MUST
+assign `Index` as the frame's zero-based position within its node's
+`Frames` slice, and that `FrameRef.FrameIndex` is defined as that same
+value. Mirrored the clarification into `spec.md` (requirements 9 and
+10) and `plan.md`'s Data model JSONC comments (the `frames[].index` and
+`codeContexts[].frameRef` fields), so all three documents agree with
+the struct. Pure documentation -- no field renamed, removed, or
+retyped, no enum meaning changed, so no `schemaVersion` bump per
+requirement 6's own bump-trigger rule (this doesn't touch the shape,
+only names an invariant the one existing parser already upholds).
+**Verified:** not run by the user directly in this session (doc-only
+edit made via the Filesystem connector while assisting 007's planning);
+no gate applies since no code or test file changed.
+**Deviations from plan (if any):** None to `001`'s own shape/behavior
+-- documentation only, no JSON contract change.
+**New open questions:** None. Note for whoever specs 005a (Java
+parser): this invariant now applies there too -- 005a's frame-building
+code must assign `Index` as slice position, same as 006a does.
+
+---
+
+**Date:** 2026-09-19
+**Task(s):** Cross-feature fix, found during 007-markdown-renderer's
+T011 hand-review and fixed on the user's request
+**What happened:** All four `Snippet`/`BlameEntry` windows across
+`exampleJavaBundle()` and `exampleTSBundle()` (`types_test.go`) had an
+off-by-one: each window's `Code` contains exactly 4 real lines, but
+`EndLine` was one higher than `StartLine+3` in every case (e.g.
+Handler.java `StartLine:40, EndLine:44` for 4 real lines, should be
+`EndLine:43`), so `EndLine-StartLine+1` never actually matched the real
+line count `internal/render`'s `renderSnippet` (007) depends on
+(req. 11's own invariant). Fixed all four: Handler.java `44→43`,
+Repository.java `90→89`, handler.ts `29→28`, service.ts `65→64` --
+and the matching `BlameEntry.EndLine` in each of the four (which had
+mirrored the wrong `Snippet.EndLine`, so needed the same correction to
+stay consistent with it). `TargetLine` values were already within the
+corrected ranges in all four cases, so none needed to change.
+Regenerated both `testdata/example_java.json` and
+`testdata/example_ts.json` via `-update`; diffed by eye against the
+previous versions to confirm only the eight `endLine` occurrences (four
+snippets + four blame entries) changed, nothing else.
+**Verified:** user ran `go test ./internal/contract/... -run TestGolden
+-update` to regenerate both fixtures; diff hand-reviewed by Claude
+(clean -- only the expected `endLine` values shifted); user then ran
+`go build ./...`, `go test ./internal/contract/...`, `golangci-lint run
+./internal/contract/...`, `gofumpt -l ./internal/contract/` on their
+machine; all four clean, confirmed "done, no errors".
+**Deviations from plan (if any):** None -- fixture-data correction only,
+no field added/removed/retyped, no enum meaning changed, so no
+`schemaVersion` bump per requirement 6's bump-trigger rule.
+**New open questions:** None.
+
+---

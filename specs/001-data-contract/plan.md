@@ -147,6 +147,12 @@ own stack needs, out of scope here.
       "elidedFrameCount": "number",
       "frames": [
         {
+          // This frame's zero-based position within THIS node's frames
+          // array -- not a free-standing identifier. Every parser must
+          // assign it as exactly that position: codeContexts[].frameRef's
+          // frameIndex (below) is defined as this same value, and a
+          // renderer building a Frame-to-CodeContext lookup relies on
+          // the two always agreeing.
           "index": "number",
           // Normalized absolute filesystem path, not a URI -- even though
           // Deno traces natively use `file://` URLs, codeContexts needs a
@@ -182,6 +188,10 @@ own stack needs, out of scope here.
 
   "codeContexts": [
     {
+      // chainIndex: the exception node's zero-based position within
+      // `chain`. frameIndex: the referenced frame's zero-based position
+      // within that node's `frames` array -- guaranteed equal to that
+      // frame's own `index` field above, not merely likely to match it.
       "frameRef": { "chainIndex": "number", "frameIndex": "number" },
       // Same normalized absolute path as frames[].filePath above.
       "filePath": "string",
@@ -319,6 +329,9 @@ library consumed in-process by other features):
   was not kept in sync at the time; flagging that gap now).
 - `contract.ComputeFingerprint(chain []contract.ExceptionNode) string`
 - `contract.TruncateRawInput(s string) (out string, truncated bool)`
+- `contract.RawInputCapBytes` -- exported constant, `512*1024`, added when
+  007-markdown-renderer needed to format the truncation note from the
+  real cap instead of a hardcoded literal (see progress.md).
 
 ## Testing strategy
 

@@ -7,7 +7,7 @@ import (
 )
 
 func TestTruncateRawInput_OneByteUnderCap(t *testing.T) {
-	s := strings.Repeat("a", rawInputCapBytes-1)
+	s := strings.Repeat("a", RawInputCapBytes-1)
 
 	out, truncated := TruncateRawInput(s)
 	if truncated {
@@ -19,7 +19,7 @@ func TestTruncateRawInput_OneByteUnderCap(t *testing.T) {
 }
 
 func TestTruncateRawInput_ExactlyAtCap(t *testing.T) {
-	s := strings.Repeat("a", rawInputCapBytes)
+	s := strings.Repeat("a", RawInputCapBytes)
 
 	out, truncated := TruncateRawInput(s)
 	if truncated {
@@ -31,16 +31,16 @@ func TestTruncateRawInput_ExactlyAtCap(t *testing.T) {
 }
 
 func TestTruncateRawInput_OneByteOverCap_ASCII(t *testing.T) {
-	s := strings.Repeat("a", rawInputCapBytes+1)
+	s := strings.Repeat("a", RawInputCapBytes+1)
 
 	out, truncated := TruncateRawInput(s)
 	if !truncated {
 		t.Fatalf("truncated = false, want true for input one byte over the cap")
 	}
-	if len(out) != rawInputCapBytes {
-		t.Errorf("len(out) = %d, want exactly %d for ASCII input one byte over the cap", len(out), rawInputCapBytes)
+	if len(out) != RawInputCapBytes {
+		t.Errorf("len(out) = %d, want exactly %d for ASCII input one byte over the cap", len(out), RawInputCapBytes)
 	}
-	if out != s[:rawInputCapBytes] {
+	if out != s[:RawInputCapBytes] {
 		t.Errorf("out doesn't match the expected prefix")
 	}
 }
@@ -50,8 +50,8 @@ func TestTruncateRawInput_OneByteOverCap_ASCII(t *testing.T) {
 // multi-byte rune. The cut must back up to the last valid rune boundary
 // rather than emit invalid UTF-8.
 func TestTruncateRawInput_CapFallsMidRune(t *testing.T) {
-	prefix := strings.Repeat("a", rawInputCapBytes-1)
-	s := prefix + "\u00e9" // "é", 2 bytes (0xC3 0xA9) -- its second byte would land exactly at index rawInputCapBytes
+	prefix := strings.Repeat("a", RawInputCapBytes-1)
+	s := prefix + "\u00e9" // "é", 2 bytes (0xC3 0xA9) -- its second byte would land exactly at index RawInputCapBytes
 
 	out, truncated := TruncateRawInput(s)
 	if !truncated {
@@ -63,7 +63,7 @@ func TestTruncateRawInput_CapFallsMidRune(t *testing.T) {
 	if out != prefix {
 		t.Errorf("out = %q, want the ASCII prefix with the split rune dropped entirely, not partially included", out)
 	}
-	if len(out) >= rawInputCapBytes {
-		t.Errorf("len(out) = %d, want strictly under %d (the split rune must be fully excluded)", len(out), rawInputCapBytes)
+	if len(out) >= RawInputCapBytes {
+		t.Errorf("len(out) = %d, want strictly under %d (the split rune must be fully excluded)", len(out), RawInputCapBytes)
 	}
 }

@@ -80,7 +80,11 @@ generated, tested JSON fixture — the single source of truth for what a
    exact parsing rule for each language is that language's own parser's
    concern (005a/006a), not this feature's — this requirement only says
    what the field means once produced.
-9. Each frame must carry: `index`; `filePath` (a normalized absolute
+9. Each frame must carry: `index` (this frame's zero-based position
+   within its exception node's `frames` array -- not a free-standing
+   identifier; every parser must assign it as exactly that position,
+   since `codeContexts[].frameRef.frameIndex` (requirement 10) is
+   defined as this same value, not merely likely to match it); `filePath` (a normalized absolute
    filesystem path, never a URI — even where the source ecosystem natively
    emits one, e.g. Deno's `file://` URLs, since `codeContexts` needs a real
    path for git blame and snippet extraction); optional `className`
@@ -95,7 +99,10 @@ generated, tested JSON fixture — the single source of truth for what a
    different groups; must match the key format used in
    `dependencies.direct`/`dependencies.locked`).
 10. `codeContexts` must exist only for `own`-bucket frames, and each entry
-    must carry `frameRef` (`chainIndex`, `frameIndex`), `filePath`,
+    must carry `frameRef` (`chainIndex`: the exception node's zero-based
+    position within `chain`; `frameIndex`: the referenced frame's
+    zero-based position within that node's `frames` array, guaranteed
+    equal to that frame's own `index` field per requirement 9), `filePath`,
     `language`, `status`, optional `note`, `snippet` (`startLine`,
     `endLine`, `targetLine`, `code`), and `blame[]` (present only when
     `status:"ok"` — nothing to blame for a file that doesn't exist or

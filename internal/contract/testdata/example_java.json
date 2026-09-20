@@ -68,14 +68,14 @@
       "status": "ok",
       "snippet": {
         "startLine": 40,
-        "endLine": 44,
+        "endLine": 43,
         "targetLine": 42,
         "code": "    public Response handle(Request req) {\n        var payload = req.body();\n        return repository.query(payload.id());\n    }\n"
       },
       "blame": [
         {
           "startLine": 40,
-          "endLine": 44,
+          "endLine": 43,
           "commitHash": "0123456789abcdef0123456789abcdef01234567",
           "author": "vedant",
           "commitDate": "2026-07-28T09:15:00Z",
@@ -93,14 +93,14 @@
       "status": "ok",
       "snippet": {
         "startLine": 86,
-        "endLine": 90,
+        "endLine": 89,
         "targetLine": 88,
         "code": "    public Response query(String id) {\n        var conn = pool.getConnection();\n        return conn.execute(id);\n    }\n"
       },
       "blame": [
         {
           "startLine": 86,
-          "endLine": 90,
+          "endLine": 89,
           "commitHash": "fedcba9876543210fedcba9876543210fedcba98",
           "author": "vedant",
           "commitDate": "2026-07-30T14:02:00Z",

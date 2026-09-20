@@ -1,0 +1,368 @@
+// Package render turns a contract.Bundle into the clipboard-ready output
+// formats consumers of this tool paste into third-party AI chats.
+package render
+
+import (
+	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/vedant-2701/stack-trace-bundler/internal/contract"
+)
+
+// Markdown renders the bundle as a single, self-contained Markdown
+// document, in the order spec.md requirements 1-5 specify: preamble,
+// metadata, exception chain, Dependencies (only when present), raw
+// input (always last). Pure composition of the render* helpers below --
+// no rendering logic of its own.
+func Markdown(b contract.Bundle) string {
+	var sb strings.Builder
+	sb.WriteString(renderPreamble())
+	sb.WriteString(renderMetadata(b))
+	sb.WriteString("\n")
+	sb.WriteString(renderChain(b.Chain, b.CodeContexts))
+
+	if deps := renderDependencies(b.Dependencies); deps != "" {
+		sb.WriteString("\n")
+		sb.WriteString(deps)
+	}
+
+	sb.WriteString("\n")
+	sb.WriteString(renderRawInput(b.RawInput, b.RawInputTruncated))
+	return sb.String()
+}
+
+// renderPreamble returns the fixed, one-line blockquote that orients a
+// reader who has no other context for this document (spec.md req. 1).
+func renderPreamble() string {
+	return "> This is a stack-trace-bundler bundle: an exception chain with own-code snippets, git blame, and resolved dependency versions, packaged for pasting into an AI chat.\n"
+}
+
+// renderMetadata renders the compact metadata bullet list that follows
+// the preamble: Language, OS, Runtime, Git (omitted when b.GitMetadata is
+// nil), Fingerprint, in that fixed order (spec.md req. 2, 20, 21).
+func renderMetadata(b contract.Bundle) string {
+	lines := []string{
+		fmt.Sprintf("- Language: %s", b.Language),
+		fmt.Sprintf("- OS: %s", b.OS),
+		"- " + renderRuntime(b.Runtime),
+	}
+	if b.GitMetadata != nil {
+		lines = append(lines, "- "+renderGit(b.GitMetadata))
+	}
+	lines = append(lines, fmt.Sprintf("- Fingerprint: %s", b.Fingerprint))
+	return strings.Join(lines, "\n") + "\n"
+}
+
+// renderRuntime renders the single "Runtime: ..." metadata line
+// (spec.md req. 20). When VersionSource is VersionSourceTrace, the
+// version is printed with no caveat. Otherwise (LocalEnvironment or
+// Unknown), Runtime.Note (when present) is appended as an escaped
+// parenthetical rather than the literal enum value ever being printed;
+// when both Version and Note are absent, "(version unknown)" is used.
+func renderRuntime(r contract.Runtime) string {
+	if r.VersionSource == contract.VersionSourceTrace {
+		return fmt.Sprintf("Runtime: %s %s", r.Name, r.Version)
+	}
+	if r.Version == "" && r.Note == "" {
+		return fmt.Sprintf("Runtime: %s (version unknown)", r.Name)
+	}
+	s := "Runtime: " + r.Name
+	if r.Version != "" {
+		s += " " + r.Version
+	}
+	if r.Note != "" {
+		s += " (" + escapeMarkdown(r.Note) + ")"
+	}
+	return s
+}
+
+// renderGit renders the single "Git: ..." metadata line (spec.md
+// req. 21). g must be non-nil; callers are responsible for omitting this
+// line entirely when Bundle.GitMetadata is nil.
+func renderGit(g *contract.GitMetadata) string {
+	status := "clean"
+	if g.UncommittedChanges {
+		status = "uncommitted changes"
+	}
+	commit := g.CurrentCommit
+	if len(commit) > 7 {
+		commit = commit[:7]
+	}
+	return fmt.Sprintf("Git: %s @ %s (%s)", escapeMarkdown(g.Branch), commit, status)
+}
+
+// renderSnippet renders s as a fenced code block tagged with lang, each
+// line prefixed with its real source line number (StartLine + offset)
+// and the line matching TargetLine marked with a leading → (spec.md
+// req. 11). s.Code is never escaped -- the fence protects it (req. 19).
+//
+// internal/codecontext.buildSnippet always appends exactly one trailing
+// "\n" to Code beyond its real lines, regardless of whether the window's
+// last source line is itself blank, so that trailing newline is trimmed
+// before splitting rather than naively splitting and rendering every
+// element -- otherwise a bogus blank EndLine+1 line would be appended to
+// every rendered snippet.
+func renderSnippet(s contract.Snippet, lang contract.Language) string {
+	lines := strings.Split(strings.TrimSuffix(s.Code, "\n"), "\n")
+	numWidth := len(strconv.Itoa(s.EndLine))
+
+	rendered := make([]string, len(lines))
+	for i, line := range lines {
+		lineNum := s.StartLine + i
+		marker := "  "
+		if lineNum == s.TargetLine {
+			marker = "→ "
+		}
+		rendered[i] = fmt.Sprintf("%s%*d | %s", marker, numWidth, lineNum, line)
+	}
+
+	return fmt.Sprintf("```%s\n%s\n```\n", lang, strings.Join(rendered, "\n"))
+}
+
+// renderBlameTable renders entries as a Markdown table with columns
+// Lines | Commit | Author | Date | Summary, one row per entry (spec.md
+// req. 12) -- never one row per line, matching how `git blame -L` itself
+// groups contiguous ranges under one last-touching commit. Commit is the
+// short (first 7 characters) hash. Date is CommitDate's date-only
+// portion (YYYY-MM-DD): ISO 8601 is fixed-width up to that point, so a
+// straight substring is safe regardless of what follows it. Author and
+// Summary are developer-arbitrary text and go through escapeMarkdown --
+// this is also what keeps a `|` in Summary from corrupting the table
+// structure, since `|` is itself in the escaped character set.
+func renderBlameTable(entries []contract.BlameEntry) string {
+	var b strings.Builder
+	b.WriteString("| Lines | Commit | Author | Date | Summary |\n")
+	b.WriteString("| --- | --- | --- | --- | --- |\n")
+
+	for _, e := range entries {
+		lines := strconv.Itoa(e.StartLine)
+		if e.EndLine != e.StartLine {
+			lines += "-" + strconv.Itoa(e.EndLine)
+		}
+		commit := e.CommitHash
+		if len(commit) > 7 {
+			commit = commit[:7]
+		}
+		date := e.CommitDate
+		if len(date) > 10 {
+			date = date[:10]
+		}
+		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s |\n",
+			lines, commit, escapeMarkdown(e.Author), date, escapeMarkdown(e.Summary))
+	}
+
+	return b.String()
+}
+
+// renderDependencies renders the "## Dependencies" section (spec.md
+// req. 4, 16). d == nil renders nothing at all -- no heading, no
+// content -- rather than an empty section. d.Locked is a Go map and Go
+// deliberately randomizes range order over maps on every iteration, so
+// keys are collected and sorted ascending lexically before iterating;
+// a bare `range d.Locked` would make the golden-file tests this feature
+// depends on flaky rather than reliably passing or failing. The
+// "declared <...>, " clause is omitted entirely (not left dangling)
+// when pkg has no Direct entry. LockedDependency.Note is escaped (it's
+// in req. 19's list); pkg, Direct's value, and Version are not
+// developer-arbitrary prose and are rendered verbatim.
+func renderDependencies(d *contract.Dependencies) string {
+	if d == nil {
+		return ""
+	}
+
+	keys := make([]string, 0, len(d.Locked))
+	for pkg := range d.Locked {
+		keys = append(keys, pkg)
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	b.WriteString("## Dependencies\n")
+	for _, pkg := range keys {
+		locked := d.Locked[pkg]
+
+		line := "- " + pkg + " — "
+		if direct, ok := d.Direct[pkg]; ok {
+			line += "declared " + direct + ", "
+		}
+		if locked.Version != "" {
+			line += "resolved " + locked.Version
+		} else {
+			line += "resolved unresolved"
+		}
+		if locked.Note != "" {
+			line += " (" + escapeMarkdown(locked.Note) + ")"
+		}
+		b.WriteString(line + "\n")
+	}
+	return b.String()
+}
+
+// longestBacktickRun returns the length of the longest run of
+// consecutive backtick characters anywhere in s, or 0 if none.
+func longestBacktickRun(s string) int {
+	longest, current := 0, 0
+	for _, r := range s {
+		if r == '`' {
+			current++
+			if current > longest {
+				longest = current
+			}
+		} else {
+			current = 0
+		}
+	}
+	return longest
+}
+
+// renderRawInput renders the collapsed <details> raw-input section
+// (spec.md req. 5, 17-18). raw is never escaped -- the fence protects it
+// (req. 19). The fence used is always one backtick longer than the
+// longest backtick run found anywhere in raw, minimum 3, so pathological
+// input (raw itself containing a backtick fence) cannot corrupt the
+// enclosing document. The truncation note, present only when truncated
+// is true, formats its KB figure from contract.RawInputCapBytes rather
+// than a hardcoded number, so it can't drift out of sync if the cap ever
+// changes.
+func renderRawInput(raw string, truncated bool) string {
+	fenceLen := longestBacktickRun(raw) + 1
+	if fenceLen < 3 {
+		fenceLen = 3
+	}
+	fence := strings.Repeat("`", fenceLen)
+
+	var b strings.Builder
+	b.WriteString("<details><summary>Raw input</summary>\n\n")
+	if truncated {
+		fmt.Fprintf(&b, "⚠ input truncated at the %d KB cap\n\n", contract.RawInputCapBytes/1024)
+	}
+	fmt.Fprintf(&b, "%s\n%s\n%s\n", fence, raw, fence)
+	b.WriteString("</details>\n")
+	return b.String()
+}
+
+// renderFrame renders one Frame as a single line
+// "at [ClassName.]MethodName (FilePath:LineNumber[:ColumnNumber]) —
+// <bucket-suffix>" (spec.md req. 8), followed by that frame's own-code
+// context (req. 9) when it's an own-bucket frame with a non-nil cc --
+// cc is nil for every other bucket. FilePath is rendered verbatim, never
+// escaped -- it's a normalized path, not developer-arbitrary prose
+// (req. 19's escape list doesn't include it). The dependency suffix
+// shows PackageName identity only, never a version (req. 13) -- that
+// belongs solely to the Dependencies section.
+func renderFrame(f contract.Frame, cc *contract.CodeContext) string {
+	name := f.MethodName
+	if f.ClassName != "" {
+		name = f.ClassName + "." + name
+	}
+
+	location := fmt.Sprintf("%s:%d", f.FilePath, f.LineNumber)
+	if f.ColumnNumber != 0 {
+		location += fmt.Sprintf(":%d", f.ColumnNumber)
+	}
+
+	var suffix string
+	switch f.Bucket {
+	case contract.BucketOwn:
+		suffix = "own"
+	case contract.BucketDependency:
+		suffix = "dependency: " + f.PackageName
+	case contract.BucketRuntime:
+		suffix = "runtime"
+	}
+
+	line := fmt.Sprintf("at %s (%s) — %s\n", name, location, suffix)
+	if f.Bucket == contract.BucketOwn && cc != nil {
+		line += renderCodeContext(*cc)
+	}
+	return line
+}
+
+// renderExceptionNodeHeader renders one ExceptionNode's heading and
+// Message blockquote (spec.md req. 6-7): "### ClassName" -- never
+// "ClassName: Message" on one line, since Message carries no length or
+// newline restriction -- followed directly by Message as a blockquote,
+// each line escaped independently. A wholly empty line within Message
+// still gets its own bare ">" (no trailing space, no blank line with no
+// marker at all): CommonMark ends a block quote at the first line
+// lacking a ">" prefix, so an unmarked blank line would silently
+// fracture the blockquote.
+func renderExceptionNodeHeader(node contract.ExceptionNode) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "### %s\n", node.ClassName)
+	for _, line := range strings.Split(node.Message, "\n") {
+		if line == "" {
+			b.WriteString(">\n")
+		} else {
+			b.WriteString("> " + escapeMarkdown(line) + "\n")
+		}
+	}
+	return b.String()
+}
+
+// renderChain renders the full exception chain (spec.md req. 3, 6-8,
+// 14-15): one heading+blockquote+frame-list block per ExceptionNode, in
+// Chain order, separated by a "Caused by ↓" transition between
+// consecutive nodes (never after the last). Looks up each own-bucket
+// frame's CodeContext via a map built once up front, keyed by
+// contract.FrameRef{ChainIndex, FrameIndex} constructed from each
+// frame's loop position within node.Frames -- matching exactly how
+// internal/codecontext.buildCodeContexts constructs the same key --
+// rather than reading Frame.Index back off the struct. The contract now
+// guarantees the two always agree (Frame.Index/FrameRef doc comments),
+// so this is defense in depth against a future contract violation, not
+// a live ambiguity.
+func renderChain(chain []contract.ExceptionNode, codeContexts []contract.CodeContext) string {
+	ccByRef := make(map[contract.FrameRef]contract.CodeContext, len(codeContexts))
+	for _, cc := range codeContexts {
+		ccByRef[cc.FrameRef] = cc
+	}
+
+	var b strings.Builder
+	for chainIdx, node := range chain {
+		b.WriteString(renderExceptionNodeHeader(node))
+
+		for frameIdx, f := range node.Frames {
+			var cc *contract.CodeContext
+			if f.Bucket == contract.BucketOwn {
+				ref := contract.FrameRef{ChainIndex: chainIdx, FrameIndex: frameIdx}
+				if found, ok := ccByRef[ref]; ok {
+					cc = &found
+				}
+			}
+			b.WriteString(renderFrame(f, cc))
+		}
+
+		if node.ElidedFrameCount > 0 {
+			fmt.Fprintf(&b, "... %d more frames (shared with enclosing exception)\n", node.ElidedFrameCount)
+		}
+
+		if chainIdx < len(chain)-1 {
+			b.WriteString("\nCaused by ↓\n\n")
+		}
+	}
+	return b.String()
+}
+
+// renderCodeContext renders one own-bucket frame's code context (spec.md
+// req. 10-12). When Status is not_found or stale, only a flagged line
+// using Note (escaped) is rendered -- no snippet or blame table. When
+// Status is ok, the snippet always renders; a non-empty Blame renders as
+// a table below it, otherwise a flagged Note line takes the table's
+// place (e.g. no git repo found, or `git blame` itself failed/timed out).
+func renderCodeContext(cc contract.CodeContext) string {
+	if cc.Status == contract.StatusNotFound || cc.Status == contract.StatusStale {
+		return fmt.Sprintf("⚠ %s\n", escapeMarkdown(cc.Note))
+	}
+
+	var b strings.Builder
+	b.WriteString(renderSnippet(cc.Snippet, cc.Language))
+	if len(cc.Blame) > 0 {
+		b.WriteString(renderBlameTable(cc.Blame))
+	} else {
+		fmt.Fprintf(&b, "⚠ %s\n", escapeMarkdown(cc.Note))
+	}
+	return b.String()
+}
