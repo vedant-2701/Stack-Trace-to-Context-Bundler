@@ -26,8 +26,9 @@ you're already in, or that chat's context balloons.
 | 006a | TypeScript/JS parser | `.cause` chain parsing (incl. Node's frame-elision, `"... N lines matching cause stack trace ..."`), frame bucketing (own/`node_modules`/`node:internal`), runtime + runtime-version detection (Node.js only for v1 -- Bun/Deno deferred, see `memory/known-gaps.md`) | 001, 003a, 004 | done |
 | 006b | TS/JS dependency resolution | `package.json`+lockfile resolution for `dependency`-bucket frames | 001 (+ requires two `001` contract patches: `Dependencies` → pointer + `LockedDependency` note-comment relaxation, schemaVersion MAJOR bump), 006a | done |
 | 007 | Markdown renderer | Bundle → clipboard-ready Markdown | 001 | done |
-| 008 | JSON renderer | Bundle → raw contract JSON | 001 | idea |
+| 008 | JSON renderer | Bundle → compact, HTML-unescaped, no-trailing-newline contract JSON | 001 | planned |
 | 009 | Clipboard integration | OS-appropriate clipboard write via subprocess (`pbcopy` on macOS; `wl-copy` → `xclip` fallback chain on Linux, clear stderr error if neither is available; `clip.exe` on Windows) | — | idea |
 | 010 | Distribution & release packaging | Build matrix (`all`/`java`/`typescript` × 5 platform targets), how users actually get the binary | 002b; at least one of 005a/006a working end-to-end | idea |
 | 011 | Configurable snippet context window | Expose 004's own-code snippet line-count (fixed at ±5/side in 004) as a `--context-lines`-style CLI flag | 004, 002a | idea |
 | 012 | Browser trace capture | Launch/attach to a browser and capture an uncaught JS/TS error's stack trace directly, without manual copy-paste; likely needs a new browser-automation dependency and its own Article VII/VIII ADR before that's added -- not a trivial add | 006a | idea |
+| 013 | JSON pretty-print flag | Adds a `--pretty` flag to indent/space 008's compact JSON output for human readability; needs new flag registration (002a) and pipeline wiring (002b) -- not built as part of 008 itself | 008, 002a | idea |
