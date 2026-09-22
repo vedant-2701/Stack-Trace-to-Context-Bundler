@@ -7,6 +7,14 @@ losing context.
 ---
 
 **Date:** 2026-09-22
+**Task(s):** T005 — Golden fixtures: `no_git_metadata`, `no_dependencies`
+**What happened:** Added two entries to `TestJSON`'s table in `internal/render/json_test.go`, reusing `noGitMetadataBundle` and `noDependenciesBundle` from `fixtures_test.go`. Generated both golden files via `-update` and hand-reviewed them: `no_git_metadata.golden.json` has no `gitMetadata` key anywhere (not `null`); `no_dependencies.golden.json` has no `dependencies` key anywhere -- confirms req. 5's omission behavior end-to-end, not just a byte-match against whatever got generated. `go build`, `go test ./internal/render/...`, `golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/` all clean per user.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-22
 **Task(s):** T004 — Golden harness + first fixture: `ts_basic`
 **What happened:** Added `assertGoldenJSON` and `TestJSON` (table-driven, `ts_basic` entry reusing `tsBasicBundle`) to `internal/render/json_test.go`, mirroring `assertGoldenMarkdown`/`TestMarkdown` and reusing `markdown_test.go`'s existing `updateGolden` flag. Converted `TestJSON_NoTrailingNewline` to table-driven with a second case against `tsBasicBundle`. Generated `internal/render/testdata/golden_json/ts_basic.golden.json` via `go test ./internal/render/... -run TestJSON -update`, hand-reviewed it against spec.md reqs 1-6 before committing (req. 3 not exercised by this fixture -- no `<`/`>`/`&` in `tsBasicBundle`; that's T006). `go build`, `go test ./internal/render/...`, `golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/` all clean per user, after one fix.
 **Deviations from plan (if any):** First lint run failed: `revive` flagged an unused `t` parameter in the `TestJSON_NoTrailingNewline` hand-built-literal closure (`func(t *testing.T) contract.Bundle { return jsonTestBundle() }`). Fixed by renaming to `_`. Not anticipated by tasks.md (unlike T003's expected `unused` failure).

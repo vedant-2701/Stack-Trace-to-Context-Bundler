@@ -82,7 +82,7 @@ failing acceptance criterion later traces back to exactly one task.
       golden file hand-reviewed and committed; 4 verification commands
       clean.
 
-- [ ] **T005 — Golden fixtures: `no_git_metadata`, `no_dependencies`**
+- [x] **T005 — Golden fixtures: `no_git_metadata`, `no_dependencies`**
       - Depends on: T004
       Add two more table entries reusing `noGitMetadataBundle` and
       `noDependenciesBundle` from `fixtures_test.go`. Confirms

@@ -209,6 +209,8 @@ func TestJSON(t *testing.T) {
 		goldenPath string
 	}{
 		{"ts_basic", tsBasicBundle, filepath.Join("testdata", "golden_json", "ts_basic.golden.json")},
+		{"no_git_metadata", noGitMetadataBundle, filepath.Join("testdata", "golden_json", "no_git_metadata.golden.json")},
+		{"no_dependencies", noDependenciesBundle, filepath.Join("testdata", "golden_json", "no_dependencies.golden.json")},
 	}
 
 	for _, tt := range tests {
