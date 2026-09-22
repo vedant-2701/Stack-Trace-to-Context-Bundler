@@ -213,6 +213,8 @@ func TestJSON(t *testing.T) {
 		{"no_dependencies", noDependenciesBundle, filepath.Join("testdata", "golden_json", "no_dependencies.golden.json")},
 		{"markdown_special_chars", markdownSpecialCharsBundle, filepath.Join("testdata", "golden_json", "markdown_special_chars.golden.json")},
 		{"ampersand", ampersandBundle, filepath.Join("testdata", "golden_json", "ampersand.golden.json")},
+		{"dependency_states", dependencyStatesBundle, filepath.Join("testdata", "golden_json", "dependency_states.golden.json")},
+		{"runtime_version_states", runtimeVersionStatesBundle, filepath.Join("testdata", "golden_json", "runtime_version_states.golden.json")},
 	}
 
 	for _, tt := range tests {
@@ -246,5 +248,22 @@ func assertGoldenJSON(t *testing.T, got, path string) {
 
 	if got != string(want) {
 		t.Errorf("%s is out of date with JSON()'s current output -- run:\n  go test ./internal/render/... -run TestJSON -update\nto regenerate it, then review the diff", path)
+	}
+}
+
+// TestJSON_DependencyStatesKeyOrderDeterministic guards spec.md req. 6
+// beyond a single golden byte-match: renders dependencyStatesBundle (3
+// packages -- real map-iteration-order material) repeatedly and asserts
+// every render is byte-identical to the first. A golden test alone only
+// proves one render matched the fixture; this proves the next one would
+// too, regardless of Go's randomized map iteration order.
+func TestJSON_DependencyStatesKeyOrderDeterministic(t *testing.T) {
+	b := dependencyStatesBundle(t)
+	first := JSON(b)
+
+	for i := 0; i < 20; i++ {
+		if got := JSON(b); got != first {
+			t.Fatalf("JSON() output changed across repeated renders (iteration %d):\nfirst: %s\ngot:   %s", i, first, got)
+		}
 	}
 }

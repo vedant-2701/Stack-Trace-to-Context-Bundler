@@ -107,7 +107,7 @@ failing acceptance criterion later traces back to exactly one task.
       `.golangci.yml` exclusion for `json_fixtures_test.go` is removed;
       4 verification commands clean.
 
-- [ ] **T007 — Golden fixtures: `dependency_states`, `runtime_version_states`**
+- [x] **T007 — Golden fixtures: `dependency_states`, `runtime_version_states`**
       - Depends on: T004
       Add table entries reusing `dependencyStatesBundle` and
       `runtimeVersionStatesBundle` from `fixtures_test.go`. Confirms

@@ -7,6 +7,14 @@ losing context.
 ---
 
 **Date:** 2026-09-22
+**Task(s):** T007 — Golden fixtures: `dependency_states`, `runtime_version_states`
+**What happened:** Added two entries to `TestJSON`'s table in `internal/render/json_test.go`, reusing `dependencyStatesBundle` and `runtimeVersionStatesBundle` from `fixtures_test.go`. Added `TestJSON_DependencyStatesKeyOrderDeterministic`, rendering `dependencyStatesBundle` 20 times and asserting byte-identical output every time -- the repeated-render check tasks.md's acceptance line calls for, beyond the single golden byte-match. Generated both golden files via `-update` and hand-reviewed them: `dependency_states.golden.json`'s `locked` map renders `leftpad`, `lodash`, `react` alphabetically despite the source literal declaring them `react`, `lodash`, `leftpad`; `runtime_version_states.golden.json`'s `runtime` object has no `version` or `note` key at all for `VersionSourceUnknown`. `go build`, `go test ./internal/render/...`, `golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/` all clean per user.
+**Deviations from plan (if any):** None.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-22
 **Task(s):** T006 — Golden fixtures: `markdown_special_chars`, `ampersand`
 **What happened:** Added two entries to `TestJSON`'s table in `internal/render/json_test.go`, reusing `markdownSpecialCharsBundle` and `ampersandBundle`. Removed the T003 `.golangci.yml` exclusion (`unused`, `json_fixtures_test.go`) now that `ampersandBundle` is genuinely used. Generated both golden files via `-update` and hand-reviewed them: `markdown_special_chars.golden.json` contains `Map<string, number>`, `List<String>`, `convert<T>` literally with no `\u003c`/`\u003e`; `ampersand.golden.json` contains a literal `&` with no `\u0026`. Confirms req. 3 for all three target characters end-to-end. `go build`, `go test ./internal/render/...`, `golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/` all clean per user.
 **Deviations from plan (if any):** None.
