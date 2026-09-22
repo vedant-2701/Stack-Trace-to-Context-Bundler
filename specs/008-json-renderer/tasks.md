@@ -117,7 +117,7 @@ failing acceptance criterion later traces back to exactly one task.
       check on `dependency_states` for map-key-order determinism; 4
       verification commands clean.
 
-- [ ] **T008 — Acceptance criteria review pass**
+- [x] **T008 — Acceptance criteria review pass**
       - Depends on: T001-T007
       Re-read `spec.md`'s Acceptance criteria list top to bottom; confirm
       each has an exact corresponding passing test, recorded as an

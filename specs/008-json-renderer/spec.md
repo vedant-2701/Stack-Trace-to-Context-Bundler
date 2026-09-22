@@ -1,6 +1,7 @@
 # Spec: JSON renderer
 
-**Status:** Planned — plan.md and tasks.md written; ready for implementation.
+**Status:** Done — all acceptance criteria checked off with named tests
+(see Acceptance criteria section)
 **Folder:** specs/008-json-renderer
 **Depends on:** 001-data-contract (done)
 
@@ -110,30 +111,37 @@ concern the way it was for 007.
 
 ## Acceptance criteria
 
-- [ ] Given a realistic two-node bundle (`tsBasicBundle`), when rendered,
+- [x] Given a realistic two-node bundle (`tsBasicBundle`), when rendered,
       then the output is valid, compact JSON with no added whitespace
       between tokens, matching a checked-in golden fixture exactly.
-- [ ] Given a bundle with `GitMetadata == nil`, and, separately, one with
+      (`TestJSON/ts_basic`; `TestJSON_Valid`, `TestJSON_Compact`)
+- [x] Given a bundle with `GitMetadata == nil`, and, separately, one with
       `Dependencies == nil`, when rendered, then the corresponding JSON
       key (`gitMetadata` / `dependencies`) is entirely absent from the
       output — not `null`, not an empty object — matching a checked-in
       golden fixture for each.
-- [ ] Given a `Message`/`Note` containing `<` and `>` together, and,
+      (`TestJSON/no_git_metadata`, `TestJSON/no_dependencies`)
+- [x] Given a `Message`/`Note` containing `<` and `>` together, and,
       separately, one containing `&`, when rendered, then those
       characters appear literally in the output, never as
       `\u003c`/`\u003e`/`\u0026`.
-- [ ] Given `Bundle.Dependencies` with multiple `Locked`/`Direct` entries,
+      (`TestJSON_HTMLCharsLiteral`; `TestJSON/markdown_special_chars`, `TestJSON/ampersand`)
+- [x] Given `Bundle.Dependencies` with multiple `Locked`/`Direct` entries,
       when rendered repeatedly, then the map keys appear in stable,
       alphabetically-sorted order every time.
-- [ ] Given `Runtime.VersionSource == VersionSourceUnknown` with no
+      (`TestJSON_DependencyStatesKeyOrderDeterministic`; `TestJSON/dependency_states`)
+- [x] Given `Runtime.VersionSource == VersionSourceUnknown` with no
       `Version`/`Note`, when rendered, then the output matches the golden
       fixture with `version`/`note` keys both absent and `versionSource`
       present as `"unknown"`.
-- [ ] Given any bundle, when rendered, then the returned string never
+      (`TestJSON/runtime_version_states`)
+- [x] Given any bundle, when rendered, then the returned string never
       ends in a `\n` byte.
-- [ ] Given any bundle, when the rendered output is `json.Unmarshal`ed
+      (`TestJSON_NoTrailingNewline` [hand-built literal and `tsBasicBundle` cases])
+- [x] Given any bundle, when the rendered output is `json.Unmarshal`ed
       back into a fresh `contract.Bundle`, then the result is
       `reflect.DeepEqual` to the original input bundle.
+      (`TestJSON_RoundTrip`)
 
 ## Open questions
 

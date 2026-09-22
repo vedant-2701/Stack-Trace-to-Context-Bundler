@@ -7,6 +7,14 @@ losing context.
 ---
 
 **Date:** 2026-09-22
+**Task(s):** T008 — Acceptance criteria review pass
+**What happened:** Re-read spec.md's 7 acceptance criteria top to bottom and mapped each to its exact passing test(s), recorded as inline comments (007's T017 pattern): `TestJSON/ts_basic`+`TestJSON_Valid`/`TestJSON_Compact`; `TestJSON/no_git_metadata`+`/no_dependencies`; `TestJSON_HTMLCharsLiteral`+`TestJSON/markdown_special_chars`+`/ampersand`; `TestJSON_DependencyStatesKeyOrderDeterministic`+`TestJSON/dependency_states`; `TestJSON/runtime_version_states`; `TestJSON_NoTrailingNewline`; `TestJSON_RoundTrip`. Updated spec.md's Status line to "Done" and specs/INDEX.md's 008 row from `in-progress` to `done` (tasks.md itself said `idea` to `done`, which was stale -- the row was never `idea`).
+**Deviations from plan (if any):** None (aside from the INDEX.md stale-wording correction noted above).
+**New open questions:** None. Feature 008 complete.
+
+---
+
+**Date:** 2026-09-22
 **Task(s):** T007 — Golden fixtures: `dependency_states`, `runtime_version_states`
 **What happened:** Added two entries to `TestJSON`'s table in `internal/render/json_test.go`, reusing `dependencyStatesBundle` and `runtimeVersionStatesBundle` from `fixtures_test.go`. Added `TestJSON_DependencyStatesKeyOrderDeterministic`, rendering `dependencyStatesBundle` 20 times and asserting byte-identical output every time -- the repeated-render check tasks.md's acceptance line calls for, beyond the single golden byte-match. Generated both golden files via `-update` and hand-reviewed them: `dependency_states.golden.json`'s `locked` map renders `leftpad`, `lodash`, `react` alphabetically despite the source literal declaring them `react`, `lodash`, `leftpad`; `runtime_version_states.golden.json`'s `runtime` object has no `version` or `note` key at all for `VersionSourceUnknown`. `go build`, `go test ./internal/render/...`, `golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/` all clean per user.
 **Deviations from plan (if any):** None.
