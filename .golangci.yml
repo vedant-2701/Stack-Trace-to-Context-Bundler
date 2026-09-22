@@ -1,6 +1,11 @@
 version: "2"
 
 linters:
+  exclusions:
+    rules:
+      - path: internal/render/json_fixtures_test\.go$
+        linters:
+          - unused
   default: none
   enable:
     - govet

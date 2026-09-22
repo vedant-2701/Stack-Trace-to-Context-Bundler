@@ -48,7 +48,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: `TestJSON_RoundTrip` passes; 4 verification commands
       clean.
 
-- [ ] **T003 — `ampersandBundle` fixture** (spec.md req. 3's `&` case)
+- [x] **T003 — `ampersandBundle` fixture** (spec.md req. 3's `&` case)
       - Depends on: none
       Create `internal/render/json_fixtures_test.go` (new file -- does
       NOT edit 007's `fixtures_test.go`) with one builder,
