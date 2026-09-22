@@ -5,7 +5,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
 Each task lists the `spec.md` functional requirements it satisfies, so a
 failing acceptance criterion later traces back to exactly one task.
 
-- [ ] **T001 — `JSON()` core implementation + basic unit tests** (spec.md
+- [x] **T001 — `JSON()` core implementation + basic unit tests** (spec.md
       req. 1-4)
       - Depends on: none
       Create `internal/render/json.go`: `func JSON(b contract.Bundle) string`
