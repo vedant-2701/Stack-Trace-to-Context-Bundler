@@ -2,6 +2,8 @@ package render
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -75,14 +77,26 @@ func TestJSON_HTMLCharsLiteral(t *testing.T) {
 	}
 }
 
-// TestJSON_NoTrailingNewline asserts spec.md's requirement 4 against
-// this task's hand-built literal. T004 adds a second case using
-// tsBasicBundle once it's in scope, completing plan.md's "run against
-// at least tsBasicBundle."
+// TestJSON_NoTrailingNewline asserts spec.md's requirement 4: the
+// returned string never ends in a '\n' byte. Runs against T001's
+// hand-built literal and, now that it's in scope, tsBasicBundle --
+// completing plan.md's "run against at least tsBasicBundle."
 func TestJSON_NoTrailingNewline(t *testing.T) {
-	got := JSON(jsonTestBundle())
-	if strings.HasSuffix(got, "\n") {
-		t.Errorf("JSON() output ends in a newline, want no trailing terminator: %q", got)
+	tests := []struct {
+		name   string
+		bundle func(t *testing.T) contract.Bundle
+	}{
+		{"hand-built literal", func(_ *testing.T) contract.Bundle { return jsonTestBundle() }},
+		{"tsBasicBundle", tsBasicBundle},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := JSON(tt.bundle(t))
+			if strings.HasSuffix(got, "\n") {
+				t.Errorf("JSON() output ends in a newline, want no trailing terminator: %q", got)
+			}
+		})
 	}
 }
 
@@ -177,5 +191,56 @@ func TestJSON_RoundTrip(t *testing.T) {
 
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("round-trip mismatch:\nwant: %+v\ngot:  %+v", want, got)
+	}
+}
+
+// --- T004: golden fixture tests ---
+//
+// Run `go test ./internal/render/... -run TestJSON -update` after a
+// deliberate change to JSON()'s output shape, to regenerate the
+// affected golden file(s). Hand-review the diff before committing --
+// this flag is how a fixture is ever produced or updated, never by
+// hand-editing a .golden.json file directly. Reuses markdown_test.go's
+// package-level updateGolden flag rather than redeclaring it.
+func TestJSON(t *testing.T) {
+	tests := []struct {
+		name       string
+		bundle     func(t *testing.T) contract.Bundle
+		goldenPath string
+	}{
+		{"ts_basic", tsBasicBundle, filepath.Join("testdata", "golden_json", "ts_basic.golden.json")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := JSON(tt.bundle(t))
+			assertGoldenJSON(t, got, tt.goldenPath)
+		})
+	}
+}
+
+// assertGoldenJSON compares got byte-for-byte against the fixture at
+// path. With -update, it (re)writes the fixture from got instead of
+// comparing -- mirrors assertGoldenMarkdown in markdown_test.go.
+func assertGoldenJSON(t *testing.T, got, path string) {
+	t.Helper()
+
+	if *updateGolden {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("MkdirAll: %v", err)
+		}
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatalf("WriteFile: %v", err)
+		}
+		return
+	}
+
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s): %v -- run with -update to generate it", path, err)
+	}
+
+	if got != string(want) {
+		t.Errorf("%s is out of date with JSON()'s current output -- run:\n  go test ./internal/render/... -run TestJSON -update\nto regenerate it, then review the diff", path)
 	}
 }

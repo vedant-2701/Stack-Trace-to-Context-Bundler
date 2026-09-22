@@ -7,10 +7,18 @@ losing context.
 ---
 
 **Date:** 2026-09-22
-**Task(s):** T003 — `ampersandBundle` fixture
-**What happened:** Added `internal/render/json_fixtures_test.go` (new file, separate from 007's `fixtures_test.go`) with `ampersandBundle(t *testing.T) contract.Bundle`: single `ExceptionNode`, one own-bucket `Frame`, ordinary non-nil `GitMetadata`/`Dependencies`, `Message` containing a literal `&`. Not yet consumed by any test -- T006 wires it into the golden table. `go build ./...` and `go vet ./internal/render/...` both reported clean per user; golangci-lint/gofumpt intentionally skipped this task per tasks.md's own narrower acceptance line (the fixture is genuinely unused until T006, and `unused` is enabled in `.golangci.yml`).
-**Deviations from plan (if any):** None.
+**Task(s):** T004 — Golden harness + first fixture: `ts_basic`
+**What happened:** Added `assertGoldenJSON` and `TestJSON` (table-driven, `ts_basic` entry reusing `tsBasicBundle`) to `internal/render/json_test.go`, mirroring `assertGoldenMarkdown`/`TestMarkdown` and reusing `markdown_test.go`'s existing `updateGolden` flag. Converted `TestJSON_NoTrailingNewline` to table-driven with a second case against `tsBasicBundle`. Generated `internal/render/testdata/golden_json/ts_basic.golden.json` via `go test ./internal/render/... -run TestJSON -update`, hand-reviewed it against spec.md reqs 1-6 before committing (req. 3 not exercised by this fixture -- no `<`/`>`/`&` in `tsBasicBundle`; that's T006). `go build`, `go test ./internal/render/...`, `golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/` all clean per user, after one fix.
+**Deviations from plan (if any):** First lint run failed: `revive` flagged an unused `t` parameter in the `TestJSON_NoTrailingNewline` hand-built-literal closure (`func(t *testing.T) contract.Bundle { return jsonTestBundle() }`). Fixed by renaming to `_`. Not anticipated by tasks.md (unlike T003's expected `unused` failure).
 **New open questions:** None.
+
+---
+
+**Date:** 2026-09-22
+**Task(s):** T003 — `ampersandBundle` fixture
+**What happened:** Added `internal/render/json_fixtures_test.go` (new file, separate from 007's `fixtures_test.go`) with `ampersandBundle(t *testing.T) contract.Bundle`: single `ExceptionNode`, one own-bucket `Frame`, ordinary non-nil `GitMetadata`/`Dependencies`, `Message` containing a literal `&`. Not yet consumed by any test -- T006 wires it into the golden table. `go build ./...` and `go vet ./internal/render/...` both reported clean per user. The Lefthook pre-commit hook still ran golangci-lint regardless of this task's narrower acceptance line, and `unused` failed on `ampersandBundle` as anticipated; user added a scoped exclusion to `.golangci.yml` (`unused` linter only, `internal/render/json_fixtures_test.go` only) to let the commit through.
+**Deviations from plan (if any):** `.golangci.yml` gained a lint exclusion not called for in plan.md/tasks.md.
+**New open questions:** Remove the `.golangci.yml` exclusion for `internal/render/json_fixtures_test.go` once T006 wires `ampersandBundle` into a test -- otherwise `unused` silently stops checking that file going forward.
 
 ---
 

@@ -64,7 +64,7 @@ failing acceptance criterion later traces back to exactly one task.
       `go vet ./internal/render/...`); no new test yet, T006 consumes
       this fixture.
 
-- [ ] **T004 — Golden harness + first fixture: `ts_basic`**
+- [x] **T004 — Golden harness + first fixture: `ts_basic`**
       - Depends on: T001
       Add `assertGoldenJSON(t, got, path)` to `json_test.go` (mirrors
       `assertGoldenMarkdown` from `markdown_test.go`, reusing that file's
@@ -97,10 +97,15 @@ failing acceptance criterion later traces back to exactly one task.
       Add table entries reusing `markdownSpecialCharsBundle` (`<`/`>`,
       from `fixtures_test.go`) and the new `ampersandBundle` (`&`, from
       T003). Confirms spec.md req. 3 (HTML-escaping disabled) for all
-      three target characters, end-to-end.
+      three target characters, end-to-end. Also remove the `.golangci.yml`
+      exclusion (`unused` linter, `internal/render/json_fixtures_test.go`)
+      added during T003 to unblock its commit -- `ampersandBundle` is
+      used starting with this task, so the exclusion is no longer needed
+      and would otherwise silently stop `unused` from checking that file.
       - Acceptance: both golden tests pass, with hand-verification that
-      neither golden file contains `\u003c`, `\u003e`, or `\u0026`; 4
-      verification commands clean.
+      neither golden file contains `\u003c`, `\u003e`, or `\u0026`; the
+      `.golangci.yml` exclusion for `json_fixtures_test.go` is removed;
+      4 verification commands clean.
 
 - [ ] **T007 — Golden fixtures: `dependency_states`, `runtime_version_states`**
       - Depends on: T004
