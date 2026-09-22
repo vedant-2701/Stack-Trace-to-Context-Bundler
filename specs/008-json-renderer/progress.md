@@ -7,6 +7,14 @@ losing context.
 ---
 
 **Date:** 2026-09-22
+**Task(s):** T006 — Golden fixtures: `markdown_special_chars`, `ampersand`
+**What happened:** Added two entries to `TestJSON`'s table in `internal/render/json_test.go`, reusing `markdownSpecialCharsBundle` and `ampersandBundle`. Removed the T003 `.golangci.yml` exclusion (`unused`, `json_fixtures_test.go`) now that `ampersandBundle` is genuinely used. Generated both golden files via `-update` and hand-reviewed them: `markdown_special_chars.golden.json` contains `Map<string, number>`, `List<String>`, `convert<T>` literally with no `\u003c`/`\u003e`; `ampersand.golden.json` contains a literal `&` with no `\u0026`. Confirms req. 3 for all three target characters end-to-end. `go build`, `go test ./internal/render/...`, `golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/` all clean per user.
+**Deviations from plan (if any):** None.
+**New open questions:** Noticed `ampersand.golden.json` renders `"codeContexts":null` (no `omitempty` on that field in `contract.Bundle`), which contradicts types.go's own documented cross-cutting rule of never emitting null for an inapplicable field. Out of scope for 008 (already covered by 001's `types_test.go` per spec.md's carve-out) -- flagging for whoever next touches 001/004, not something 008 should fix.
+
+---
+
+**Date:** 2026-09-22
 **Task(s):** T005 — Golden fixtures: `no_git_metadata`, `no_dependencies`
 **What happened:** Added two entries to `TestJSON`'s table in `internal/render/json_test.go`, reusing `noGitMetadataBundle` and `noDependenciesBundle` from `fixtures_test.go`. Generated both golden files via `-update` and hand-reviewed them: `no_git_metadata.golden.json` has no `gitMetadata` key anywhere (not `null`); `no_dependencies.golden.json` has no `dependencies` key anywhere -- confirms req. 5's omission behavior end-to-end, not just a byte-match against whatever got generated. `go build`, `go test ./internal/render/...`, `golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/` all clean per user.
 **Deviations from plan (if any):** None.

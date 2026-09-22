@@ -92,7 +92,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: both golden tests pass; 4 verification commands
       clean.
 
-- [ ] **T006 — Golden fixtures: `markdown_special_chars`, `ampersand`**
+- [x] **T006 — Golden fixtures: `markdown_special_chars`, `ampersand`**
       - Depends on: T004, T003
       Add table entries reusing `markdownSpecialCharsBundle` (`<`/`>`,
       from `fixtures_test.go`) and the new `ampersandBundle` (`&`, from
