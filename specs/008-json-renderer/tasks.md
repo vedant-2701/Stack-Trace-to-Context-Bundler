@@ -31,7 +31,7 @@ failing acceptance criterion later traces back to exactly one task.
       `go test ./internal/render/...`, `golangci-lint run ./internal/render/...`,
       `gofumpt -l ./internal/render/` all clean.
 
-- [ ] **T002 — `TestJSON_RoundTrip`** (spec.md acceptance criterion for
+- [x] **T002 — `TestJSON_RoundTrip`** (spec.md acceptance criterion for
       round-trip fidelity)
       - Depends on: T001
       Add a round-trip test: `json.Unmarshal([]byte(JSON(b)), &got)` then
