@@ -112,6 +112,68 @@ func TestWrite(t *testing.T) {
 			wantErr:   ErrNoClipboardUtility,
 			wantCalls: nil,
 		},
+		{
+			name:      "linux non-WSL: wl-copy found+succeeds, xclip never attempted",
+			goos:      "linux",
+			lookPath:  map[string]bool{"wl-copy": true, "xclip": true},
+			wantErr:   nil,
+			wantCalls: []string{"wl-copy"},
+		},
+		{
+			name:     "linux non-WSL: wl-copy found+fails, xclip found+succeeds",
+			goos:     "linux",
+			lookPath: map[string]bool{"wl-copy": true, "xclip": true},
+			run: map[string]func(ctx context.Context) error{
+				"wl-copy": func(context.Context) error { return errors.New("wl-copy: connection refused") },
+			},
+			wantErr:   nil,
+			wantCalls: []string{"wl-copy", "xclip"},
+		},
+		{
+			name:      "linux non-WSL: wl-copy not found, xclip found+succeeds",
+			goos:      "linux",
+			lookPath:  map[string]bool{"xclip": true},
+			wantErr:   nil,
+			wantCalls: []string{"xclip"},
+		},
+		{
+			name:     "linux non-WSL: both found, both fail",
+			goos:     "linux",
+			lookPath: map[string]bool{"wl-copy": true, "xclip": true},
+			run: map[string]func(ctx context.Context) error{
+				"wl-copy": func(context.Context) error { return errors.New("wl-copy: connection refused") },
+				"xclip":   func(context.Context) error { return errors.New("xclip: cannot open display") },
+			},
+			wantErr:   ErrClipboardWriteFailed,
+			wantCalls: []string{"wl-copy", "xclip"},
+		},
+		{
+			name:     "linux non-WSL: wl-copy found+fails, xclip not found",
+			goos:     "linux",
+			lookPath: map[string]bool{"wl-copy": true},
+			run: map[string]func(ctx context.Context) error{
+				"wl-copy": func(context.Context) error { return errors.New("wl-copy: connection refused") },
+			},
+			wantErr:   ErrClipboardWriteFailed,
+			wantCalls: []string{"wl-copy"},
+		},
+		{
+			name:     "linux non-WSL: wl-copy not found, xclip found+fails",
+			goos:     "linux",
+			lookPath: map[string]bool{"xclip": true},
+			run: map[string]func(ctx context.Context) error{
+				"xclip": func(context.Context) error { return errors.New("xclip: cannot open display") },
+			},
+			wantErr:   ErrClipboardWriteFailed,
+			wantCalls: []string{"xclip"},
+		},
+		{
+			name:      "linux non-WSL: neither found",
+			goos:      "linux",
+			lookPath:  map[string]bool{},
+			wantErr:   ErrNoClipboardUtility,
+			wantCalls: nil,
+		},
 	}
 
 	for _, tt := range tests {

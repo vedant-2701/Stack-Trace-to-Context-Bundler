@@ -86,7 +86,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: `TestWrite`'s 5 entries pass; 4 verification commands
       clean.
 
-- [ ] **T006 — Linux non-WSL fallback chain** (spec.md FR5)
+- [x] **T006 — Linux non-WSL fallback chain** (spec.md FR5)
       - Depends on: T004, T005
       Implement the `linux`/non-WSL branch in `write()` using `tryChain`
       over `["wl-copy", "xclip"]` (with `xclip -selection clipboard`,

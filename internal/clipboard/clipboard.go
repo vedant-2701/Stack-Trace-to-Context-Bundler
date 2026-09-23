@@ -70,10 +70,8 @@ func tryChain(ctx context.Context, tools []tool, text string, runner cmdRunner) 
 // Alternatives considered) so every OS/WSL/fallback branch is directly
 // testable regardless of which OS actually runs `go test`.
 //
-// The linux branch is a stub for now (unconditionally returns
-// ErrNoClipboardUtility, ignoring wsl) -- the WSL-exclusive clip.exe
-// branch and the non-WSL wl-copy/xclip fallback chain are completed in
-// T007 and T006 respectively.
+// The wsl==true linux branch is completed in T007 (WSL bridges to
+// clip.exe exclusively, never falling through to wl-copy/xclip).
 func write(ctx context.Context, text, goos string, wsl bool, runner cmdRunner) error {
 	switch goos {
 	case "darwin":
@@ -81,8 +79,17 @@ func write(ctx context.Context, text, goos string, wsl bool, runner cmdRunner) e
 	case "windows":
 		return tryOne(ctx, "clip.exe", nil, text, runner)
 	case "linux":
-		_ = wsl // handled once T006/T007 land the real linux branch
-		return ErrNoClipboardUtility
+		if wsl {
+			// TODO(T007): clip.exe-only branch, no fallback.
+			return ErrNoClipboardUtility
+		}
+		// Non-WSL Linux: wl-copy first, xclip as the runtime-failure
+		// fallback (spec.md FR5). xclip needs an explicit selection
+		// target; wl-copy and the other OS tools take no arguments.
+		return tryChain(ctx, []tool{
+			{name: "wl-copy"},
+			{name: "xclip", args: []string{"-selection", "clipboard"}},
+		}, text, runner)
 	default:
 		// Unrecognized GOOS: no attempt made (spec.md FR6).
 		return ErrNoClipboardUtility
