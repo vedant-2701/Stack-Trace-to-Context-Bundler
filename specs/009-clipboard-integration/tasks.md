@@ -38,7 +38,7 @@ failing acceptance criterion later traces back to exactly one task.
       Non-functional requirements — no CI to run a real-subprocess test
       against).
 
-- [ ] **T003 — `isWSL()` detection** (spec.md FR3)
+- [x] **T003 — `isWSL()` detection** (spec.md FR3)
       - Depends on: none
       Create `internal/clipboard/wsl.go`: `isWSL() bool`, checking
       `WSL_DISTRO_NAME`/`WSL_INTEROP` env vars first, then falling back
