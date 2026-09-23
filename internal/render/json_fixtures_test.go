@@ -12,10 +12,7 @@ import (
 // HTML-escape target character (alongside `<`/`>`, already covered by
 // reusing markdownSpecialCharsBundle) that no existing 007 fixture
 // contains. Lives in its own file, not 007's fixtures_test.go, since
-// this fixture is JSON-renderer-specific. Unused until T006 wires it
-// into json_test.go's golden table -- golangci-lint's unused check is
-// expected to fail until then (tasks.md scopes T003's acceptance to
-// build + vet only for exactly this reason).
+// this fixture is JSON-renderer-specific.
 func ampersandBundle(t *testing.T) contract.Bundle {
 	t.Helper()
 
@@ -38,6 +35,38 @@ func ampersandBundle(t *testing.T) contract.Bundle {
 					{
 						Index: 0, FilePath: "/repo/src/config.ts", MethodName: "loadConfig",
 						LineNumber: 11, ColumnNumber: 6, Bucket: contract.BucketOwn,
+					},
+				},
+			},
+		},
+		CodeContexts: []contract.CodeContext{
+			{
+				FrameRef: contract.FrameRef{ChainIndex: 0, FrameIndex: 0},
+				FilePath: "/repo/src/config.ts",
+				Language: contract.LanguageTypeScript,
+				Status:   contract.StatusOK,
+				Snippet: contract.Snippet{
+					StartLine: 6, EndLine: 16, TargetLine: 11,
+					Code: `import * as fs from 'fs';
+
+export function loadConfig(): Record<string, unknown> {
+  const raw = fs.readFileSync('/repo/config.json', 'utf-8');
+  const env = process.env.ENV;
+  if (!raw || !env) throw new Error('fetch failed: config.json & env both missing');
+
+  return { ...JSON.parse(raw), env };
+}
+
+export function reloadConfig(): void {
+`,
+				},
+				Blame: []contract.BlameEntry{
+					{
+						StartLine: 6, EndLine: 16,
+						CommitHash: "0011223344556677889900112233445566778899",
+						Author:     "vedant",
+						CommitDate: "2026-09-10T09:00:00Z",
+						Summary:    "validate env before parsing config",
 					},
 				},
 			},

@@ -7,6 +7,14 @@ losing context.
 ---
 
 **Date:** 2026-09-22
+**Task(s):** Post-PR-review fixup (GitHub Copilot, after T008)
+**What happened:** Two review comments on `internal/render/json_fixtures_test.go`. (1) Stale comment: removed the "unused until T006" explanation from `ampersandBundle`'s doc comment, now that it's genuinely used. (2) `ampersand.golden.json` rendered `"codeContexts":null`: root cause was `ampersandBundle` never setting `CodeContexts`, which is a bug in the fixture, not a `contract.Bundle` shape issue -- confirmed by reading `internal/codecontext/context.go`, whose production builder always returns a non-nil empty slice for exactly this reason. Copilot's suggested fix (`CodeContexts: []contract.CodeContext{}`) would only address the null-vs-omitted half of the problem; an empty slice still violates 007's spec.md invariant that every own-bucket frame gets exactly one `CodeContext` entry, since this fixture has one. Added a real `CodeContext` entry instead (`FrameRef`, ±5-line `Snippet` around line 11, one `BlameEntry`), matching every other fixture in `fixtures_test.go`.
+**Deviations from plan (if any):** N/A -- this is itself an unplanned fixup task.
+**New open questions:** None. Corrects the wrong "flag for 001/004" note left in T006's entry above.
+
+---
+
+**Date:** 2026-09-22
 **Task(s):** T008 — Acceptance criteria review pass
 **What happened:** Re-read spec.md's 7 acceptance criteria top to bottom and mapped each to its exact passing test(s), recorded as inline comments (007's T017 pattern): `TestJSON/ts_basic`+`TestJSON_Valid`/`TestJSON_Compact`; `TestJSON/no_git_metadata`+`/no_dependencies`; `TestJSON_HTMLCharsLiteral`+`TestJSON/markdown_special_chars`+`/ampersand`; `TestJSON_DependencyStatesKeyOrderDeterministic`+`TestJSON/dependency_states`; `TestJSON/runtime_version_states`; `TestJSON_NoTrailingNewline`; `TestJSON_RoundTrip`. Updated spec.md's Status line to "Done" and specs/INDEX.md's 008 row from `in-progress` to `done` (tasks.md itself said `idea` to `done`, which was stale -- the row was never `idea`).
 **Deviations from plan (if any):** None (aside from the INDEX.md stale-wording correction noted above).
@@ -26,7 +34,7 @@ losing context.
 **Task(s):** T006 — Golden fixtures: `markdown_special_chars`, `ampersand`
 **What happened:** Added two entries to `TestJSON`'s table in `internal/render/json_test.go`, reusing `markdownSpecialCharsBundle` and `ampersandBundle`. Removed the T003 `.golangci.yml` exclusion (`unused`, `json_fixtures_test.go`) now that `ampersandBundle` is genuinely used. Generated both golden files via `-update` and hand-reviewed them: `markdown_special_chars.golden.json` contains `Map<string, number>`, `List<String>`, `convert<T>` literally with no `\u003c`/`\u003e`; `ampersand.golden.json` contains a literal `&` with no `\u0026`. Confirms req. 3 for all three target characters end-to-end. `go build`, `go test ./internal/render/...`, `golangci-lint run ./internal/render/...`, `gofumpt -l ./internal/render/` all clean per user.
 **Deviations from plan (if any):** None.
-**New open questions:** Noticed `ampersand.golden.json` renders `"codeContexts":null` (no `omitempty` on that field in `contract.Bundle`), which contradicts types.go's own documented cross-cutting rule of never emitting null for an inapplicable field. Out of scope for 008 (already covered by 001's `types_test.go` per spec.md's carve-out) -- flagging for whoever next touches 001/004, not something 008 should fix.
+**New open questions:** None. (An earlier version of this entry incorrectly flagged `"codeContexts":null` in `ampersand.golden.json` as a possible inconsistency in `contract.Bundle` worth raising with 001/004. That was wrong: `internal/codecontext/context.go`'s production builder always returns a non-nil empty slice specifically to uphold the "never null" rule, confirmed by its own comment. The actual bug was in this task's `ampersandBundle` fixture -- leaving `CodeContexts` unset, and also missing a `CodeContext` entry for its one own-bucket frame (007's spec.md: "001/004 guarantee every own-bucket frame gets exactly one CodeContext entry, always"). Caught by GitHub Copilot's PR review after T008; fixed by adding a proper `CodeContext` entry and regenerating `ampersand.golden.json`. See the post-PR-review entry below.)
 
 ---
 
