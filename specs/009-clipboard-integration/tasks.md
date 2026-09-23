@@ -54,7 +54,7 @@ failing acceptance criterion later traces back to exactly one task.
       `true` there — record the result in `progress.md`, don't just
       trust the reasoning.
 
-- [ ] **T004 — `write()` core + `Write()` entrypoint, darwin/windows only**
+- [x] **T004 — `write()` core + `Write()` entrypoint, darwin/windows only**
       (spec.md FR1, FR2, FR6, FR8 partial)
       - Depends on: T001, T002, T003 (the public `Write()` wrapper calls
       `isWSL()`, defined in T003, when `goos == "linux"`)
