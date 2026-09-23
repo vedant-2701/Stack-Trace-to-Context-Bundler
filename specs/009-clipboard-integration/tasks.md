@@ -71,7 +71,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: `go build ./...`, 4 verification commands clean; no
       test yet (T005 adds the harness this needs).
 
-- [ ] **T005 — `fakeCmdRunner` harness + darwin/windows table tests**
+- [x] **T005 — `fakeCmdRunner` harness + darwin/windows table tests**
       (spec.md acceptance criteria: darwin found/absent, windows
       found/absent)
       - Depends on: T004

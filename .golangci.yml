@@ -6,6 +6,7 @@ linters:
     - govet
     - staticcheck
     - errcheck
+    - revive
     - gocyclo
     - unused
   settings:
