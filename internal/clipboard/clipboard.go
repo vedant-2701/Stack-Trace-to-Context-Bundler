@@ -69,9 +69,6 @@ func tryChain(ctx context.Context, tools []tool, text string, runner cmdRunner) 
 // values rather than an injected detector interface (plan.md's
 // Alternatives considered) so every OS/WSL/fallback branch is directly
 // testable regardless of which OS actually runs `go test`.
-//
-// The wsl==true linux branch is completed in T007 (WSL bridges to
-// clip.exe exclusively, never falling through to wl-copy/xclip).
 func write(ctx context.Context, text, goos string, wsl bool, runner cmdRunner) error {
 	switch goos {
 	case "darwin":
@@ -80,8 +77,10 @@ func write(ctx context.Context, text, goos string, wsl bool, runner cmdRunner) e
 		return tryOne(ctx, "clip.exe", nil, text, runner)
 	case "linux":
 		if wsl {
-			// TODO(T007): clip.exe-only branch, no fallback.
-			return ErrNoClipboardUtility
+			// WSL bridges to clip.exe exclusively (spec.md FR4) --
+			// wl-copy/xclip don't work in a bare WSL shell, so there is
+			// no fallback here even if they happen to be on PATH.
+			return tryOne(ctx, "clip.exe", nil, text, runner)
 		}
 		// Non-WSL Linux: wl-copy first, xclip as the runtime-failure
 		// fallback (spec.md FR5). xclip needs an explicit selection

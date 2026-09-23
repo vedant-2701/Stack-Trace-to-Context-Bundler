@@ -113,7 +113,7 @@ failing acceptance criterion later traces back to exactly one task.
       call-log assertion that xclip is never invoked in the
       wl-copy-succeeds case; 4 verification commands clean.
 
-- [ ] **T007 — WSL branch + exclusivity** (spec.md FR4)
+- [x] **T007 — WSL branch + exclusivity** (spec.md FR4)
       - Depends on: T004, T005
       Implement the `linux`/`wsl == true` branch in `write()`: `clip.exe`
       only, via `tryOne`, never falling through to `wl-copy`/`xclip`. Add

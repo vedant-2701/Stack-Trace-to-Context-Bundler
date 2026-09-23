@@ -68,6 +68,7 @@ func TestWrite(t *testing.T) {
 	tests := []struct {
 		name      string
 		goos      string
+		wsl       bool
 		lookPath  map[string]bool
 		run       map[string]func(ctx context.Context) error
 		wantErr   error
@@ -174,13 +175,33 @@ func TestWrite(t *testing.T) {
 			wantErr:   ErrNoClipboardUtility,
 			wantCalls: nil,
 		},
+		{
+			// wl-copy/xclip are also (implausibly) present on PATH, to
+			// prove WSL exclusivity: clip.exe alone is ever invoked.
+			name:      "linux WSL: clip.exe found+succeeds, wl-copy/xclip never attempted",
+			goos:      "linux",
+			wsl:       true,
+			lookPath:  map[string]bool{"clip.exe": true, "wl-copy": true, "xclip": true},
+			wantErr:   nil,
+			wantCalls: []string{"clip.exe"},
+		},
+		{
+			// wl-copy/xclip are present on PATH but must never be tried --
+			// WSL has no fallback (spec.md FR4).
+			name:      "linux WSL: clip.exe absent, no fallback attempted",
+			goos:      "linux",
+			wsl:       true,
+			lookPath:  map[string]bool{"wl-copy": true, "xclip": true},
+			wantErr:   ErrNoClipboardUtility,
+			wantCalls: nil,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := &fakeCmdRunner{lookPath: tt.lookPath, run: tt.run}
 
-			err := write(context.Background(), text, tt.goos, false, runner)
+			err := write(context.Background(), text, tt.goos, tt.wsl, runner)
 
 			switch {
 			case tt.wantErr == nil && err != nil:
