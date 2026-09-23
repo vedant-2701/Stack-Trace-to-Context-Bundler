@@ -15,6 +15,14 @@ losing context.
 ---
 
 **Date:** 2026-09-23
+**Task(s):** T002 — `cmdRunner` interface + `execCmdRunner`
+**What happened:** Created `internal/clipboard/runner.go` mirroring `internal/codecontext/runner.go`'s `gitRunner`/`execGitRunner` exactly: `cmdRunner` interface (`LookPath(name string) bool`, `Run(ctx context.Context, name string, args []string, stdin string) error`), production `execCmdRunner`, package-level `const clipboardTimeout = 5 * time.Second`, and `Run` deriving its bound via `context.WithTimeout(ctx, clipboardTimeout)` from the caller-supplied `ctx` -- same timeout-vs-generic-error priority as `execGitRunner.Run`. No test file yet, per T002's acceptance (T005's fake supersedes real-runner testing). User ran `go build ./...`, `gofumpt -l ./internal/clipboard/`, `golangci-lint run ./internal/clipboard/...` -- all clean, no errors.
+**Deviations from plan (if any):** N/A.
+**New open questions:** None.
+
+---
+
+**Date:** 2026-09-23
 **Task(s):** Spec interrogation complete; plan.md + tasks.md written
 **What happened:** Interrogated the user one question at a time (all via tappable options) to resolve every [NEEDS CLARIFICATION] item: (1) public API is `func Write(ctx context.Context, text string) error` in package `clipboard`, matching `codecontext`'s ctx-threading convention; (2) Linux detection special-cases WSL (bridges to `clip.exe` exclusively) since `wl-copy`/`xclip` don't work in a bare WSL shell -- this project's real dev environment; (3) the Linux fallback from `wl-copy` to `xclip` is a runtime-failure fallback, not presence-only; (4) subprocess timeout is a hardcoded 5s constant, NOT configurable via `.env` -- pushed back on a `.env`-based config request (verified via `go.mod` that no `.env`/config-file mechanism exists anywhere in this codebase, only `pflag`; also conflicts with feature 011's established precedent of exposing a tunable via a dedicated CLI flag feature, not a config file) and the user agreed to hardcode it instead; (5) two sentinel errors (`ErrNoClipboardUtility`, `ErrClipboardWriteFailed`) so a future 002b can distinguish exit codes, mirroring `parser.ErrNoMatch`/`ErrAmbiguous`; (6) testing is fake-only for 009 -- confirmed via directory listing that this repo has no CI at all (no `.github/`), so build-tag-gated real-subprocess tests would currently run nowhere; revisit once CI exists. Also verified during interrogation, not just assumed: `render.JSON`/`render.Markdown` both already return plain `string`, confirming 009 genuinely has no dependency on `internal/contract` (INDEX.md's "Depends on: —" is correct, not just trusted). Wrote `spec.md` (Approved), `plan.md`, and `tasks.md` (T001-T009) reflecting all of the above.
 **Deviations from plan (if any):** N/A -- this session only specs/plans, per the user's explicit instruction not to start implementation in this pass.

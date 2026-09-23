@@ -15,7 +15,7 @@ failing acceptance criterion later traces back to exactly one task.
       ./internal/clipboard/`, `golangci-lint run ./internal/clipboard/...`
       clean.
 
-- [ ] **T002 — `cmdRunner` interface + `execCmdRunner`** (spec.md FR7, FR9)
+- [x] **T002 — `cmdRunner` interface + `execCmdRunner`** (spec.md FR7, FR9)
       - Depends on: none
       Create `internal/clipboard/runner.go`: the `cmdRunner` interface
       (`LookPath(name string) bool`, `Run(ctx context.Context, name
