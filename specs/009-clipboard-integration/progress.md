@@ -29,3 +29,11 @@ losing context.
 **New open questions:** See spec.md's Open questions section.
 
 ---
+
+**Date:** 2026-09-23
+**Task(s):** T001 — Sentinel errors
+**What happened:** Created `internal/clipboard/errors.go` with `ErrNoClipboardUtility` and `ErrClipboardWriteFailed`, doc-commented in `internal/parser/errors.go`'s style (each comment states what triggers the error, how it's distinguished from its sibling, and that a future 002b maps it to a CLI exit code via `errors.Is`). User ran `go build ./...`, `gofumpt -l ./internal/clipboard/`, `golangci-lint run ./internal/clipboard/...` -- all clean, no errors. Also updated `specs/INDEX.md`'s 009 row from `planned` to `in-progress` directly via the Filesystem connector (no `scripts/update-status/run.sh` execution available in this session).
+**Deviations from plan (if any):** N/A.
+**New open questions:** None.
+
+---

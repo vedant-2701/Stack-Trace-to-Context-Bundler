@@ -5,7 +5,7 @@ Mark status as you go: `[ ]` todo, `[~]` in progress, `[x]` done.
 Each task lists the `spec.md` functional requirements it satisfies, so a
 failing acceptance criterion later traces back to exactly one task.
 
-- [ ] **T001 — Sentinel errors** (spec.md FR8)
+- [x] **T001 — Sentinel errors** (spec.md FR8)
       - Depends on: none
       Create `internal/clipboard/errors.go` with `ErrNoClipboardUtility`
       and `ErrClipboardWriteFailed`, doc-commented in
