@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 )
 
 // call records one invocation of fakeCmdRunner.Run, so a test can assert
@@ -214,5 +215,65 @@ func TestWrite(t *testing.T) {
 				t.Errorf("tools invoked = %v, want %v", got, tt.wantCalls)
 			}
 		})
+	}
+}
+
+// TestWrite_Timeout proves a tool whose Run call hangs is bounded by the
+// caller's ctx (spec.md FR7) and that the resulting cancellation is
+// treated as a normal failed attempt, not a crash or an indefinite
+// hang: wl-copy blocks until ctx.Done(), write() must still return
+// promptly, and the non-WSL fallback chain must still fall through to
+// xclip afterward exactly as it would for any other failure.
+func TestWrite_Timeout(t *testing.T) {
+	runner := &fakeCmdRunner{
+		lookPath: map[string]bool{"wl-copy": true, "xclip": true},
+		run: map[string]func(ctx context.Context) error{
+			"wl-copy": func(ctx context.Context) error {
+				<-ctx.Done()
+				return ctx.Err()
+			},
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	err := write(ctx, "bundle contents", "linux", false, runner)
+	elapsed := time.Since(start)
+
+	if elapsed > time.Second {
+		t.Fatalf("write() took %v to return, want bounded by the 50ms ctx deadline", elapsed)
+	}
+
+	if err != nil {
+		t.Fatalf("write() error = %v, want nil (xclip should still succeed after wl-copy's timeout)", err)
+	}
+
+	if got := runner.calledTools(); !slices.Equal(got, []string{"wl-copy", "xclip"}) {
+		t.Errorf("tools invoked = %v, want [wl-copy xclip] -- timeout must fall through like any other failure", got)
+	}
+}
+
+// TestWrite_ByteForByte proves the exact input string reaches the
+// subprocess's stdin unmodified -- no added or stripped trailing
+// newline, no re-encoding (spec.md FR1). The fixture deliberately mixes
+// internal newlines, a tab, and trailing whitespace, since a naive
+// implementation might trim or normalize any of those.
+func TestWrite_ByteForByte(t *testing.T) {
+	const text = "line one\nline two\n\ttabbed, trailing space "
+
+	runner := &fakeCmdRunner{lookPath: map[string]bool{"pbcopy": true}}
+
+	if err := write(context.Background(), text, "darwin", false, runner); err != nil {
+		t.Fatalf("write() error = %v, want nil", err)
+	}
+
+	if len(runner.calls) != 1 {
+		t.Fatalf("calls = %d, want 1", len(runner.calls))
+	}
+
+	if got := runner.calls[0].stdin; got != text {
+		t.Errorf("stdin = %q, want %q", got, text)
 	}
 }

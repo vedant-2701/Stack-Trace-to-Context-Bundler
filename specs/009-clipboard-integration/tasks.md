@@ -125,7 +125,7 @@ failing acceptance criterion later traces back to exactly one task.
       - Acceptance: both new entries pass, including both call-log
       assertions; 4 verification commands clean.
 
-- [ ] **T008 — Timeout handling + byte-fidelity test** (spec.md FR7,
+- [x] **T008 — Timeout handling + byte-fidelity test** (spec.md FR7,
       part of FR1)
       - Depends on: T004, T005
       Add a `fakeCmdRunner.Run` variant that blocks until `ctx.Done()`
