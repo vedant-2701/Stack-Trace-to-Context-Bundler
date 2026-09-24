@@ -7,22 +7,38 @@ import (
 
 func TestIsWSL(t *testing.T) {
 	tests := []struct {
-		name           string
-		wslDistroName  string
-		wslInterop     string
-		procVersion    string
-		procVersionErr error
-		want           bool
+		name             string
+		wslDistroNameSet bool
+		wslDistroName    string
+		wslInteropSet    bool
+		wslInterop       string
+		procVersion      string
+		procVersionErr   error
+		want             bool
 	}{
 		{
-			name:          "WSL_DISTRO_NAME set",
-			wslDistroName: "Ubuntu-24.04",
+			name:             "WSL_DISTRO_NAME set (non-empty)",
+			wslDistroNameSet: true,
+			wslDistroName:    "Ubuntu-24.04",
+			want:             true,
+		},
+		{
+			name:          "WSL_INTEROP set (non-empty)",
+			wslInteropSet: true,
+			wslInterop:    "/run/WSL/1_interop",
 			want:          true,
 		},
 		{
-			name:       "WSL_INTEROP set",
-			wslInterop: "/run/WSL/1_interop",
-			want:       true,
+			// A present-but-empty env var must still count as "set"
+			// (spec.md FR3 says "set," not "set to a non-empty value").
+			// proc version deliberately has no microsoft mention, so a
+			// pass here can only be explained by the env-var check
+			// itself, not a fallback coincidence.
+			name:          "WSL_INTEROP set but empty -- still counts as present",
+			wslInteropSet: true,
+			wslInterop:    "",
+			procVersion:   "Linux version 5.15.0-generic (buildd@lcy02-amd64)",
+			want:          true,
 		},
 		{
 			name:        "proc version contains microsoft",
@@ -48,21 +64,27 @@ func TestIsWSL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			origGetenv := getenv
+			origLookupEnv := lookupEnv
 			origReadProcVersion := readProcVersion
 			t.Cleanup(func() {
-				getenv = origGetenv
+				lookupEnv = origLookupEnv
 				readProcVersion = origReadProcVersion
 			})
 
-			getenv = func(key string) string {
+			lookupEnv = func(key string) (string, bool) {
 				switch key {
 				case "WSL_DISTRO_NAME":
-					return tt.wslDistroName
+					if tt.wslDistroNameSet {
+						return tt.wslDistroName, true
+					}
+					return "", false
 				case "WSL_INTEROP":
-					return tt.wslInterop
+					if tt.wslInteropSet {
+						return tt.wslInterop, true
+					}
+					return "", false
 				default:
-					return ""
+					return "", false
 				}
 			}
 			readProcVersion = func() ([]byte, error) {

@@ -63,6 +63,17 @@ func (f *fakeCmdRunner) calledTools() []string {
 	return names
 }
 
+// wantToolArgs is the expected argument list for every tool this package
+// ever invokes, used by TestWrite to assert exact args alongside tool
+// names -- xclip is the only tool that takes any (a name-only assertion
+// would miss a regression that dropped -selection clipboard).
+var wantToolArgs = map[string][]string{
+	"pbcopy":   nil,
+	"clip.exe": nil,
+	"wl-copy":  nil,
+	"xclip":    {"-selection", "clipboard"},
+}
+
 func TestWrite(t *testing.T) {
 	const text = "bundle contents"
 
@@ -214,44 +225,60 @@ func TestWrite(t *testing.T) {
 			if got := runner.calledTools(); !slices.Equal(got, tt.wantCalls) {
 				t.Errorf("tools invoked = %v, want %v", got, tt.wantCalls)
 			}
+
+			// Assert the exact args each invoked tool received -- names alone
+			// don't catch a regression that drops xclip's required
+			// -selection clipboard argument while still "succeeding."
+			for _, c := range runner.calls {
+				want, ok := wantToolArgs[c.name]
+				if !ok {
+					t.Fatalf("invoked unexpected tool %q with no known expected-args entry", c.name)
+				}
+				if !slices.Equal(c.args, want) {
+					t.Errorf("%s invoked with args %v, want %v", c.name, c.args, want)
+				}
+			}
 		})
 	}
 }
 
-// TestWrite_Timeout proves a tool whose Run call hangs is bounded by the
-// caller's ctx (spec.md FR7) and that the resulting cancellation is
-// treated as a normal failed attempt, not a crash or an indefinite
-// hang: wl-copy blocks until ctx.Done(), write() must still return
-// promptly, and the non-WSL fallback chain must still fall through to
-// xclip afterward exactly as it would for any other failure.
+// TestWrite_Timeout proves a tool whose own attempt times out is bounded
+// (spec.md FR7) and that the timeout is treated as a normal failed
+// attempt, not a crash or an indefinite hang. wl-copy's fake derives its
+// own short-lived child context from the ctx it's given -- mirroring
+// execCmdRunner.Run's real context.WithTimeout(ctx, clipboardTimeout)
+// derivation -- rather than letting the shared parent ctx itself expire.
+// That distinction matters: in production, one attempt's derived timeout
+// is local to that call and does not poison the parent ctx used for the
+// next candidate, so xclip must still get a live context and succeed
+// afterward, exactly as it would for any other single-attempt failure.
 func TestWrite_Timeout(t *testing.T) {
 	runner := &fakeCmdRunner{
 		lookPath: map[string]bool{"wl-copy": true, "xclip": true},
 		run: map[string]func(ctx context.Context) error{
 			"wl-copy": func(ctx context.Context) error {
-				<-ctx.Done()
-				return ctx.Err()
+				callCtx, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
+				defer cancel()
+				<-callCtx.Done()
+				return callCtx.Err()
 			},
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-
 	start := time.Now()
-	err := write(ctx, "bundle contents", "linux", false, runner)
+	err := write(context.Background(), "bundle contents", "linux", false, runner)
 	elapsed := time.Since(start)
 
 	if elapsed > time.Second {
-		t.Fatalf("write() took %v to return, want bounded by the 50ms ctx deadline", elapsed)
+		t.Fatalf("write() took %v to return, want bounded by wl-copy's simulated 50ms per-attempt timeout", elapsed)
 	}
 
 	if err != nil {
-		t.Fatalf("write() error = %v, want nil (xclip should still succeed after wl-copy's timeout)", err)
+		t.Fatalf("write() error = %v, want nil (xclip should still succeed after wl-copy's per-attempt timeout, since the parent ctx itself never expired)", err)
 	}
 
 	if got := runner.calledTools(); !slices.Equal(got, []string{"wl-copy", "xclip"}) {
-		t.Errorf("tools invoked = %v, want [wl-copy xclip] -- timeout must fall through like any other failure", got)
+		t.Errorf("tools invoked = %v, want [wl-copy xclip] -- a per-attempt timeout must fall through like any other failure", got)
 	}
 }
 
