@@ -137,7 +137,7 @@ failing acceptance criterion later traces back to exactly one task.
       `text` exactly — no added/stripped newline, no re-encoding (FR1).
       - Acceptance: both new tests pass; 4 verification commands clean.
 
-- [ ] **T009 — Real `clip.exe` integration test (WSL)** (plan.md's
+- [x] **T009 — Real `clip.exe` integration test (WSL)** (plan.md's
       Testing strategy; spec.md Non-functional requirements)
       - Depends on: T002, T007
       Create `internal/clipboard/integration_test.go`, gated behind

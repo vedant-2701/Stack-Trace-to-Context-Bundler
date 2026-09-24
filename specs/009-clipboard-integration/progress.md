@@ -93,3 +93,11 @@ losing context.
 **New open questions:** Whether to add a real-subprocess timeout test against `execCmdRunner` is unresolved -- flagged to the user, not yet decided; not required by T008's stated acceptance.
 
 ---
+
+**Date:** 2026-09-23
+**Task(s):** T009 — Real `clip.exe` integration test (WSL)
+**What happened:** Created `internal/clipboard/integration_test.go` gated behind `//go:build integration`, mirroring `codecontext/integration_test.go`'s pattern. Calls `execCmdRunner{}.Run` directly against real `clip.exe` (not through `Write()`/`isWSL()`), a deliberate choice so the test exercises T002/T007's real subprocess invocation independent of whether `isWSL()`'s heuristic still correctly detects this environment. Only `clip.exe` is exercised (no `pbcopy`/`wl-copy`/`xclip` on this machine, per spec.md's Out of scope). User ran `go test -tags integration ./internal/clipboard/... -v` (passed against real `clip.exe`, 0.18s) and a plain `go test ./...` (clipboard package shown cached from the non-integration build, confirming the integration test is excluded by default), then separately `gofumpt -l ./internal/clipboard/`, `golangci-lint run ./internal/clipboard/...`, and `golangci-lint run --build-tags=integration ./internal/clipboard/...` (to lint the integration file itself, since it's excluded from the default lint run by its own build tag) -- all clean, 0 issues.
+**Deviations from plan (if any):** N/A.
+**New open questions:** None.
+
+---
