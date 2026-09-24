@@ -155,7 +155,7 @@ failing acceptance criterion later traces back to exactly one task.
       `go test ./...` run (verify via a plain `go test ./...` still
       passing with no WSL/clip.exe dependency).
 
-- [ ] **T010 — Acceptance criteria review pass**
+- [x] **T010 — Acceptance criteria review pass**
       - Depends on: T001-T009
       Re-read `spec.md`'s Acceptance criteria list top to bottom; confirm
       each has an exact corresponding passing test, recorded as an

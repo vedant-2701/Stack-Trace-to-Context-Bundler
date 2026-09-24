@@ -180,26 +180,31 @@ never on a `contract.Bundle` — confirmed by reading `render.JSON`'s and
 
 ## Acceptance criteria
 
-- [ ] Given `darwin` with `pbcopy` present (fake runner), when `Write` is
+- [x] Given `darwin` with `pbcopy` present (fake runner), when `Write` is
       called, then `pbcopy` is invoked with `text` on stdin and `Write`
-      returns `nil`.
-- [ ] Given `darwin` with `pbcopy` absent, when `Write` is called, then it
+      returns `nil`. (`TestWrite/darwin:_pbcopy_found`)
+- [x] Given `darwin` with `pbcopy` absent, when `Write` is called, then it
       returns an error for which `errors.Is(err, ErrNoClipboardUtility)`
-      is `true`.
-- [ ] Given `windows` with `clip.exe` present, when `Write` is called,
+      is `true`. (`TestWrite/darwin:_pbcopy_absent`)
+- [x] Given `windows` with `clip.exe` present, when `Write` is called,
       then `clip.exe` is invoked with `text` on stdin and `Write` returns
-      `nil`.
-- [ ] Given `windows` with `clip.exe` absent, when `Write` is called, then
+      `nil`. (`TestWrite/windows:_clip.exe_found`)
+- [x] Given `windows` with `clip.exe` absent, when `Write` is called, then
       it returns an error for which
       `errors.Is(err, ErrNoClipboardUtility)` is `true`.
-- [ ] Given non-WSL Linux with `wl-copy` found and its invocation
+      (`TestWrite/windows:_clip.exe_absent`)
+- [x] Given non-WSL Linux with `wl-copy` found and its invocation
       succeeding, when `Write` is called, then `wl-copy` is invoked,
       `xclip` is never attempted, and `Write` returns `nil`.
-- [ ] Given non-WSL Linux with `wl-copy` unavailable (either not found on
+      (`TestWrite/linux_non-WSL:_wl-copy_found+succeeds,_xclip_never_attempted`)
+- [x] Given non-WSL Linux with `wl-copy` unavailable (either not found on
       `PATH`, or found but its invocation failing) and `xclip` found and
       its invocation succeeding, when `Write` is called, then `xclip` is
       invoked and `Write` returns `nil`.
-- [ ] Given non-WSL Linux with `wl-copy` unavailable and `xclip` also
+      (`TestWrite/linux_non-WSL:_wl-copy_found+fails,_xclip_found+succeeds`
+      and `TestWrite/linux_non-WSL:_wl-copy_not_found,_xclip_found+succeeds`
+      -- both permutations of "unavailable")
+- [x] Given non-WSL Linux with `wl-copy` unavailable and `xclip` also
       unavailable, in any combination of "not found on `PATH`" and
       "found but its invocation failing" for the two tools, when `Write`
       is called, then it returns an error for which
@@ -208,23 +213,32 @@ never on a `contract.Bundle` — confirmed by reading `render.JSON`'s and
       failed) if at least one of the two was found on `PATH`, or for
       which `errors.Is(err, ErrNoClipboardUtility)` is `true` if neither
       was found on `PATH` at all.
-- [ ] Given a simulated WSL environment with `clip.exe` present, when
+      (`TestWrite/linux_non-WSL:_both_found,_both_fail`,
+      `TestWrite/linux_non-WSL:_wl-copy_found+fails,_xclip_not_found`,
+      `TestWrite/linux_non-WSL:_wl-copy_not_found,_xclip_found+fails`
+      for `ErrClipboardWriteFailed`;
+      `TestWrite/linux_non-WSL:_neither_found` for `ErrNoClipboardUtility`)
+- [x] Given a simulated WSL environment with `clip.exe` present, when
       `Write` is called, then `clip.exe` is invoked directly and
       `wl-copy`/`xclip` are never attempted, even if also present.
-- [ ] Given a simulated WSL environment with `clip.exe` absent, when
+      (`TestWrite/linux_WSL:_clip.exe_found+succeeds,_wl-copy/xclip_never_attempted`)
+- [x] Given a simulated WSL environment with `clip.exe` absent, when
       `Write` is called, then it returns an error for which
       `errors.Is(err, ErrNoClipboardUtility)` is `true`, with no fallback
       to `wl-copy`/`xclip` attempted.
-- [ ] Given a fake runner that blocks past the FR7 timeout, when `Write`
+      (`TestWrite/linux_WSL:_clip.exe_absent,_no_fallback_attempted`)
+- [x] Given a fake runner that blocks past the FR7 timeout, when `Write`
       is called, then that attempt is treated as a failure (folds into
       the same `ErrClipboardWriteFailed`/`ErrNoClipboardUtility` handling
       as any other failed attempt), and `Write` returns in bounded time.
-- [ ] Given any successful `Write`, the exact bytes handed to the
+      (`TestWrite_Timeout`)
+- [x] Given any successful `Write`, the exact bytes handed to the
       underlying tool's stdin equal `text` exactly — no added or removed
-      trailing newline, no re-encoding.
-- [ ] Given an unrecognized simulated `runtime.GOOS` value, when `Write`
+      trailing newline, no re-encoding. (`TestWrite_ByteForByte`)
+- [x] Given an unrecognized simulated `runtime.GOOS` value, when `Write`
       is called, then it returns `ErrNoClipboardUtility` immediately, with
       no subprocess invocation attempted.
+      (`TestWrite/unrecognized_goos:_no_attempt_made`)
 
 ## Open questions
 

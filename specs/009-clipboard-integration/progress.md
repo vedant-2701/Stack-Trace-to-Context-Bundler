@@ -101,3 +101,11 @@ losing context.
 **New open questions:** None.
 
 ---
+
+**Date:** 2026-09-23
+**Task(s):** T010 — Acceptance criteria review pass
+**What happened:** Re-read `spec.md`'s Acceptance criteria list top to bottom against the full `TestWrite`/`TestWrite_Timeout`/`TestWrite_ByteForByte` suite. All 12 criteria have an exact corresponding passing test; checked each off with an inline `(TestName)` comment (some criteria map to more than one table entry, e.g. the "wl-copy unavailable" criterion covers both the not-found and found-but-failed permutations as separate named subtests). No gaps found -- nothing needed implementing or re-scoping. `spec.md`'s Status line was already `Approved`, no change needed. Updated `specs/INDEX.md`'s 009 row from `in-progress` to `done`.
+**Deviations from plan (if any):** N/A.
+**New open questions:** None. Feature 009 is complete; remaining open items from earlier entries (the `pbcopy`/`wl-copy`/`xclip` integration-test gap, and whether to add a real-subprocess `execCmdRunner` timeout test) are recorded in spec.md's Non-functional requirements/Out of scope and this log respectively, for whoever revisits them -- not blocking 009's completion.
+
+---
