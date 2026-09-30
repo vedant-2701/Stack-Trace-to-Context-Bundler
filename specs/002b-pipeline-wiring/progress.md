@@ -87,3 +87,27 @@ test ./internal/cli/...`; confirmed done, no errors.
 **New open questions:** none
 
 ---
+
+**Date:** 2026-09-26
+**Task(s):** T003 -- extract flag registration into a shared
+`registerFlags` helper
+**What happened:** Added `registerFlags(fs *pflag.FlagSet, fixedLang
+string) (langFlag, formatFlag, outputFlag *string, noClipboard *bool,
+verbosity *int)` to `parse.go`, matching tasks.md's specified shape.
+`fixedLang == ""` registers `--lang` (cmd/all); non-empty skips it
+(cmd/java/cmd/typescript keep rejecting `--lang` as unknown, unchanged).
+Also registered `--output`/`-o` and `--no-clipboard` here so they show up
+in T008's `--help`, but neither flag's value is read into `Input` yet --
+still parsed and discarded until T006/T007, per plan. `ParseAll` and
+`ParseFixedLang` both now call `registerFlags` instead of registering
+flags inline; doc comments on both updated to point at it. No change to
+validation order or `Input` construction. Confirmed `parse_test.go` has
+no case asserting `--output`/`--no-clipboard` are unknown flags before
+making this change, so registering them now doesn't break anything
+existing. Vedant ran `go build ./internal/cli/...`, `gofumpt -l
+internal/cli/parse.go`, `golangci-lint run ./internal/cli/...`, and `go
+test ./internal/cli/...`; confirmed done, no errors.
+**Deviations from plan (if any):** n/a
+**New open questions:** none
+
+---

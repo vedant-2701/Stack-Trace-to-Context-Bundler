@@ -21,7 +21,7 @@ after each task.
   - Acceptance: `go build ./internal/cli/...` passes; no other file
     changed yet.
 
-- [ ] **T003** — Extract flag registration out of `ParseAll` and
+- [x] **T003** — Extract flag registration out of `ParseAll` and
   `ParseFixedLang` into a shared `registerFlags(fs *pflag.FlagSet,
   fixedLang string) (langFlag, formatFlag, outputFlag *string,
   noClipboard *bool, verbosity *int)`-shaped helper in `parse.go` (exact
