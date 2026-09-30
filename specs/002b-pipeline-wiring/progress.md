@@ -111,3 +111,25 @@ test ./internal/cli/...`; confirmed done, no errors.
 **New open questions:** none
 
 ---
+
+**Date:** 2026-09-26
+**Task(s):** T004 -- add `validateOutput` to `read.go`
+**What happened:** Added `validateOutput(outputPath, fileArg string)
+error`: empty `outputPath` returns nil immediately (pass-through);
+otherwise checks the parent directory exists and is a directory, then
+checks `os.SameFile(outputPath, fileArg)` -- skipped when `fileArg == ""`
+(stdin case) or when either path doesn't exist yet (a not-yet-existing
+`--output` path can't be the same file as anything). An existing file at
+`outputPath` that isn't `fileArg` is left alone here -- overwriting it is
+T009's `deliver`, not validation's concern. Added `TestValidateOutput` to
+`read_test.go`: pass-through (with/without a file arg), missing parent
+dir, parent-is-a-file, same-file-as-input, same-file-check-skipped-on-
+stdin, pre-existing unrelated output file, and the plain valid case. Not
+wired into `ParseAll`/`ParseFixedLang` yet -- that's T006/T007. Vedant
+ran `go build ./internal/cli/...`, `gofumpt -l internal/cli/read.go
+internal/cli/read_test.go`, `golangci-lint run ./internal/cli/...`, and
+`go test ./internal/cli/...`; confirmed done, no errors.
+**Deviations from plan (if any):** n/a
+**New open questions:** none
+
+---

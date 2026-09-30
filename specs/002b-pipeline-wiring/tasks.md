@@ -32,7 +32,7 @@ after each task.
   - Depends on: T002
   - Acceptance: existing `parse_test.go` passes unmodified.
 
-- [ ] **T004** — Add `validateOutput(outputPath, fileArg string) error`
+- [x] **T004** — Add `validateOutput(outputPath, fileArg string) error`
   to `read.go` (FR17, Q4): parent-directory-exists-and-is-a-directory
   check; `os.SameFile` same-as-input-file check (skipped when
   `fileArg == ""`). Add `read_test.go` cases for both failures and the
