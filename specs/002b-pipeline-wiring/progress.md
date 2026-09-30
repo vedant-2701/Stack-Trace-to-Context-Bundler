@@ -133,3 +133,31 @@ internal/cli/read_test.go`, `golangci-lint run ./internal/cli/...`, and
 **New open questions:** none
 
 ---
+
+**Date:** 2026-09-26
+**Task(s):** T005 -- add `selectCandidates`/`languageUnsupportedError`
+**What happened:** Added `internal/cli/candidates.go`: `hintLanguages`
+(`"typescript"` -> `[javascript, typescript]`, `"java"` -> `[java]`),
+`hintDisplayName` (`"java"` -> `"Java"`), and `selectCandidates(hint
+string, registered []parser.LanguageParser) ([]parser.LanguageParser,
+error)`. Empty hint returns `registered` unchanged; a hint whose language
+set matches zero registered parsers returns a `*languageUnsupportedError`
+(deliberately, not an empty slice -- `parser.DetectLanguage` panics on an
+empty candidates slice, so the caller must fail fast here, before T006/
+T007 ever reach it); an unrecognized hint panics as a caller-bug
+invariant, same reasoning as `ParseFixedLang`'s existing invalid-lang
+panic. Added `internal/cli/errors.go`: `languageUnsupportedError`,
+`Error()` returns exactly `"<Name> is not supported yet"`. Added
+`candidates_test.go`: a two-field `fakeParser` implementing
+`parser.LanguageParser`, `TestSelectCandidates` (empty hint, typescript
+narrowing to both js+ts, java with none registered -> exact error
+message via `errors.As`, java with one registered -> succeeds), and
+`TestSelectCandidates_InvalidHintPanics`. Vedant ran `go build
+./internal/cli/...`, `gofumpt -l internal/cli/candidates.go
+internal/cli/errors.go internal/cli/candidates_test.go`, `golangci-lint
+run ./internal/cli/...`, `go test ./internal/cli/... -run Candidates -v`,
+and `go test ./internal/cli/...`; confirmed done, no errors.
+**Deviations from plan (if any):** n/a
+**New open questions:** none
+
+---

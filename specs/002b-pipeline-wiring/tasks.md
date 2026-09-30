@@ -41,7 +41,7 @@ after each task.
   - Depends on: T003
   - Acceptance: new tests pass in isolation; nothing else changed.
 
-- [ ] **T005** — Add `internal/cli/candidates.go`: `hintLanguages`,
+- [x] **T005** — Add `internal/cli/candidates.go`: `hintLanguages`,
   `hintDisplayName`, `selectCandidates(hint string, registered
   []parser.LanguageParser) ([]parser.LanguageParser, error)`. Add
   `internal/cli/errors.go`: `languageUnsupportedError`. Add
