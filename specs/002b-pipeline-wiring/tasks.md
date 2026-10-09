@@ -54,7 +54,7 @@ after each task.
     the `languageUnsupportedError` with `Error() == "Java is not
     supported yet"`.
 
-- [ ] **T006** — Update `ParseAll`'s signature to
+- [x] **T006** — Update `ParseAll`'s signature to
   `ParseAll(args []string, stdin io.Reader, stdinIsPiped bool,
   candidates []parser.LanguageParser) (Input, int, error)`. Wire the new
   order: `Parse -> validateLang -> validateFormat ->
@@ -77,7 +77,7 @@ after each task.
     `validateOutput` is actually reached once candidate fail-fast
     doesn't fire.
 
-- [ ] **T007** — Same change as T006, for `ParseFixedLang` (adds the
+- [x] **T007** — Same change as T006, for `ParseFixedLang` (adds the
   `candidates` parameter; the fixed `lang` is passed straight into
   `selectCandidates` as the hint). `cmd/java`'s eventual candidates slice
   will be empty, which is exactly what should make its fail-fast fire.
@@ -101,7 +101,7 @@ after each task.
     error instead, confirming the same wiring on `cmd/typescript`'s
     path.
 
-- [ ] **T008** — Add `internal/cli/help.go`: `Example`, `exitCodeDocs`,
+- [x] **T008** — Add `internal/cli/help.go`: `Example`, `exitCodeDocs`,
   `usageText(programName string, fs *pflag.FlagSet, examples []Example)
   string` (FR19-20). Reuses T003's `registerFlags` to build the `fs` it
   renders `FlagUsages()` from. Add `help_test.go`.
@@ -113,7 +113,7 @@ after each task.
     (final real examples land in T016-018) round-trips through flag
     parsing with no error.
 
-- [ ] **T009** — Add `internal/cli/output.go`: `deliver(bundle string,
+- [x] **T009** — Add `internal/cli/output.go`: `deliver(bundle string,
   outputPath string, stdout io.Writer) error` (FR13, FR15, FR17). Handles
   the trailing-newline rule and silent overwrite; opens the file only at
   call time (never earlier). Add `output_test.go`.
@@ -123,7 +123,7 @@ after each task.
     write-failure case (e.g. a directory removed after being statted, or
     a read-only path) returns a non-nil error and touches nothing else.
 
-- [ ] **T010** — Add `internal/cli/run.go`: `DependencyResolver` type,
+- [x] **T010** — Add `internal/cli/run.go`: `DependencyResolver` type,
   `BinaryConfig` struct, and `Run` stubbed through step 3 only (parse,
   `pflag.ErrHelp` -> print `usageText`, return 0; any other parse error ->
   `slog.Error`, return 2; configure `slog` from verbosity; log
@@ -139,7 +139,7 @@ after each task.
     `stdin ignored` line (FR22, carried over from 002a FR5) fires,
     captured via a test-local `slog` handler.
 
-- [ ] **T011** — Extend `Run`: re-run `selectCandidates` on the parsed
+- [x] **T011** — Extend `Run`: re-run `selectCandidates` on the parsed
   `Input.LangHint`, call `parser.DetectLanguage`, map `ErrNoMatch`/
   `ErrAmbiguous` to exit 4 with the FR11/FR12 messages (including the
   single-line-input tip). Log `language resolved` at Info (attribute
@@ -159,7 +159,7 @@ after each task.
     case asserts the `language resolved` Info log fires with a
     `language` attribute and that no FR9 hint-mismatch line fires.
 
-- [ ] **T012** — Extend `Run`: call the resolved parser's `Parse`. Map
+- [x] **T012** — Extend `Run`: call the resolved parser's `Parse`. Map
   `errors.Is(err, parser.ErrUnparseable)` to exit 3 with the FR12 message;
   any other non-nil error to exit 1.
   - Depends on: T011
@@ -168,7 +168,7 @@ after each task.
     returning success -> proceeds (verified by T013 taking over from
     here).
 
-- [ ] **T013** — Extend `Run`: `os.Getwd` (via a package-level `var getwd
+- [x] **T013** — Extend `Run`: `os.Getwd` (via a package-level `var getwd
   = os.Getwd` for test override) -> exit 1 on failure; call
   `codecontext.BuildGitMetadata`, `codecontext.BuildCodeContexts`, and
   `cfg.Resolvers[language]` if present; assemble `contract.Bundle` per
@@ -180,7 +180,7 @@ after each task.
     `Dependencies` populated as FR4 specifies, using fake git/dependency
     functions (no real `git`/`node`).
 
-- [ ] **T014** — Extend `Run`: render via `render.Markdown`/`render.JSON`
+- [x] **T014** — Extend `Run`: render via `render.Markdown`/`render.JSON`
   per `Input.Format`; call `deliver` (T009); on success, call
   `clipboard.Write` unless `NoClipboard`, with the FR16 Warn text and
   non-fatal handling; log `bundle delivered` at Info.
@@ -196,7 +196,7 @@ after each task.
     stdout case and one `--output` case, and at least one each of
     clipboard `copied`/`skipped`/`failed`.
 
-- [ ] **T015** — Fill in `run_test.go`'s exit-code matrix so every
+- [x] **T015** — Fill in `run_test.go`'s exit-code matrix so every
   `spec.md` exit-code acceptance criterion (FR21) has a corresponding
   case in one place, cross-referencing which criterion each covers.
   - Depends on: T014
@@ -204,7 +204,7 @@ after each task.
     least once each through `Run` specifically (not only through the
     smaller unit tests from earlier tasks).
 
-- [ ] **T016** — Rewrite `cmd/all/main.go`: build `BinaryConfig` with
+- [x] **T016** — Rewrite `cmd/all/main.go`: build `BinaryConfig` with
   `Candidates: []parser.LanguageParser{typescript.NewJavaScriptParser(),
   typescript.NewTypeScriptParser()}`, `Resolvers` mapping both
   `contract.LanguageJavaScript` and `contract.LanguageTypeScript` to
@@ -221,7 +221,7 @@ after each task.
     this binary's actual `Examples` through `ParseAll` with no flag
     error, replacing the placeholder set.
 
-- [ ] **T017** — Rewrite `cmd/java/main.go`: `BinaryConfig{FixedLang:
+- [x] **T017** — Rewrite `cmd/java/main.go`: `BinaryConfig{FixedLang:
   "java", Candidates: nil, Resolvers: nil, Examples: ...}`. Remove the
   002a stub.
   - Depends on: T015
@@ -232,7 +232,7 @@ after each task.
     round-trip this binary's actual `Examples` through `ParseFixedLang`
     with no flag error.
 
-- [ ] **T018** — Rewrite `cmd/typescript/main.go`: `BinaryConfig{
+- [x] **T018** — Rewrite `cmd/typescript/main.go`: `BinaryConfig{
   FixedLang: "typescript", Candidates: [js, ts parsers], Resolvers: {js:
   resolver, ts: resolver}, Examples: ...}`. Remove the 002a stub.
   - Depends on: T015

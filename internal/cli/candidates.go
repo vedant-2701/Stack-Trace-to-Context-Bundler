@@ -26,12 +26,17 @@ var hintLanguages = map[string][]contract.Language{
 }
 
 // hintDisplayName maps a --lang hint value to the human-readable name
-// used in FR10's "<Name> is not supported yet" error message. Only
-// "java" is populated today -- it's the only hint whose language set can
-// currently match zero registered parsers, until 005a's Java parser
-// exists.
+// used in FR10's "<Name> is not supported yet" error message, for the
+// (currently unreachable in practice) case where a hint's language set
+// matches zero registered parsers. "java" is the only hint that can
+// actually hit this today, until 005a's Java parser exists -- every
+// planned BinaryConfig registers at least one JS/TS parser, so
+// "typescript" never actually falls into this path. Populated for both
+// hints anyway (matching plan.md's design), so a name is never derived
+// from the raw flag value if that ever changes.
 var hintDisplayName = map[string]string{
-	"java": "Java",
+	"java":       "Java",
+	"typescript": "TypeScript",
 }
 
 // selectCandidates narrows registered to the parsers matching hint, per

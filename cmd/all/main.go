@@ -1,76 +1,84 @@
 // Command stack-trace-bundler-all is the stack-trace-bundler CLI
-// entrypoint that will eventually auto-detect Java vs. TypeScript/
-// JavaScript traces. For now (002a), it only reads and validates CLI
-// input -- see specs/002a-cli-input-handling/spec.md. The real
-// detect -> parse -> render -> clipboard pipeline, and real stdout
-// bundle output, land in 002b; until then this only logs a stub
-// summary/dump to stderr per spec requirement 13, and never writes to
-// stdout.
+// entrypoint that auto-detects JavaScript vs. TypeScript Node.js traces
+// (Java support lands with 005a/005b; until then --lang=java and plain
+// auto-detection both fail fast via cli.Run's candidate-selection step).
+// All real work -- detect, parse, code context, dependency resolution,
+// render, deliver, clipboard -- lives in cli.Run; this file only wires
+// this binary's BinaryConfig and hands off. See
+// specs/002b-pipeline-wiring/spec.md.
 package main
 
 import (
-	"encoding/json"
-	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/vedant-2701/stack-trace-bundler/internal/cli"
+	"github.com/vedant-2701/stack-trace-bundler/internal/contract"
+	tsdeps "github.com/vedant-2701/stack-trace-bundler/internal/dependency/typescript"
+	"github.com/vedant-2701/stack-trace-bundler/internal/parser"
+	tsparser "github.com/vedant-2701/stack-trace-bundler/internal/parser/typescript"
 )
 
 func main() {
-	input, verbosity, err := cli.ParseAll(os.Args[1:], os.Stdin, stdinIsPiped())
-	if err != nil {
-		// slog's default (unconfigured) level is Info, which still
-		// shows Error -- no need to configure the handler before this
-		// call, unlike the Debug-level calls below.
-		slog.Error(err.Error())
-		os.Exit(2)
+	progName := filepath.Base(os.Args[0])
+
+	cfg := cli.BinaryConfig{
+		ProgramName: progName,
+		// FixedLang stays "" -- this binary registers --lang and lets
+		// cli.Run/ParseAll auto-detect by default (FR3); --lang=typescript
+		// narrows candidates without bypassing Detect (Q10), and
+		// --lang=java fails fast via candidate selection finding no java
+		// parser in Candidates below (FR10), with no cmd/java-specific
+		// code needed here at all.
+		Candidates: []parser.LanguageParser{
+			tsparser.NewJavaScriptParser(),
+			tsparser.NewTypeScriptParser(),
+		},
+		// Both languages share one dependency resolver (006b) -- npm/yarn
+		// dependency resolution doesn't differ between hand-written JS and
+		// TypeScript-compiled-to-JS traces, only parsing does.
+		Resolvers: map[contract.Language]cli.DependencyResolver{
+			contract.LanguageJavaScript: tsdeps.ResolveDependencies,
+			contract.LanguageTypeScript: tsdeps.ResolveDependencies,
+		},
+		Examples: []cli.Example{
+			{
+				Command:     progName + " trace.txt",
+				Description: "bundle a trace from a file, auto-detecting the language",
+			},
+			{
+				Command:     "cat trace.txt | " + progName,
+				Description: "bundle a trace piped on stdin",
+			},
+			{
+				Command:     progName + " --lang=typescript trace.txt",
+				Description: "hint the language instead of relying on auto-detection",
+			},
+			{
+				Command:     progName + " --format=json -o bundle.json trace.txt",
+				Description: "write a JSON bundle to a file instead of stdout",
+			},
+			{
+				Command:     progName + " --no-clipboard trace.txt",
+				Description: "skip copying the bundle to the clipboard",
+			},
+		},
 	}
 
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: cli.LogLevel(verbosity),
-	})))
-
-	// Must come after the slog.SetDefault above, not before -- see
-	// Input.StdinIgnored's doc comment and plan.md's Architecture
-	// section (T006c) for why logging this during cli.ParseAll itself,
-	// before the level was known, silently dropped the message under
-	// every verbosity setting.
-	if input.StdinIgnored {
-		slog.Debug("stdin ignored: file argument took precedence")
-	}
-
-	slog.Info("parsed input",
-		"bytes", len(input.RawText),
-		"lang", input.LangHint,
-		"format", input.Format,
-	)
-
-	if verbosity >= 2 {
-		dump, err := json.MarshalIndent(input, "", "  ")
-		if err != nil {
-			// Marshaling our own known-shape struct should never fail.
-			// This is a Debug-only diagnostic dump, not a functional
-			// path, so log and continue rather than treating it as
-			// fatal.
-			slog.Debug("marshaling input dump failed", "error", err)
-		} else {
-			slog.Debug("input dump", "input", string(dump))
-		}
-	}
+	os.Exit(cli.Run(os.Args[1:], os.Stdin, stdinIsPiped(), cfg, os.Stdout, os.Stderr))
 }
 
 // stdinIsPiped reports whether stdin is piped (a file or another
 // process) rather than an interactive terminal. Computed once here via
-// os.Stdin.Stat() and passed into cli.ParseAll as a plain bool -- keeps
+// os.Stdin.Stat() and passed into cli.Run as a plain bool -- keeps
 // internal/cli's core logic pure and testable with fake readers, no real
 // TTY needed in tests, per plan.md's Architecture section.
 func stdinIsPiped() bool {
 	stat, err := os.Stdin.Stat()
 	if err != nil {
 		// Can't determine TTY state -- fail safe toward "not piped" so
-		// cli.ParseAll's no-input fast-fail (spec requirement 6) kicks
-		// in, rather than risking a block on a read that might never
-		// complete.
+		// readTrace's no-input fast-fail kicks in, rather than risking a
+		// block on a read that might never complete.
 		return false
 	}
 	return stat.Mode()&os.ModeCharDevice == 0
