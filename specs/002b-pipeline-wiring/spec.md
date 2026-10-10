@@ -1,6 +1,6 @@
 # Spec: Pipeline wiring
 
-**Status:** Ready for planning -- every [NEEDS CLARIFICATION] is resolved (see `qa-log.md`, Q1-Q18)
+**Status:** Implemented -- all 22 tasks and every acceptance criterion complete (see `progress.md`; `qa-log.md` holds the Q1-Q18 decision trail)
 **Folder:** specs/002b-pipeline-wiring
 
 ## Overview
@@ -50,8 +50,9 @@ fails fast with a clear error instead of producing a wrong bundle.
    wrong bundle (Q7).
 3. Candidate parsers are supplied by each binary's `main.go`, not
    hardcoded in `internal/cli` (Q1). An empty language hint means every
-   registered parser. A non-empty hint maps, through a per-binary hint
-   table supplied by `main.go`, to a set of languages, and the candidates
+   registered parser. A non-empty hint maps, through a hint table in
+   `internal/cli` (`hintLanguages` -- one table shared by all three
+   binaries, not per-binary and not supplied by `main.go`), to a set of languages, and the candidates
    are the registered parsers in that set: `typescript` -> `javascript`
    and `typescript`; `java` -> `java`. `cmd/all` and `cmd/typescript`
    register the JavaScript and TypeScript parsers; `cmd/java` registers
@@ -231,71 +232,72 @@ fails fast with a clear error instead of producing a wrong bundle.
 
 ## Acceptance criteria
 
-- [ ] Given a Node.js trace file with `.ts` frames, when the tool runs on
+- [x] Given a Node.js trace file with `.ts` frames, when the tool runs on
       `cmd/all`, then stdout holds the Markdown bundle with `Language:
       typescript`, the clipboard holds the same text, and the exit code is 0.
-- [ ] Given `--format json`, when the tool runs, then stdout holds the JSON
+- [x] Given `--format json`, when the tool runs, then stdout holds the JSON
       bundle plus one trailing newline and the clipboard holds the JSON
       without it.
-- [ ] Given a plain-JS trace (no `.ts` frames) and `--lang typescript`, when
+- [x] Given a plain-JS trace (no `.ts` frames) and `--lang typescript`, when
       the tool runs, then `Bundle.Language` is `javascript` and an Info line
       (`-v`) reports hint `typescript`, detected `javascript`.
-- [ ] Given a trace from another language and no `--lang`, when the tool
+- [x] Given a trace from another language and no `--lang`, when the tool
       runs, then it exits 4 with the FR11 message and does not call `Parse`.
-- [ ] Given a single-line input with no frames (e.g. `TypeError: fetch
+- [x] Given a single-line input with no frames (e.g. `TypeError: fetch
       failed`), when the tool runs, then it exits 4 and the message also
       contains the FR12 tip; given a multi-line no-match input, the message
       has no tip.
-- [ ] Given a trace matching two registered parsers (fake parsers in
+- [x] Given a trace matching two registered parsers (fake parsers in
       tests), when the tool runs, then it exits 4 with the ambiguous
       message.
-- [ ] Given a `Parse` error wrapping `ErrUnparseable`, when the tool runs,
+- [x] Given a `Parse` error wrapping `ErrUnparseable`, when the tool runs,
       then it exits 3; given any other `Parse` error, it exits 1.
-- [ ] Given `cmd/all --lang=java`, or any `cmd/java` invocation with valid
+- [x] Given `cmd/all --lang=java`, or any `cmd/java` invocation with valid
       flags, when the tool runs, then it exits 2 with exactly `Java is not
       supported yet`, and no input is read (a blocking stdin is never read).
-- [ ] Given `cmd/java --format=bogus`, when the tool runs, then the format
+- [x] Given `cmd/java --format=bogus`, when the tool runs, then the format
       error is reported (exit 2), not the Java message.
-- [ ] Given `-o out.md`, when the tool runs, then the bundle plus a trailing
+- [x] Given `-o out.md`, when the tool runs, then the bundle plus a trailing
       newline is in `out.md`, nothing is written to stdout, and the
       clipboard is still written unless `--no-clipboard` is set.
-- [ ] Given `--no-clipboard`, when the tool runs, then the clipboard writer
+- [x] Given `--no-clipboard`, when the tool runs, then the clipboard writer
       is never called.
-- [ ] Given `-o` whose parent directory does not exist, when the tool runs,
+- [x] Given `-o` whose parent directory does not exist, when the tool runs,
       then it exits 2 before any input is read or pipeline step runs.
-- [ ] Given `stba trace.txt -o trace.txt`, when the tool runs, then it exits
+- [x] Given `stba trace.txt -o trace.txt`, when the tool runs, then it exits
       2, `trace.txt` is unchanged, and nothing else is written.
-- [ ] Given `-o` pointing at an existing file, when the tool runs, then it
+- [x] Given `-o` pointing at an existing file, when the tool runs, then it
       is overwritten without a prompt; given a pipeline failure (exit 3/4),
       an existing output file is untouched.
-- [ ] Given an `-o` write failure at the final write, when the tool runs,
+- [x] Given an `-o` write failure at the final write, when the tool runs,
       then it exits 1 with an error naming the path and the clipboard writer
       is never called.
-- [ ] Given a failing clipboard writer, when the tool runs after a
+- [x] Given a failing clipboard writer, when the tool runs after a
       successful write, then a Warn (FR16 text) is logged, the exit code is
       0, and the bundle was already delivered.
-- [ ] Given `os.Getwd` failing (injected), when the tool runs, then it
+- [x] Given `os.Getwd` failing (injected), when the tool runs, then it
       exits 1.
-- [ ] Given `-h` or `--help` on each of the three binaries, when the tool
+- [x] Given `-h` or `--help` on each of the three binaries, when the tool
       runs, then the usage text goes to stderr, stdout is empty, the exit
       code is 0, `cmd/all`'s text lists `--lang` and the others' do not, and
       every flag, every exit code and every example appears.
-- [ ] Given each example in the usage data, when its arguments are parsed
+- [x] Given each example in the usage data, when its arguments are parsed
       by the matching `ParseAll`/`ParseFixedLang`, then no flag error
       occurs.
-- [ ] Given `--lang=cobol -h`, when the tool runs, then help is printed
+- [x] Given `--lang=cobol -h`, when the tool runs, then help is printed
       (exit 0); given `--bogus -h`, exit 2.
-- [ ] Given a normal run at default verbosity, when the tool runs, then
+- [x] Given a normal run at default verbosity, when the tool runs, then
       stderr carries no `parsed input` line and no `Input` dump; at `-v` it
       carries `language resolved` and `bundle delivered`.
-- [ ] Given a file argument with piped stdin, when the tool runs at `-vv`,
+- [x] Given a file argument with piped stdin, when the tool runs at `-vv`,
       then the Debug `stdin ignored` line is still logged.
-- [ ] `go build ./...`, `go vet ./...`, `go test ./...` and the repo's lint
+- [x] `go build ./...`, `go vet ./...`, `go test ./...` and the repo's lint
       pass; nothing outside the files this feature owns changed behavior.
-- [ ] Follow-ups done: 002a's `spec.md` marks FR13 and its affected
+- [x] Follow-ups done: 002a's `spec.md` marks FR13 and its affected
       acceptance criteria superseded by 002b and closes its "temporary
       stdout behavior" note; `memory/known-gaps.md`'s 006a bare-stack row is
-      removed or marked done and 006a's spec checkbox for it is checked;
+      removed or marked done and 006a's spec checkbox for it is checked (006a
+      has none; its FR4 prose was repointed at FR12 instead);
       `CONVENTIONS.md`'s exit-code descriptions cover help (0), the Java
       message and invalid `--output` (2).
 

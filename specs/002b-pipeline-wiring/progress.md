@@ -794,3 +794,79 @@ run as a standalone command.
 **New open questions:** none
 
 ---
+
+**Date:** 2026-10-10
+**Task(s):** Feature close-out, part 1 (not one of tasks.md's 22 tasks)
+**What happened:** Went through all 24 acceptance criteria in 002b's
+`spec.md` against the tests and Vedant's manual runs. 18 had direct
+evidence and are now `[x]`. Six did not yet, so were left `[ ]` and
+the status line and `specs/INDEX.md` were left alone until they pass:
+criteria 1 and 2 (clipboard text equals stdout; JSON clipboard copy has
+no trailing newline -- no Run-level test asserted this), 13 and 14 (an
+input file / an existing `--output` file stay untouched after a failure
+-- true by construction, but unasserted), 18 (`--help` was run on
+`cmd/java` and `cmd/typescript` but never on the real `cmd/all` binary),
+and 23 (`go vet ./...` never run as its own command). Added two tests to
+`run_test.go` to close the four test-shaped gaps:
+`TestRun_ClipboardMatchesStdoutExceptTrailingNewline` (markdown and json)
+and `TestRun_FailureLeavesFilesUntouched` (exit-4 pipeline failure leaves
+an existing `--output` file as `old\n`; `--output` equal to the input
+leaves the input unchanged). Reworded the last criterion's 006a clause to
+say 006a has no such checkbox and its FR4 prose was repointed at FR12.
+These are test-only additions and have not been run yet.
+Separately noticed: the `all` and `java` binaries from earlier
+`go build ./cmd/...` runs sit at the repo root and are not covered by
+`.gitignore` (only `bin/` and a few extensions are) -- flagged so they
+aren't staged by accident.
+**Deviations from plan (if any):** the two added tests are outside
+tasks.md's 22 tasks; added so criteria 1, 2, 13, 14 are verified rather
+than ticked on inspection alone.
+**New open questions:** none
+
+---
+
+**Date:** 2026-10-10
+**Task(s):** Feature close-out, part 2 (not one of tasks.md's 22 tasks)
+**What happened:** Vedant ran the verification block. `bin/all --help`
+wrote nothing to stdout (0 bytes), exited 0, and its stderr text matched
+`--lang` twice (the flag line and the `--lang=typescript` example), which
+is what a `cmd/all`-shaped help should show. He reported "tests were
+successful" for the new `run_test.go` cases. On that evidence ticked
+criteria 1, 2 (clipboard text matches stdout; JSON clipboard copy has no
+trailing newline), 13, 14 (files untouched after a failure) and 18
+(`--help` on all three binaries -- `cmd/java`/`cmd/typescript` from T017/
+T018, `cmd/all` now). Criterion 18's "every flag, every exit code and
+every example appears" rests on the unit tests plus Vedant skimming the
+output as asked; the full `help.err` text was not pasted back.
+
+Still open: criterion 23. Vedant's wording was "tests were
+successful", not his usual "done, no errors", so it is unclear whether
+`go vet ./...`, `gofumpt -l .` and `golangci-lint run ./...` in the same
+block were also clean or only `go test` was checked. Left unticked rather
+than assumed (standing preference: never assume gate output is clean
+without an explicit confirmation). The spec status line and
+`specs/INDEX.md`'s 002b row are held until it is confirmed.
+**Deviations from plan (if any):** n/a
+**New open questions:** whether `go vet ./...` and lint were clean (see
+above).
+
+---
+
+**Date:** 2026-10-10
+**Task(s):** Feature close-out, part 3 -- feature complete
+**What happened:** Vedant confirmed the standalone checks: `go vet ./...`
+and `gofumpt -l .` printed nothing and `golangci-lint run ./...` reported
+0 issues (`go build ./...` and `go test ./...` had already passed in the
+earlier block). Ticked criterion 23, which was the last open one: all 24
+acceptance criteria in 002b's `spec.md` are now `[x]`. Set `spec.md`'s
+status line to Implemented and `specs/INDEX.md`'s 002b row to `done`.
+While rereading the spec as a whole before flipping those, found FR3
+still said the hint table is "per-binary, supplied by `main.go`". What
+shipped (following `plan.md`) is one package-level `hintLanguages` in
+`internal/cli/candidates.go`, shared by all three binaries. Reworded FR3
+to match, rather than leave a spec asserting a design the code doesn't
+have -- the same kind of staleness T019 fixed in 002a.
+**Deviations from plan (if any):** n/a
+**New open questions:** none
+
+---

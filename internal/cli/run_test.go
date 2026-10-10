@@ -698,3 +698,114 @@ func TestRun_ExitCodeMatrix_UsageErrors(t *testing.T) {
 		}
 	})
 }
+
+// TestRun_ClipboardMatchesStdoutExceptTrailingNewline pins spec.md FR15 at
+// the Run level: the clipboard gets the rendered text unchanged, and
+// stdout gets the same text plus one trailing newline only when it
+// doesn't already end with one. For JSON that means the clipboard copy is
+// one byte shorter than stdout (008 Q5 stays intact for the paste
+// payload).
+func TestRun_ClipboardMatchesStdoutExceptTrailingNewline(t *testing.T) {
+	for _, format := range []string{"markdown", "json"} {
+		t.Run(format, func(t *testing.T) {
+			var clip string
+			orig := clipboardWrite
+			t.Cleanup(func() { clipboardWrite = orig })
+			clipboardWrite = func(_ context.Context, text string) error {
+				clip = text
+				return nil
+			}
+
+			var stdout, stderr strings.Builder
+			cfg := BinaryConfig{
+				ProgramName: "stba",
+				Candidates: []parser.LanguageParser{
+					configurableFakeParser{lang: contract.LanguageJavaScript, detect: true},
+				},
+			}
+
+			got := Run([]string{"--format=" + format}, strings.NewReader("trace\n"), true, cfg, &stdout, &stderr)
+
+			if got != 0 {
+				t.Fatalf("exit code = %d, want 0 -- stderr: %s", got, stderr.String())
+			}
+			if clip == "" {
+				t.Fatal("clipboard writer was not called, or was called with empty text")
+			}
+
+			want := clip
+			if !strings.HasSuffix(want, "\n") {
+				want += "\n"
+			}
+			if stdout.String() != want {
+				t.Errorf("stdout = %q, want the clipboard text plus at most one trailing newline (%q)", stdout.String(), want)
+			}
+			if format == "json" && strings.HasSuffix(clip, "\n") {
+				t.Error("JSON clipboard text ends with a newline, want it byte-for-byte without one (008 Q5)")
+			}
+		})
+	}
+}
+
+// TestRun_FailureLeavesFilesUntouched covers two spec.md acceptance
+// criteria that held only by construction until now: a pipeline failure
+// never touches an existing --output file (FR17: the file is opened only
+// after rendering succeeds), and --output equal to the input file is
+// rejected before anything is written.
+func TestRun_FailureLeavesFilesUntouched(t *testing.T) {
+	t.Run("pipeline failure (exit 4) leaves an existing --output file untouched", func(t *testing.T) {
+		dir := t.TempDir()
+		outPath := filepath.Join(dir, "out.md")
+		if err := os.WriteFile(outPath, []byte("old\n"), 0o600); err != nil {
+			t.Fatalf("writing pre-existing output fixture: %v", err)
+		}
+
+		var stdout, stderr strings.Builder
+		cfg := BinaryConfig{
+			ProgramName: "stba",
+			Candidates: []parser.LanguageParser{
+				configurableFakeParser{lang: contract.LanguageJavaScript, detect: false},
+			},
+		}
+
+		got := Run([]string{"--output=" + outPath}, strings.NewReader("trace\n"), true, cfg, &stdout, &stderr)
+
+		if got != 4 {
+			t.Fatalf("exit code = %d, want 4 -- stderr: %s", got, stderr.String())
+		}
+		content, err := os.ReadFile(outPath)
+		if err != nil {
+			t.Fatalf("reading output file: %v", err)
+		}
+		if string(content) != "old\n" {
+			t.Errorf("output file = %q, want it untouched (%q)", string(content), "old\n")
+		}
+	})
+
+	t.Run("--output equal to the input file leaves the input unchanged", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "trace.txt")
+		if err := os.WriteFile(path, []byte("trace\n"), 0o600); err != nil {
+			t.Fatalf("writing test fixture file: %v", err)
+		}
+
+		var stdout, stderr strings.Builder
+		cfg := BinaryConfig{ProgramName: "stba"}
+
+		got := Run([]string{"--output=" + path, path}, strings.NewReader(""), false, cfg, &stdout, &stderr)
+
+		if got != 2 {
+			t.Fatalf("exit code = %d, want 2 -- stderr: %s", got, stderr.String())
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("reading input file: %v", err)
+		}
+		if string(content) != "trace\n" {
+			t.Errorf("input file = %q, want it unchanged (%q)", string(content), "trace\n")
+		}
+		if stdout.Len() != 0 {
+			t.Errorf("stdout = %q, want empty", stdout.String())
+		}
+	})
+}
