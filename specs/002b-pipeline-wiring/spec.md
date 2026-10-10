@@ -223,9 +223,10 @@ fails fast with a clear error instead of producing a wrong bundle.
   reviewing.
 - Any change to `internal/contract`, the renderers, the parsers,
   `codecontext`, `dependency/typescript`, or `clipboard`.
-- Detection improvements: compiled-TypeScript classification and the
-  bare-stack shape stay as documented in `memory/known-gaps.md`, apart from
-  FR12's single-line tip.
+- Detection improvements: compiled-TypeScript classification stays as
+  documented in 006a's FR6; the bare-stack shape is covered only by FR12's
+  single-line tip (its `memory/known-gaps.md` row was retired by this
+  feature, T020).
 - Bun/Deno runtimes (`memory/known-gaps.md`).
 
 ## Acceptance criteria

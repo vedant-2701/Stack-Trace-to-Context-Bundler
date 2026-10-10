@@ -95,8 +95,8 @@ wiring (002b), or auto-detection ambiguity handling (003b).
    `Detect()` further to catch it would reopen the exact false-positive
    risk condition (ii) exists to prevent. `Detect()` correctly returns
    `false` for this fixture; it falls through to 003b's "no parser
-   matched" path by design, not by omission (see
-   `memory/known-gaps.md`). 
+   matched" path by design, not by omission (see 002b's FR12: its exit-4 "could not detect the
+   language" message now carries a tip for exactly this shape). 
 
    **Leading whitespace is variable, not fixed at 4 spaces** --
    confirmed against real captures in `testdata/`: a `[cause]:`-nested

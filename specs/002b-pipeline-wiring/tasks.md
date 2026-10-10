@@ -241,7 +241,7 @@ after each task.
     case is updated to round-trip this binary's actual `Examples`
     through `ParseFixedLang` with no flag error.
 
-- [ ] **T019** — Update `specs/002a-cli-input-handling/spec.md`: mark
+- [x] **T019** — Update `specs/002a-cli-input-handling/spec.md`: mark
   FR13 and its three dependent acceptance criteria (Info summary at
   `-v`; Info summary + dump at `-vv`; the criterion mentioning both) as
   superseded by 002b, with a one-line pointer to this feature. Close the
@@ -258,7 +258,7 @@ after each task.
     and `Input` exactly as this feature leaves them, not as 002a
     originally shipped them.
 
-- [ ] **T020** — Update `memory/known-gaps.md`: remove or mark done the
+- [x] **T020** — Update `memory/known-gaps.md`: remove or mark done the
   006a bare-stack-shape row (now covered by FR12's tip). Check the
   corresponding box in `specs/006a-ts-js-parser/spec.md` if one exists
   for this criterion.
@@ -266,7 +266,7 @@ after each task.
   - Acceptance: no open reference to this gap remains pointing at an
     unimplemented feature.
 
-- [ ] **T021** — Update `CONVENTIONS.md`'s exit-code line: code `0` now
+- [x] **T021** — Update `CONVENTIONS.md`'s exit-code line: code `0` now
   explicitly includes `--help`; code `2` explicitly includes "an
   unsupported `--lang` value with no matching parser" and "a bad
   `--output` path." Keep it prose-length, consistent with the rest of the
@@ -276,7 +276,7 @@ after each task.
     exit 0/2, and still matches `internal/cli/help.go`'s `exitCodeDocs`
     in substance (not generated from it -- see plan.md's Risks section).
 
-- [ ] **T022** — Full gate: `gofumpt -l -w .`, `golangci-lint run ./...`,
+- [x] **T022** — Full gate: `gofumpt -l -w .`, `golangci-lint run ./...`,
   `go build ./...`, `go test ./...` (or `lefthook run pre-commit`).
   - Depends on: T001-T021
   - Acceptance: all four pass clean, repo-wide, not just for

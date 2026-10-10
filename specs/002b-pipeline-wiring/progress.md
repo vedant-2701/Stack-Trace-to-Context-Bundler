@@ -648,3 +648,149 @@ conflicts with the "atomic commit per task" preference. Raised with
 Vedant; see his decision below if recorded.
 
 ---
+
+**Date:** 2026-10-09
+**Task(s):** T019 -- sync 002a's `spec.md` and `plan.md` with what 002b
+left behind (docs only, no code)
+**What happened:** `specs/002a-cli-input-handling/spec.md`: FR13 marked
+superseded by 002b with a pointer to this feature, original text kept
+for history; the "temporary stdout behavior" note retitled "Resolved by
+002b" with a resolution paragraph (T016-T018 rewrote all three `main.go`
+files onto `cli.Run`, which writes the real bundle and removed the stub
+logging); the status line and the "Info/Debug stub output" non-functional
+requirement updated to match. Acceptance criteria marked superseded: the
+three tasks.md named (the `-v` Info summary, the `-vv` summary + dump, and
+the first criterion's "Info summary + Debug dump available via -v/-vv,
+nothing on stdout" tail, which was trimmed in place rather than the whole
+criterion, since the rest of it is still true). `plan.md`: Data model
+`Input` gained `Output`/`NoClipboard` (and "none of the five" -> "seven");
+API / contracts shows the `candidates` parameter on both signatures and
+adds `validateOutput`; File layout reflects the real `cmd/*` wiring and
+the five new `internal/cli` files; the two Architecture bullets list the
+new signatures and flags. Added a short "Note (002b)" block under the
+title rather than rewriting history paragraph by paragraph, because
+several Architecture paragraphs ("`main.go` logs everything", "`internal/
+cli` never calls `slog`") now describe 002a as shipped rather than the
+current code; the note says so and points at the sections that were kept
+current.
+**Deviations from plan (if any):** Marked a fourth acceptance criterion
+superseded, beyond the three tasks.md listed: "a successful run with no
+`-v`/`-vv` logs nothing at all." The real pipeline can emit `Warn` lines
+(own-code context or dependency resolution degrading -- visible in the
+T016 manual runs), so the claim is no longer strictly true. Done so
+that 002a's spec doesn't assert behavior the code no longer has, but it
+is outside the literal task wording, so flagged to Vedant to veto.
+**New open questions:** none
+
+---
+
+**Date:** 2026-10-09
+**Task(s):** T020 -- retire the 006a bare-stack row in
+`memory/known-gaps.md` (docs only, no code)
+**What happened:** Removed the `006a-ts-js-parser` bare-stack row from
+`memory/known-gaps.md`'s Deferred acceptance criteria table (owners
+"003b, 002b"; 002b's FR12 tip is the user-facing no-match improvement it
+asked for -- suggest pasting the trace into an LLM, mention
+`Error.stackTraceLimit` -- implemented in T011). Removed rather than
+marked done, per the file's own "whichever keeps this file smallest"
+instruction. `specs/006a-ts-js-parser/spec.md` has no acceptance-criteria
+checkbox for this item, so there was nothing to tick; the only reference
+is prose under FR4's "Known residual gap" paragraph, which pointed at
+`memory/known-gaps.md` (now a dangling reference) and at 003b's "no
+parser matched" path. Repointed that parenthetical at 002b's FR12 instead.
+**Deviations from plan (if any):** The tip is narrower than the row
+described. The row suggested mentioning `Error.stackTraceLimit` only "if
+the error's own `.message` pattern looks like a native-binding/
+fetch-style failure"; FR12's tip is keyed on the trimmed input being a
+single line, and always mentions it, hedged with "if it came from
+Node.js". That was decided during 002b interrogation (Q-trail in
+`qa-log.md`), and the row itself called the whole thing "not required,
+just a UX improvement," so removing it is consistent. Noted so the
+narrowing isn't silent.
+**New open questions:** Two other rows in the same table look stale but
+were left alone as out of T020's scope: the `001-data-contract` TS/JS
+`Error.cause` row (owner 006a, "pending" -- 006a is done and its matching
+acceptance criterion is `[x]`) and the `001-data-contract` no-resolvable-
+version row (owners 005b, 006b -- 006b is done). Not verified either way,
+so not touched. Also: only checked `006a/spec.md` for dangling references
+to the removed row; the file search tool I have is filename-only, so I
+couldn't content-grep the rest of the docs.
+
+**Follow-up (same day, after Vedant ran the checks):** Ran `./all
+internal/parser/typescript/testdata/bare-stack-fetch-cause.txt`: exit 4,
+`could not detect the language of the input: checked javascript,
+typescript: no registered parser matched this trace.` plus the FR12
+single-line tip -- the real fixture the removed row was written about
+now gets exactly what the row asked for. A repo-wide grep for `bare-stack`/
+`no parser matched`/`known-gaps` turned up one genuine leftover in this
+feature: 002b's own `spec.md` Out of scope said compiled-TypeScript
+classification and the bare-stack shape "stay as documented in
+`memory/known-gaps.md`". The bare-stack row no longer exists, and
+compiled-TS classification was never in that file (it's 006a's FR6) --
+reworded accordingly. Everything else the grep found is history
+(progress logs, qa-logs) or points at other rows that still exist.
+
+**Deviation to flag:** I edited `specs/006a-ts-js-parser/spec.md` (FR4's
+"Known residual gap" parenthetical) although 006a is a `done` feature and
+T020 only asks to check a box "if one exists" (none did). 006a's own
+progress log (its T012 entry) records that retroactively editing a
+done feature's `spec.md` isn't this project's pattern, and 003a's spec
+kept a stale `known-gaps.md` pointer after its row was removed. The
+reason I did it -- the parenthetical said "see `memory/known-gaps.md`"
+about a row that is now gone -- is weaker than I treated it: the file
+still exists and the pointer is generic. Raised with Vedant for a
+revert-or-keep call; not decided yet.
+
+**Also noted for feature close-out, not done:** every acceptance
+criterion in 002b's `spec.md` is still `[ ]`, its status line still says
+"Ready for planning", and the last criterion ("006a's spec checkbox for
+it is checked") can't be satisfied literally since no such checkbox
+exists. To be handled when the feature closes, after T022.
+
+**Decision (Vedant, after the above was raised):** keep the
+`specs/006a-ts-js-parser/spec.md` FR4 edit as is; no revert.
+
+---
+
+**Date:** 2026-10-09
+**Task(s):** T021 -- update `CONVENTIONS.md`'s exit-code line (docs only,
+no code)
+**What happened:** Rewrote the "CLI exit codes" bullet in
+`CONVENTIONS.md`. Same five codes, no new ones; only the descriptions
+widen: `0` now says it includes `--help` and a clipboard copy that fails
+after the bundle was already delivered (a `Warn`); `1` includes a failed
+write of the bundle; `2` lists bad flags/args, no or empty input, an
+unsupported `--lang` value with no matching parser, and a bad `--output`
+path; `3` and `4` unchanged. Added a sentence saying `--help` renders
+the same table from `exitCodeDocs` in `internal/cli/help.go` and that the
+two are kept in sync by hand, not generated, per `plan.md`'s Risks
+section, so the next person editing one knows to check the other. The
+clipboard clause and the "failed write of the bundle" clause go slightly
+beyond the two additions tasks.md named (`--help`, and the unsupported
+`--lang`/bad `--output` cases), but both are in FR21 and were exactly the
+kind of exit-0/exit-1 behavior the line undersold. `exitCodeDocs` itself
+is terser (`0` is just "success (including --help)", `2` says "no input"
+rather than "no or empty input") -- they agree in substance, which is
+what the acceptance criterion asks for, but they are not word-for-word.
+**Deviations from plan (if any):** the two extra clauses above.
+**New open questions:** none
+
+---
+
+**Date:** 2026-10-09
+**Task(s):** T022 -- final full gate
+**What happened:** Vedant ran the repo-wide gate (`gofumpt -l -w .`,
+`golangci-lint run ./...`, `go build ./...`, `go test ./...`) after the
+docs-only T019-T021 changes; confirmed done, no errors. No code changed
+since the previous clean repo-wide run at T018, so this confirms the
+docs tasks didn't disturb anything rather than testing new behavior. All
+22 tasks are now `[x]`. Not yet done, and deliberately separate from T022:
+feature close-out (002b `spec.md`'s acceptance-criteria checkboxes and
+status line, and `specs/INDEX.md`'s 002b row). `go vet ./...` is listed
+in the spec's build criterion but is not part of T022's four commands;
+`golangci-lint`'s `govet` linter covers it in effect, but it has not been
+run as a standalone command.
+**Deviations from plan (if any):** n/a
+**New open questions:** none
+
+---
