@@ -5,6 +5,8 @@ import (
 	"io"
 
 	"github.com/spf13/pflag"
+
+	"github.com/vedant-2701/stack-trace-bundler/internal/parser"
 )
 
 // validateFormat checks the --format flag value. An empty string (the
@@ -40,14 +42,68 @@ func validateLang(v string) (string, error) {
 	}
 }
 
-// ParseAll registers --lang, --format, and -v for cmd/all, validates
-// before touching any I/O, then delegates to readTrace. Validation order
-// is fixed and deliberate (Parse -> validateLang -> validateFormat ->
-// readTrace): flag/value validation is cheap and does no I/O, so it
-// fails fast ahead of anything that opens a file or reads stdin. This
-// matters when an invocation triggers more than one failure condition at
-// once (e.g. --lang=cobol with no available input) -- the flag error is
-// what's returned, deterministically, per plan.md.
+// registerFlags registers the flag set shared by all three binaries onto
+// fs and returns pointers to each flag's destination. It is the single
+// registration path for both ParseAll/ParseFixedLang and help.go's
+// usageText (T008), so the flag set rendered in --help can never drift
+// out of sync with the flag set actually parsed.
+//
+// fixedLang is "" for cmd/all (registers --lang) and "java"/"typescript"
+// for cmd/java/cmd/typescript (does not register --lang at all, matching
+// ParseFixedLang's existing behavior -- passing --lang on those binaries
+// must still produce pflag's own "unknown flag" error). langFlag is nil
+// whenever --lang isn't registered; callers must check fixedLang (or
+// nil-check langFlag) before dereferencing it.
+//
+// outputFlag and noClipboard back the --output/-o and --no-clipboard
+// flags added by 002b. Registering them here makes them appear in
+// --help (T008) and rejects any pre-002b test asserting they're unknown
+// flags, but neither ParseAll nor ParseFixedLang reads these two
+// pointers into Input yet -- that wiring is T006/T007. Until then they
+// are parsed and silently discarded.
+func registerFlags(fs *pflag.FlagSet, fixedLang string) (langFlag, formatFlag, outputFlag *string, noClipboard *bool, verbosity *int) {
+	formatFlag = new(string)
+	outputFlag = new(string)
+	noClipboard = new(bool)
+	verbosity = new(int)
+
+	if fixedLang == "" {
+		langFlag = new(string)
+		fs.StringVar(langFlag, "lang", "", `source language: "java" or "typescript" (omit to defer to auto-detection)`)
+	}
+
+	fs.StringVar(formatFlag, "format", "markdown", `output format: "json" or "markdown"`)
+	fs.StringVarP(outputFlag, "output", "o", "", `write the bundle to <path> instead of stdout`)
+	fs.BoolVar(noClipboard, "no-clipboard", false, "skip copying the bundle to the clipboard")
+	fs.CountVarP(verbosity, "verbose", "v", "increase log verbosity (-v for Info, -vv for Debug)")
+
+	return langFlag, formatFlag, outputFlag, noClipboard, verbosity
+}
+
+// ParseAll registers cmd/all's flags via registerFlags (--lang, --format,
+// --output, --no-clipboard, and -v), validates before touching any I/O,
+// then delegates to readTrace. Validation order is fixed and deliberate
+// (Parse -> validateLang -> validateFormat -> selectCandidates(fail-fast)
+// -> validateOutput -> readTrace): flag/value validation is cheap and
+// does no I/O, so it fails fast ahead of anything that opens a file or
+// reads stdin; selectCandidates' FR10 Java fail-fast comes next since it
+// is also cheap (no I/O) and per FR10 must run before any input is read;
+// validateOutput runs last of the no-I/O checks since it does touch the
+// filesystem (os.Stat), but still strictly before readTrace opens
+// anything. This matters when an invocation triggers more than one
+// failure condition at once (e.g. --lang=cobol with no available input,
+// or --lang=java with both an invalid --format and a bad --output path)
+// -- exactly one error is returned, deterministically, in this fixed
+// order, per plan.md.
+//
+// candidates is the caller's (cmd/all's main.go) full set of registered
+// LanguageParsers -- selectCandidates narrows it by the --lang hint
+// (T005) and fails fast with a languageUnsupportedError if the hint's
+// language set matches none of them (FR10). ParseAll discards
+// selectCandidates' narrowed slice here; it exists only to fail fast at
+// this point without ever reaching parser.DetectLanguage. Run (T010/T011)
+// re-runs selectCandidates itself on Input.LangHint to get the actual
+// narrowed slice for detection.
 //
 // Uses pflag.FlagSet, not stdlib flag.FlagSet, as of task T007a (see
 // memory/decisions/0002-adopt-pflag-for-flag-parsing.md) -- stdlib
@@ -87,29 +143,29 @@ func validateLang(v string) (string, error) {
 // Input.StdinIgnored's doc comment and plan.md's Architecture section
 // for why logging it here, before the level is known, doesn't work --
 // T006c). Error logging and os.Exit are also main.go's job.
-func ParseAll(args []string, stdin io.Reader, stdinIsPiped bool) (Input, int, error) {
+func ParseAll(args []string, stdin io.Reader, stdinIsPiped bool, candidates []parser.LanguageParser) (Input, int, error) {
 	fs := pflag.NewFlagSet("stack-trace-bundler", pflag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
-	var langFlag, formatFlag string
-	var verbosityCount int
-	fs.StringVar(&langFlag, "lang", "", `source language: "java" or "typescript" (omit to defer to auto-detection)`)
-	fs.StringVar(&formatFlag, "format", "markdown", `output format: "json" or "markdown"`)
-	fs.CountVarP(&verbosityCount, "verbose", "v", "increase log verbosity (-v for Info, -vv for Debug)")
+	langFlag, formatFlag, outputFlag, noClipboardFlag, verbosityCount := registerFlags(fs, "")
 
 	if err := fs.Parse(args); err != nil {
 		return Input{}, 0, fmt.Errorf("parsing flags: %w", err)
 	}
 
-	verbosity := verbosityCount
+	verbosity := *verbosityCount
 
-	lang, err := validateLang(langFlag)
+	lang, err := validateLang(*langFlag)
 	if err != nil {
 		return Input{}, 0, err
 	}
 
-	format, err := validateFormat(formatFlag)
+	format, err := validateFormat(*formatFlag)
 	if err != nil {
+		return Input{}, 0, err
+	}
+
+	if _, err := selectCandidates(lang, candidates); err != nil {
 		return Input{}, 0, err
 	}
 
@@ -117,6 +173,10 @@ func ParseAll(args []string, stdin io.Reader, stdinIsPiped bool) (Input, int, er
 	// as fs.Arg(0) semantics -- not covered by spec.md, minimal-scope
 	// choice consistent with the -h/--help note above.
 	fileArg := fs.Arg(0)
+
+	if err := validateOutput(*outputFlag, fileArg); err != nil {
+		return Input{}, 0, err
+	}
 
 	raw, truncated, stdinIgnored, err := readTrace(fileArg, stdin, stdinIsPiped)
 	if err != nil {
@@ -129,13 +189,15 @@ func ParseAll(args []string, stdin io.Reader, stdinIsPiped bool) (Input, int, er
 		LangHint:          lang,
 		Format:            format,
 		StdinIgnored:      stdinIgnored,
+		Output:            *outputFlag,
+		NoClipboard:       *noClipboardFlag,
 	}, verbosity, nil
 }
 
-// ParseFixedLang registers only --format and -v for cmd/java and
-// cmd/typescript -- --lang is never registered on this FlagSet, so
-// passing it produces pflag's own "unknown flag" error (spec requirement
-// 2), with no special-case handling needed here.
+// ParseFixedLang registers cmd/java's/cmd/typescript's flags via
+// registerFlags (--format, --output, --no-clipboard, and -v; never
+// --lang) -- passing --lang produces pflag's own "unknown flag" error
+// (spec requirement 2), with no special-case handling needed here.
 //
 // lang must be "java" or "typescript" and is only ever supplied
 // internally, as a hardcoded literal in cmd/java/main.go and
@@ -147,17 +209,26 @@ func ParseAll(args []string, stdin io.Reader, stdinIsPiped bool) (Input, int, er
 // value for ParseAll's user-facing --lang flag, which is the wrong
 // semantics for a caller-fixed language.
 //
+// candidates is cmd/java's/cmd/typescript's fixed set of registered
+// LanguageParsers (cmd/java's is expected to be empty until 005a
+// exists, which is exactly what makes its selectCandidates fail-fast
+// fire every time). lang is passed straight into selectCandidates as
+// the hint -- there is no validateLang step here the way ParseAll has
+// one, since lang isn't a flag value to validate, it's a fixed caller
+// input already checked by the panic above.
+//
 // Otherwise mirrors ParseAll: pflag.FlagSet with -v as a CountVarP
 // shorthand (same rationale, see ParseAll's doc comment), fixed
-// validation order (Parse -> validateFormat -> readTrace), output
-// discarded via io.Discard for the same single-formatting-channel reason
-// (see ParseAll's doc comment for the -h/--help caveat), the returned
-// int is a verbosity count with the same semantics and the same
-// always-0-on-error rule as ParseAll. Like ParseAll, it never calls slog
-// itself -- Input.StdinIgnored carries the stdin-ignored signal for
-// main.go to log post-configuration; see ParseAll's doc comment for why
-// (T006c).
-func ParseFixedLang(args []string, stdin io.Reader, stdinIsPiped bool, lang string) (Input, int, error) {
+// validation order (Parse -> validateFormat -> selectCandidates(
+// fail-fast) -> validateOutput -> readTrace, the same order as ParseAll
+// minus the validateLang step), output discarded via io.Discard for the
+// same single-formatting-channel reason (see ParseAll's doc comment for
+// the -h/--help caveat), the returned int is a verbosity count with the
+// same semantics and the same always-0-on-error rule as ParseAll. Like
+// ParseAll, it never calls slog itself -- Input.StdinIgnored carries the
+// stdin-ignored signal for main.go to log post-configuration; see
+// ParseAll's doc comment for why (T006c).
+func ParseFixedLang(args []string, stdin io.Reader, stdinIsPiped bool, lang string, candidates []parser.LanguageParser) (Input, int, error) {
 	if lang != "java" && lang != "typescript" {
 		panic(fmt.Sprintf("cli.ParseFixedLang: invalid lang %q, want \"java\" or \"typescript\" -- this is a caller bug, not a runtime condition", lang))
 	}
@@ -165,23 +236,28 @@ func ParseFixedLang(args []string, stdin io.Reader, stdinIsPiped bool, lang stri
 	fs := pflag.NewFlagSet("stack-trace-bundler", pflag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
-	var formatFlag string
-	var verbosityCount int
-	fs.StringVar(&formatFlag, "format", "markdown", `output format: "json" or "markdown"`)
-	fs.CountVarP(&verbosityCount, "verbose", "v", "increase log verbosity (-v for Info, -vv for Debug)")
+	_, formatFlag, outputFlag, noClipboardFlag, verbosityCount := registerFlags(fs, lang)
 
 	if err := fs.Parse(args); err != nil {
 		return Input{}, 0, fmt.Errorf("parsing flags: %w", err)
 	}
 
-	verbosity := verbosityCount
+	verbosity := *verbosityCount
 
-	format, err := validateFormat(formatFlag)
+	format, err := validateFormat(*formatFlag)
 	if err != nil {
 		return Input{}, 0, err
 	}
 
+	if _, err := selectCandidates(lang, candidates); err != nil {
+		return Input{}, 0, err
+	}
+
 	fileArg := fs.Arg(0)
+
+	if err := validateOutput(*outputFlag, fileArg); err != nil {
+		return Input{}, 0, err
+	}
 
 	raw, truncated, stdinIgnored, err := readTrace(fileArg, stdin, stdinIsPiped)
 	if err != nil {
@@ -194,5 +270,7 @@ func ParseFixedLang(args []string, stdin io.Reader, stdinIsPiped bool, lang stri
 		LangHint:          lang,
 		Format:            format,
 		StdinIgnored:      stdinIgnored,
+		Output:            *outputFlag,
+		NoClipboard:       *noClipboardFlag,
 	}, verbosity, nil
 }

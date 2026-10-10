@@ -32,9 +32,15 @@ from `AGENTS.md`, not duplicated there.
   that in the contract's own fields (`codeContexts[].status`/`note`, an
   unresolved dependency version left explicitly empty with a note) — never
   return a zero value that could be mistaken for a real one.
-- CLI exit codes: `0` success · `1` unexpected/internal error · `2` usage
-  error (bad flags/args) · `3` input could not be parsed as any known trace
-  format · `4` source language ambiguous or undetected.
+- CLI exit codes: `0` success, including `--help` and a clipboard copy
+  that fails after the bundle was already delivered (that one is a `Warn`)
+  · `1` unexpected/internal error, including a failed write of the bundle
+  · `2` usage error (bad flags/args, no or empty input, an unsupported
+  `--lang` value with no matching parser, a bad `--output` path) · `3`
+  input could not be parsed as any known trace format · `4` source
+  language ambiguous or undetected. `--help` renders the same table from
+  `exitCodeDocs` in `internal/cli/help.go`; the two are kept in sync by
+  hand, not generated from each other.
 
 ## Logging
 

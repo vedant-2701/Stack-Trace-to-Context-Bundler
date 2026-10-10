@@ -1,6 +1,8 @@
 # Spec: CLI Input Handling
 
 **Status:** Implemented (`internal/cli`, T001-T009 all complete).
+Requirement 13 and the acceptance criteria that depend on it were
+superseded by `specs/002b-pipeline-wiring` (marked inline below).
 **Folder:** specs/002a-cli-input-handling
 
 ## Overview
@@ -70,12 +72,15 @@ happens here.
     `slog.Error` (per requirement 11) before the program exits with code
     `2`, keeping message formatting consistent across every usage-error
     path rather than mixing in the flag package's own default output.
-13. On a successful parse + read, this feature does **not** produce a real
-    bundle — 007 (Markdown renderer), 008 (JSON renderer), and 009
-    (clipboard) don't exist yet, and full wiring is 002b's job. Instead it
-    logs an `Info`-level one-line summary (bytes read, lang hint, format)
-    to stderr, and a separate `Debug`-level full dump of the parsed input
-    struct to stderr, gated behind `-v`/`-vv` respectively.
+13. **[Superseded by 002b — see `specs/002b-pipeline-wiring/spec.md`. The
+    stub logging described here was removed when the real pipeline
+    landed.]** Original text, kept for history: On a successful parse +
+    read, this feature does **not** produce a real bundle — 007 (Markdown
+    renderer), 008 (JSON renderer), and 009 (clipboard) don't exist yet,
+    and full wiring is 002b's job. Instead it logs an `Info`-level
+    one-line summary (bytes read, lang hint, format) to stderr, and a
+    separate `Debug`-level full dump of the parsed input struct to
+    stderr, gated behind `-v`/`-vv` respectively.
 
 ## Non-functional requirements
 
@@ -92,16 +97,22 @@ happens here.
   circumstance, success or failure.
 - Memory use during input reading is bounded regardless of actual input
   size (`LimitReader` before buffering).
-- Default log verbosity remains `Warn` (per CONVENTIONS.md) — the
-  Info/Debug stub output is opt-in via `-v`/`-vv`, not visible by default.
+- Default log verbosity remains `Warn` (per CONVENTIONS.md) — Info/Debug
+  output is opt-in via `-v`/`-vv`, not visible by default. (The Info
+  summary and Debug dump this originally referred to were the requirement
+  13 stub, removed by 002b.)
 
-> **⚠️ Note — temporary stdout behavior:** Requirement 13's stub logging is
+> **✅ Resolved by 002b — temporary stdout behavior:** Requirement 13's stub logging is
 > scaffolding, not a permanent design decision. Real stdout bundle output
 > is out of scope here and becomes 002b's responsibility once
 > detect → parse → render → clipboard is actually wired up. When starting
 > or completing 002b, revisit this feature's `main.go` stub output and
 > replace/remove it — don't let it linger once the real pipeline exists.
 > Tracked here rather than left implicit so it isn't forgotten.
+>
+> **Resolution:** 002b (T016-T018) rewrote all three `main.go` files to
+> call `cli.Run`, which writes the real bundle to stdout (or `--output`)
+> and removed the stub Info summary and Debug dump entirely.
 
 ## Out of scope
 
@@ -119,8 +130,10 @@ happens here.
       trace-shaped text, when `cmd/all` runs with no flags, then the raw
       text is read, bounded-read via `LimitReader`, truncated via
       `contract.TruncateRawInput` if needed, format defaults to
-      `markdown`, lang hint is empty, and an Info summary + Debug dump are
-      available via `-v`/`-vv`, with nothing written to stdout.
+      `markdown`, lang hint is empty. *(The original tail of this
+      criterion — "an Info summary + Debug dump are available via
+      `-v`/`-vv`, with nothing written to stdout" — is superseded by
+      002b; see requirement 13.)*
 - [x] Given both a file-path arg and piped stdin, when the binary runs,
       then the file's content is used, stdin is ignored, and a
       `Debug`-level log records that stdin was ignored.
@@ -146,15 +159,17 @@ happens here.
       file, then the read itself does not buffer unbounded data, and the
       resulting raw text is exactly rune-safe-truncated to 512KB with
       `RawInputTruncated` set to `true`.
-- [x] Given a successful run with `-v`, then exactly one `Info`-level
-      one-line summary is logged to stderr and nothing is logged to
-      stdout.
-- [x] Given a successful run with `-vv`, then both the Info summary and a
-      `Debug`-level full struct dump are logged to stderr, and nothing is
-      logged to stdout.
-- [x] Given a successful run with no `-v`/`-vv`, then nothing is logged at
-      all (default `Warn` level), consistent with CONVENTIONS.md's "quiet
-      by default."
+- [x] **[Superseded by 002b — see requirement 13.]** Given a successful
+      run with `-v`, then exactly one `Info`-level one-line summary is
+      logged to stderr and nothing is logged to stdout.
+- [x] **[Superseded by 002b — see requirement 13.]** Given a successful
+      run with `-vv`, then both the Info summary and a `Debug`-level full
+      struct dump are logged to stderr, and nothing is logged to stdout.
+- [x] **[Superseded by 002b — see requirement 13.]** Given a successful
+      run with no `-v`/`-vv`, then nothing is logged at all (default
+      `Warn` level), consistent with CONVENTIONS.md's "quiet by default."
+      (No longer strictly true: the real pipeline can emit `Warn` lines,
+      e.g. when own-code context or dependency resolution degrades.)
 
 ## Open questions
 

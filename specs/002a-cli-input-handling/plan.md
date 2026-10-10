@@ -2,6 +2,19 @@
 
 Derived from `spec.md`. Must be consistent with `memory/constitution.md`.
 
+> **Note (002b):** `specs/002b-pipeline-wiring` extended this feature's
+> surface after it shipped. What changed: `ParseAll`/`ParseFixedLang`
+> gained a `candidates []parser.LanguageParser` parameter and now
+> validate in the order Parse -> validateLang (`ParseAll` only) ->
+> validateFormat -> selectCandidates (fail-fast) -> validateOutput ->
+> readTrace; `Input` gained `Output` and `NoClipboard`; flag registration
+> moved into a shared `registerFlags`; and logging, exit-code mapping and
+> the real pipeline moved out of each `main.go` into `cli.Run`, so
+> `main.go` is now only `BinaryConfig` wiring plus `stdinIsPiped`.
+> Paragraphs below that say `main.go` logs, or that `internal/cli` never
+> calls `slog`, describe 002a as it shipped, not the current code. The
+> Data model, File layout and API / contracts sections are kept current.
+
 ## Architecture / approach
 
 Lives in `internal/cli` (per CONVENTIONS.md's existing file layout — this
@@ -14,11 +27,12 @@ log the result via `slog`, `os.Exit` on error.
 Two entry points into the package, sharing internal helpers for reading,
 truncating, and format validation:
 
-- `cli.ParseAll(args, stdin, stdinIsPiped)` — registers `--lang`,
-  `--format`, `-v`, and `-vv`, used by `cmd/all`.
-- `cli.ParseFixedLang(args, stdin, stdinIsPiped, lang)` — registers only
-  `--format`, `-v`, and `-vv`, `LangHint` fixed to `lang`, used by
-  `cmd/java` / `cmd/typescript`.
+- `cli.ParseAll(args, stdin, stdinIsPiped, candidates)` — registers
+  `--lang`, `--format`, `--output`/`-o`, `--no-clipboard` and `-v`, used
+  by `cmd/all`.
+- `cli.ParseFixedLang(args, stdin, stdinIsPiped, lang, candidates)` —
+  registers the same set minus `--lang`, `LangHint` fixed to `lang`, used
+  by `cmd/java` / `cmd/typescript`.
 
 TTY detection (`stdinIsPiped`) is computed once in each `main.go` via a
 tiny `os.Stdin.Stat().Mode()&os.ModeCharDevice` helper and passed in as a
@@ -117,17 +131,20 @@ type Input struct {
     LangHint          string `json:"langHint"`          // "", "java", or "typescript"
     Format            string `json:"format"`            // "json" or "markdown"
     StdinIgnored      bool   `json:"stdinIgnored"`      // true if a file arg was given while stdin was also piped (spec req. 5)
+    Output            string `json:"output"`            // --output/-o path; "" means write the bundle to stdout (added by 002b)
+    NoClipboard       bool   `json:"noClipboard"`       // --no-clipboard given (added by 002b)
 }
 ```
 
 Tagged for JSON, no field `omitempty`: spec requirement 13's Debug-level
-full struct dump uses `json.MarshalIndent(Input)` for readability instead
-of `%+v`. Applying `internal/contract`'s own cross-cutting rule correctly
+full struct dump used `json.MarshalIndent(Input)` for readability instead
+of `%+v` (that dump was removed by 002b; the tags remain). Applying
+`internal/contract`'s own cross-cutting rule correctly
 (`omitempty` for "not applicable", never for "empty-but-meaningful")
-means every field here stays present at its zero value — none of the five
-represent a "not applicable" case, including `StdinIgnored` (added in
-T006c): `false` is exactly as meaningful as `true`, same reasoning as
-`RawInputTruncated`.
+means every field here stays present at its zero value — none of the
+seven represent a "not applicable" case, including `StdinIgnored` (added
+in T006c) and `NoClipboard`: `false` is exactly as meaningful as `true`,
+same reasoning as `RawInputTruncated`.
 
 `LangHint == ""` is the explicit "defer to 003 auto-detection" signal —
 never a zero-value stand-in for "unset" being confused with a real value,
@@ -140,26 +157,33 @@ from a field that was never captured.
 
 ```
 cmd/
-├── all/main.go          -- calls cli.ParseAll
-├── java/main.go          -- calls cli.ParseFixedLang(..., "java")
-└── typescript/main.go    -- calls cli.ParseFixedLang(..., "typescript")
+├── all/main.go          -- BinaryConfig wiring + cli.Run (002b)
+├── java/main.go          -- BinaryConfig wiring + cli.Run, FixedLang "java" (002b)
+└── typescript/main.go    -- BinaryConfig wiring + cli.Run, FixedLang "typescript" (002b)
 internal/
 └── cli/
     ├── input.go          -- Input struct
-    ├── parse.go          -- ParseAll, ParseFixedLang, flag registration/validation
-    ├── read.go            -- source selection (file vs stdin), bounded read, truncation call
-    ├── log.go             -- LogLevel: verbosity count -> slog.Level, shared by all three main.go
-    ├── parse_test.go
-    ├── read_test.go
-    └── log_test.go
+    ├── parse.go          -- ParseAll, ParseFixedLang, registerFlags, flag validation
+    ├── read.go            -- source selection (file vs stdin), bounded read, truncation call, validateOutput
+    ├── log.go             -- LogLevel: verbosity count -> slog.Level, shared by all three binaries
+    ├── candidates.go      -- selectCandidates, hintLanguages (002b)
+    ├── errors.go          -- languageUnsupportedError (002b)
+    ├── output.go          -- deliver (002b)
+    ├── help.go            -- usageText, Example, exitCodeDocs (002b)
+    ├── run.go             -- Run, BinaryConfig, DependencyResolver (002b)
+    └── *_test.go          -- one per file above
 ```
 
 ## API / contracts
 
 ```go
-func ParseAll(args []string, stdin io.Reader, stdinIsPiped bool) (Input, int, error)
-func ParseFixedLang(args []string, stdin io.Reader, stdinIsPiped bool, lang string) (Input, int, error)
+func ParseAll(args []string, stdin io.Reader, stdinIsPiped bool, candidates []parser.LanguageParser) (Input, int, error)
+func ParseFixedLang(args []string, stdin io.Reader, stdinIsPiped bool, lang string, candidates []parser.LanguageParser) (Input, int, error)
 ```
+
+(`candidates` added by 002b: the binary's registered parsers, used only
+for the unsupported-language fail-fast before any input is read. Both
+functions are now called from `cli.Run`, not directly from `main.go`.)
 
 The `int` is a verbosity count for `main.go` to pass into `cli.LogLevel`
 (`log.go`, T006): `0` if `-v` wasn't passed at all, `1` for `-v`, `2` for
@@ -178,6 +202,7 @@ Internal (unexported) helpers:
 func readTrace(fileArg string, stdin io.Reader, stdinIsPiped bool) (raw string, truncated bool, stdinIgnored bool, err error)
 func validateFormat(v string) (string, error)
 func validateLang(v string) (string, error) // ParseAll only
+func validateOutput(outputPath, fileArg string) error // added by 002b
 ```
 
 Every returned `error` is wrapped with context per CONVENTIONS.md

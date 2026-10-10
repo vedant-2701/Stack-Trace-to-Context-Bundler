@@ -132,3 +132,109 @@ func TestReadTrace(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateOutput(t *testing.T) {
+	tests := []struct {
+		name string
+
+		// Fixture toggles: paths are built fresh per-case from t.TempDir(),
+		// selected via these booleans rather than literal strings.
+		outputIsSameAsInput bool // outputPath == the fileArg fixture
+		outputParentMissing bool // outputPath's parent dir doesn't exist
+		outputParentIsFile  bool // outputPath's parent is an existing file
+		noOutputPath        bool // outputPath = "" (pass-through case)
+		noFileArg           bool // fileArg = "" (stdin case)
+		outputAlreadyExists bool // pre-create outputPath as an unrelated file
+
+		wantErrSubstr string // "" means no error expected
+	}{
+		{
+			name:         "empty outputPath is always valid (pass-through)",
+			noOutputPath: true,
+		},
+		{
+			name:         "empty outputPath valid even with no fileArg",
+			noOutputPath: true,
+			noFileArg:    true,
+		},
+		{
+			name:                "parent directory does not exist",
+			outputParentMissing: true,
+			wantErrSubstr:       "does not exist or is not accessible",
+		},
+		{
+			name:               "parent path exists but is not a directory",
+			outputParentIsFile: true,
+			wantErrSubstr:      "is not a directory",
+		},
+		{
+			name:                "output path is the same file as the input file",
+			outputIsSameAsInput: true,
+			wantErrSubstr:       "is the same file as the input file",
+		},
+		{
+			name:      "same-file check skipped when input is stdin (no fileArg)",
+			noFileArg: true,
+		},
+		{
+			name:                "existing output file, different from input: valid (overwrite happens later)",
+			outputAlreadyExists: true,
+		},
+		{
+			name: "new output file, valid parent, different from input: valid",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+
+			fileArg := ""
+			if !tc.noFileArg {
+				fileArg = filepath.Join(dir, "trace.txt")
+				if err := os.WriteFile(fileArg, []byte("trace\n"), 0o600); err != nil {
+					t.Fatalf("writing input fixture: %v", err)
+				}
+			}
+
+			outputPath := ""
+			switch {
+			case tc.noOutputPath:
+				outputPath = ""
+			case tc.outputIsSameAsInput:
+				outputPath = fileArg
+			case tc.outputParentMissing:
+				outputPath = filepath.Join(dir, "does-not-exist", "out.md")
+			case tc.outputParentIsFile:
+				notADir := filepath.Join(dir, "not-a-dir")
+				if err := os.WriteFile(notADir, []byte("x"), 0o600); err != nil {
+					t.Fatalf("writing parent-as-file fixture: %v", err)
+				}
+				outputPath = filepath.Join(notADir, "out.md")
+			case tc.outputAlreadyExists:
+				outputPath = filepath.Join(dir, "existing-out.md")
+				if err := os.WriteFile(outputPath, []byte("old\n"), 0o600); err != nil {
+					t.Fatalf("writing pre-existing output fixture: %v", err)
+				}
+			default:
+				outputPath = filepath.Join(dir, "out.md")
+			}
+
+			err := validateOutput(outputPath, fileArg)
+
+			if tc.wantErrSubstr != "" {
+				if err == nil {
+					t.Fatalf("err = nil, want error containing %q", tc.wantErrSubstr)
+				}
+				if !strings.Contains(err.Error(), tc.wantErrSubstr) {
+					t.Errorf("err = %q, want it to contain %q", err.Error(), tc.wantErrSubstr)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("err = %v, want nil", err)
+			}
+		})
+	}
+}

@@ -53,4 +53,18 @@ type Input struct {
 	// dropping any Debug call made before configuration. See plan.md's
 	// Architecture section for the full trace of this (T006c).
 	StdinIgnored bool `json:"stdinIgnored"`
+
+	// Output is the file path from the --output/-o flag. Empty means no
+	// --output was given, so the bundle goes to stdout (FR13/FR17;
+	// output.go's deliver decides between the two). validateOutput
+	// (read.go, T004) checks this path's parent directory and the
+	// same-file-as-input case before the pipeline runs; deliver only
+	// opens the file once rendering has already succeeded.
+	Output string `json:"output"`
+
+	// NoClipboard is true if --no-clipboard was given. It only skips the
+	// clipboard write (FR16) -- it never affects stdout/--output
+	// delivery, and a clipboard failure when NoClipboard is false is a
+	// Warn, not a fatal error.
+	NoClipboard bool `json:"noClipboard"`
 }
